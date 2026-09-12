@@ -238,6 +238,32 @@ LEGEND = {"sketch": [("紅虛線 地價區段範圍", (210, 0, 0)), ("紅面 比
                       ("綠點 宗地接近設施", (87, 185, 107)), ("綠線 步行距離", (42, 157, 143)), ("橘線 直線距離", (231, 111, 81))]}
 
 
+def _ring_area(ring: list) -> float:
+    """經緯度環的面積（鞋帶公式，度²；只用來排序圖例，不換算成 m²）。"""
+    a = 0.0
+    n = len(ring)
+    for i in range(n):
+        x0, y0 = ring[i][0], ring[i][1]
+        x1, y1 = ring[(i + 1) % n][0], ring[(i + 1) % n][1]
+        a += x0 * y1 - x1 * y0
+    return abs(a) / 2
+
+
+def zoning_legend(layers: dict[str, Any], limit: int = 16) -> list[tuple[str, tuple[int, int, int]]]:
+    """使用分區圖的圖例：圖上出現的每種分區各一格（名稱＋色塊），依面積由大到小，最多 limit 種；其餘併成「其他分區」。"""
+    area: dict[str, float] = {}
+    color: dict[str, str] = {}
+    for f in (layers.get("zoning") or {}).get("features", []):
+        z = f.get("properties", {}).get("zone") or "未分類"
+        color.setdefault(z, f["properties"].get("color") or "#dddddd")
+        area[z] = area.get(z, 0.0) + sum(_ring_area(r) for r in _rings(f["geometry"]))
+    order = sorted(area, key=lambda z: -area[z])
+    out = [(z, _hex(color[z], 255)[:3]) for z in order[:limit]]
+    if len(order) > limit:
+        out.append((f"其他分區（{len(order) - limit} 種）", (221, 221, 221)))
+    return out
+
+
 def _render(layers: dict[str, Any], mode: str, *, highlight: str | None, size: tuple[int, int], basemap: bool, tile_timeout: float,
             subject_section: str, view_pad_m: float, print_w_mm: float) -> tuple[Image.Image, dict[str, Any]]:
     """地圖本體（底圖、圖層、圖上標籤），不含標題／圖例／比例尺文字。回 (RGBA 影像, {denominator, has_base, cjk, m_per_px, k})。
@@ -413,13 +439,14 @@ def render_png(layers: dict[str, Any], mode: str = "section", *, title: str = ""
         sc = f"比例尺：1：{info['denominator']}" if info["denominator"] else ""
         _text_bg(d, (w - 250, 12), f"{sc}（A4 橫式）", f_label)
         _text_bg(d, (w - 250, 40), f"不動產估價師：{appraiser or '　　　　　　'}", f_label)
-    legend = LEGEND[mode]
+    legend = LEGEND[mode] if mode != "zoning" else [LEGEND["zoning"][1], *zoning_legend(layers)]
     if cjk:
-        y = h - 24 * len(legend) - 40
-        for text, col in legend:
-            d.rectangle((14, y + 3, 30, y + 17), fill=(*col, 255), outline=(60, 60, 60, 255))
-            _text_bg(d, (36, y), text, f_small)
-            y += 24
+        rows = min(len(legend), 9)          # 分區種類多時排兩欄
+        y0 = h - 24 * rows - 40
+        for i, (text, col) in enumerate(legend):
+            cx, y = 14 + (i // rows) * 190, y0 + (i % rows) * 24
+            d.rectangle((cx, y + 3, cx + 16, y + 17), fill=(*col, 255), outline=(60, 60, 60, 255))
+            _text_bg(d, (cx + 22, y), text, f_small)
     _scale_bar(d, info["m_per_px"], (w - 30, h - 40), f_small)
     attr = _attribution(has_base, basemap, cjk)
     _text_bg(d, (12, h - 24), attr, f_small, fill=(70, 70, 70, 255))
@@ -500,18 +527,44 @@ def render_page_png(layers: dict[str, Any], mode: str = "section", *, title: str
     _scale_bar(ImageDraw.Draw(page), info["m_per_px"], (mx + MW - mm(6), my + MH - mm(6)), f_small, k)
     # 圖下：其他圖例（範本只有區段範圍；本系統多了比準地／比較標的／設施，放圖下一列）
     if cjk:
-        lx, ly = mx, my + MH + mm(3)
-        for text, col in LEGEND[mode][1:] if mode != "zoning" else LEGEND[mode][:1]:
-            d.rectangle((lx, ly + mm(0.8), lx + mm(5), ly + mm(4)), fill=col, outline=(60, 60, 60))
-            d.text((lx + mm(6.5), ly), text, font=f_small, fill=black)
-            lx += mm(6.5) + d.textlength(text, font=f_small) + mm(8)
-    # 底部：左＝案件資訊與出處；右＝不動產估價師
+        # 圖下最多兩列（每列 5 mm），放不下的分區併成「其他分區（N 種）」；不和頁尾的案件資訊、簽章欄重疊
+        entries = LEGEND[mode][1:] if mode != "zoning" else zoning_legend(layers, limit=40)
+        row_h, gap, sw = mm(5), mm(8), mm(6.5)
+        width = lambda t: sw + d.textlength(t, font=f_small) + gap
+        rows: list[list[tuple[str, tuple[int, int, int]]]] = [[]]
+        used = 0.0
+        placed = 0
+        for text, col in entries:
+            wtext = width(text)
+            if used + wtext > MW:
+                if len(rows) == 2:
+                    break
+                rows.append([])
+                used = 0.0
+            rows[-1].append((text, col))
+            used += wtext
+            placed += 1
+        rest = len(entries) - placed
+        if rest:
+            other = (f"其他分區（{rest} 種）", (221, 221, 221))
+            if used + width(other[0]) > MW and rows[-1]:
+                rows[-1].pop()                                       # 讓位給「其他」
+            rows[-1].append(other)
+        ly = my + MH + mm(2.5)
+        for row in rows:
+            lx = mx
+            for text, col in row:
+                d.rectangle((lx, ly + mm(0.8), lx + mm(5), ly + mm(4)), fill=col, outline=(60, 60, 60))
+                d.text((lx + sw, ly), text, font=f_small, fill=black)
+                lx += width(text)
+            ly += row_h
+    # 底部：左＝案件資訊與出處；右＝不動產估價師（同一列，在圖例下方）
     if cjk:
         if subtitle:
-            d.text((mx, PH - mm(14)), subtitle, font=f_small, fill=grey)
-        d.text((mx, PH - mm(8)), _attribution(info["has_base"], basemap, cjk), font=f_tiny, fill=grey)
+            d.text((mx, PH - mm(9.5)), subtitle, font=f_small, fill=grey)
+        d.text((mx, PH - mm(5)), _attribution(info["has_base"], basemap, cjk), font=f_tiny, fill=grey)
         sig = f"不動產估價師：{appraiser or ''}"
-        d.text((mx + MW - d.textlength(sig, font=f_label) - (0 if appraiser else mm(30)), PH - mm(17)), sig, font=f_label, fill=black)
+        d.text((mx + MW - d.textlength(sig, font=f_label) - (0 if appraiser else mm(30)), PH - mm(10.5)), sig, font=f_label, fill=black)
     return _encode(page)
 
 

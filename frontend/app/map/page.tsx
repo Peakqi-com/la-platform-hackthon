@@ -42,6 +42,13 @@ export default function MapPage() {
         </div>
         {layers?.n_far > 0 && <div className="no-print text-xs mb-1 flex items-center gap-2"><span className="text-slate-500">有 {layers.n_far} 筆幾何離比準地超過 2.5 km（其他鄉鎮的比較標的），預設不納入取景。</span><button className="underline" onClick={() => setShowAll(!showAll)}>{showAll ? "只看比準地周邊" : "顯示全部"}</button></div>}
         {layers ? <LeafletMap layers={showAll && layers.bbox_all ? { ...layers, bbox: layers.bbox_all } : layers} mode={mode} highlight={hl} /> : <div className="h-[70vh] bg-white border rounded-lg flex items-center justify-center text-slate-500">圖層計算中…</div>}
+        {mode === "zoning" && layers?.zoning?.features?.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs">
+            <span className="text-slate-500">使用分區：</span>
+            {Array.from(new Map((layers.zoning.features as Any[]).map((f) => [f.properties.zone, f.properties.color])).entries()).map(([z, c]) => (
+              <span key={String(z)} className="inline-flex items-center gap-1"><span className="inline-block w-3.5 h-3.5 border border-slate-500" style={{ background: String(c) }} />{String(z)}</span>))}
+            <span className="inline-flex items-center gap-1"><span className="inline-block w-3.5 h-3.5 border-2 border-dashed border-red-600" />地價區段範圍</span>
+          </div>)}
         <div className="text-[11px] text-slate-500 mt-1">底圖 © 國土測繪中心；使用分區：新北市城鄉發展局開放資料；路網與設施：© OpenStreetMap contributors、政府開放資料、人工標定</div>
         {msg && <div className="text-sm mt-2 bg-white border rounded p-2">{msg}</div>}
       </div>
