@@ -129,3 +129,13 @@ def test_table4_case_note_row_not_mistaken_for_header():
 
     out = parse_table4(_P(), load_ruleset("shulin_residential_individual"), AdapterResult(kind="pdf_forms", data={}))
     assert "第17條第3項" in (out["notes"].get("case") or "")
+
+
+def test_todo_missing_counts_only_still_blank_fields():
+    from app.main import _path_value, _unfilled_paths
+    data = {"subject_parcel": {"area_m2": 25.44, "other": None, "front_road": {"name": "啟智街", "width_m": 6.8}},
+            "comparables": [{"shape": "方形", "school": {"name": "國小", "distance_m": 150}}, {"shape": None, "nuisance": []}]}
+    paths = ["subject_parcel.area_m2", "subject_parcel.other", "subject_parcel.front_road.width_m", "comparables[0].shape",
+             "comparables[0].school", "comparables[1].shape", "comparables[1].nuisance", "comparables[5].shape"]
+    assert _path_value(data, "comparables[0].school")["distance_m"] == 150
+    assert _unfilled_paths(data, paths) == ["subject_parcel.other", "comparables[1].shape", "comparables[1].nuisance", "comparables[5].shape"]

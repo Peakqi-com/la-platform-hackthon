@@ -1,4 +1,5 @@
-"""決賽簡報產生器：docs/11_deck_plan.md 的 30 頁 → PowerPoint 16:9。
+"""決賽簡報產生器：主線 10 頁（6 分鐘報告＋示範）＋附錄（統問統答用）→ PowerPoint 16:9。
+備忘稿讀 docs/13_講稿_逐字稿.md 的「### P<頁>」段落（主線頁），講稿與簡報只維護一份。
 配色比照網站（暖橘主色、米白底、深灰字）；封面與段落頁用主辦 KV 深藍。圖片來自 deck_img/。
 執行：cd docs/demo && python3 build_deck.py → AI輔助不動產估價案件審查_簡報.pptx
 """
@@ -130,7 +131,8 @@ def footer(slide, dark=False):
     page_no += 1
     col = CYAN if dark else GREY
     text(slide, Inches(0.5), H - Inches(0.42), Inches(8), Inches(0.3), "AI 輔助不動產估價案件審查　｜　AI城市起風", size=10, color=col)
-    text(slide, W - Inches(1.2), H - Inches(0.42), Inches(0.7), Inches(0.3), str(page_no), size=10, color=col, align=PP_ALIGN.RIGHT)
+    tb = text(slide, W - Inches(1.2), H - Inches(0.42), Inches(0.7), Inches(0.3), str(page_no), size=10, color=col, align=PP_ALIGN.RIGHT)
+    tb.name = "page_no"                                                   # 重排頁序後依此重編頁碼
 
 
 def content_slide(title, section, body_items=None, image=None, layout="split", cap=None, note=None, image2=None, size=15):
@@ -260,7 +262,7 @@ text(s, Inches(0.7), Inches(0.5), Inches(12), Inches(0.8), "我們做什麼", si
 text(s, Inches(0.7), Inches(1.3), Inches(12), Inches(1.2),
      "把「勘查表事實 → 優劣等級 → 修正率 → 加總 → 跨表抄填」這條鏈自動化，並反向審查：\n比對估價師填的表與規則算出的表，逐條指出不一致並引用依據。沒有書表時，只給地號也能先產出一版。",
      size=17, color=PINK)
-steps = [("① 輸入資料", "送審書表 PDF／年期與地號\n／評價基準明細表"), ("② 產出書表", "依基準表判等級、修正率\n與價格鏈，重算六頁書表"),
+steps = [("① 輸入資料", "送審書表 PDF／年期與地號\n／評價基準明細表"), ("② 產出書表", "依基準表判等級、修正率\n與價格鏈，重算三表三圖"),
          ("③ 審查", "逐格比對填載值與核算值\n標出不符與依據，承辦裁決"), ("④ 輸出", "書表 Excel／PDF、意見書\nWord／PDF、三張圖說")]
 x0, y0, bw, bh, gap = Inches(0.7), Inches(3.2), Inches(2.75), Inches(1.9), Inches(0.35)
 for i, (t, b) in enumerate(steps):
@@ -268,7 +270,7 @@ for i, (t, b) in enumerate(steps):
     box(s, x, y0, bw, bh, t, b, tsize=20, bsize=13)
     if i < 3:
         arrow(s, x + bw, y0 + bh // 2, x + bw + gap, y0 + bh // 2)
-ins = [("送審書表 PDF", "估價單位送來的六頁書表"), ("範例", "相符／含填載錯誤／僅勘查表"), ("年期＋地號", "沒有書表時一鍵產出")]
+ins = [("送審書表 PDF", "估價單位送來的六頁書表"), ("範例", "相符／填載錯誤／僅勘查表／決賽題目"), ("年期＋地號", "沒有書表時一鍵產出")]
 for i, (t, b) in enumerate(ins):
     box(s, Inches(0.7) + i * Inches(4.15), Inches(5.6), Inches(3.8), Inches(1.0), "入口：" + t, b, fill=NAVY, line=PINK, tsize=15, bsize=11)
 footer(s, dark=True)
@@ -331,6 +333,7 @@ content_slide("入口 C：範例與其他可上傳的資料", "案件總覽", [
     ("範例一", "金山區 P002-00 地價區段，送審書表填載與系統核算相符。"),
     ("範例二", "同一案但含填載錯誤：看不符項、承辦裁決與意見書。"),
     ("範例三", "僅有年期、區段編號、區段範圍的勘查表，由圖資推算其餘欄位。"),
+    ("範例四", "樹林區普通住宅用地（決賽題目）：四個區段、三筆比較標的，可輸出地政局正式範本。"),
     ("還能上傳", "宗地個別因素清冊 xlsx、買賣實例 xlsx、評價基準明細表 PDF／CSV／JSON、地籍圖（GeoJSON／KML／GML／SHP zip）、地價區段圖。"),
     ("匯入規則", "依地號併入、只覆蓋有值欄位、對不到的回報。"),
 ], image="home_list.png", cap="案件清單：狀態、審查結果、比較價格、產出、最後操作、下一步", size=14)
@@ -369,7 +372,7 @@ content_slide("評價基準明細表", "① 輸入資料", [
 ], image="table1_compare.png", cap="對照檢視：勘查表每格的判定條件與等級", size=15)
 
 content_slide("勘查表推定規則（28 欄哪些能推）", "① 輸入資料", [
-    ("土地使用管制", "都市計畫內外、使用分區、建蔽率容積率（土管要點）、禁限建（預設無）。"),
+    ("土地使用管制", "都市計畫內外、使用分區、建蔽率容積率（土管要點＋但書：面臨計畫道路未達 8 m 或現有巷道者住一、住二 200%，路寬以都市計畫圖道路用地量測）、禁限建（預設無）。"),
     ("交通", "主要道路與平均路寬（路網）、大型車站、站牌、交流道、道路闢建程度（計畫道路 × 現況路網）。"),
     ("自然", "排水（淹水潛勢 24h 350mm）、地勢（衛星測高高程）。"),
     ("設施", "市場、公園、觀光、停車場、電業、殯葬、廢棄物、污染源、百貨、金融、娛樂、飯店。"),
@@ -378,7 +381,7 @@ content_slide("勘查表推定規則（28 欄哪些能推）", "① 輸入資料
 ], image="generated_sheet.png", cap="一鍵建案產出的地價區段勘查表", size=14)
 
 # ───────────────────────────── 段落：② 產出書表
-section_slide("04", "② 產出書表", "規則引擎／六頁書表／三張圖說／地圖")
+section_slide("04", "② 產出書表", "規則引擎／書表預覽／三張圖說／地圖")
 
 # 價格鏈圖（深藍）
 s = prs.slides.add_slide(BLANK)
@@ -408,10 +411,10 @@ bullets(s, Inches(0.7), Inches(4.6), Inches(12), Inches(2.3), [
 ], size=14, color=WHITE)
 footer(s, dark=True)
 
-content_slide("六頁書表預覽：照範本版面", "② 產出書表", [
-    ("頁序", "地價區段勘查表、影響地價區域因素分析明細表、比較法調查估價表、地價區段略圖、地價使用分區圖、地價區段圖。"),
+content_slide("書表預覽：照範本版面", "② 產出書表", [
+    ("頁序", "各區段地價區段勘查表（每區段一頁）、影響地價區域因素分析明細表、比較法調查估價表、三張圖說；範本案 6 頁、決賽題目 9 頁。"),
     ("同一份版面", "Excel、畫面預覽、PDF 都從同一張工作表格線畫出來。"),
-    ("列印", "六頁 PDF，A4 直式與 A3 橫式混排不裁切。"),
+    ("列印", "整份 PDF，A4 直式與 A3 橫式混排不裁切。"),
     ("審查標記", "可疊上不符與需確認的格位標記。"),
 ], image="sheets_preview.png", cap="書表預覽第 1 頁", size=15)
 
@@ -467,7 +470,8 @@ section_slide("06", "④ 輸出與案件管理", "一列多格式／案件生命
 
 content_slide("輸出", "④ 輸出", [
     ("下載全部", "一個 zip：書表、意見書、三張圖、清冊、實例。"),
-    ("查估書表", "Excel 六張工作表（三表＋三圖）、PDF 照範本頁序。"),
+    ("查估書表", "Excel（勘查表每區段一張＋兩表＋三圖）、PDF 照範本頁序。"),
+    ("地政局正式範本", "表3（每區段一張）、表5-1、表4 直接寫進範本格位，格式不動。"),
     ("審查意見書", "Word、PDF。"),
     ("三張圖說", "PNG A3。"),
     ("可再匯入", "宗地個別因素清冊、買賣實例 xlsx 填好可再匯入。"),
@@ -498,7 +502,7 @@ box(s, Inches(0.7), Inches(3.6), Inches(12.0), Inches(1.5), "本機資料層（�
     tsize=16, bsize=11)
 arrow(s, Inches(6.7), Inches(3.1), Inches(6.7), Inches(3.6))
 bullets(s, Inches(0.7), Inches(5.4), Inches(12), Inches(1.6), [
-    ("測試", "157 個自動測試：範本驗收、手冊算例、adapter、輸出、API。"),
+    ("測試", "185 個自動測試：範本驗收、手冊算例、決賽題目、adapter、輸出、API。"),
     ("隔離不確定性", "當天資料格式不明只改 adapter；帳號權限不明只改 deploy。"),
 ], size=14, color=WHITE)
 footer(s, dark=True)
@@ -508,25 +512,26 @@ s = prs.slides.add_slide(BLANK)
 rect(s, 0, 0, W, H, NAVY)
 text(s, Inches(0.7), Inches(0.4), Inches(12), Inches(0.8), "AWS 部署（依競賽規範）", size=28, color=WHITE, bold=True)
 box(s, Inches(0.7), Inches(1.5), Inches(2.4), Inches(1.3), "使用者", "評審／承辦瀏覽器\nHTTPS", fill=NAVY, line=PINK, tsize=15, bsize=11)
-box(s, Inches(3.9), Inches(1.5), Inches(5.4), Inches(1.3), "EC2 標準型（us-east-1）", "Caddy 443 → Next.js 3000 ／ FastAPI 8000（本機）\nSecurity Group 只開 443／80", tsize=15, bsize=11)
+box(s, Inches(3.9), Inches(1.5), Inches(5.4), Inches(1.3), "EC2 標準型（us-west-2）", "Caddy 443 → Next.js 3000 ／ FastAPI 8000（本機）\nSecurity Group 對外只開 443／80，SSH 限單一 IP", tsize=15, bsize=11)
 box(s, Inches(10.1), Inches(1.5), Inches(2.6), Inches(1.3), "Amazon Bedrock", "< 1 RPS，只開通用到的模型", fill=NAVY, line=PINK, tsize=15, bsize=11)
 arrow(s, Inches(3.1), Inches(2.15), Inches(3.9), Inches(2.15))
 arrow(s, Inches(9.3), Inches(2.15), Inches(10.1), Inches(2.15), color=PINK)
 box(s, Inches(3.9), Inches(3.2), Inches(5.4), Inches(1.0), "EBS 資料卷約 2 GB", "圖資、實價登錄、規則、案件；S3 若用只做私有備份", tsize=14, bsize=11)
 arrow(s, Inches(6.6), Inches(2.8), Inches(6.6), Inches(3.2))
 bullets(s, Inches(0.7), Inches(4.5), Inches(12), Inches(2.5), [
-    ("區域", "us-east-1／us-west-2 指定區域。"),
+    ("區域", "us-west-2（競賽指定區域之一）；正式網址 https://54.188.82.141.sslip.io/。"),
     ("執行個體", "Standard 系列（規範允許 256 vCPU），不用 GPU、不做模型訓練。"),
     ("安全", "不建立對外全開的 Security Group；不開公開 S3；機密走環境變數與 .gitignore，repo 私有。"),
     ("資料", "不上傳個人資料；實價登錄為去識別化公開資料，操作身分用職稱。"),
-    ("時程", "deploy/runbook_ec2.md 30 分鐘從零到可用，不用 docker。"),
+    ("自動部署", "推上 GitHub 主線，主機每 60 秒拉取、依變更重建；健康檢查失敗自動回滾。從零佈建見 deploy/runbook_ec2.md。"),
 ], size=14, color=WHITE)
 footer(s, dark=True)
 
 content_slide("限制與後續", "技術與部署", [
     ("收益法", "查估辦法 §14 未實作（實價登錄無收益資料），列人工填寫。"),
     ("樓層別效用比率", "第四號公報無表，區分所有建物由估價師填。"),
-    ("地籍圖", "現用匯入圖檔或預載；正式版需國土測繪中心地籍 API（地政局名義申請）。"),
+    ("地籍圖", "現用開放地籍查詢（非即時，界線與面積標推定），也可匯入圖檔；正式版需國土測繪中心地籍 API（地政局名義申請）。"),
+    ("期日調整", "決賽題目依樹林區平均區段地價表調整；111 年樹林區資料未取得，系統採題目值，無法驗算。"),
     ("土管要點", "48 個計畫區自動抽取，8 個抓不到表退回施行細則附表一，多表不一致標需人工核對。"),
     ("推定門檻", "勘查表推定規則為系統自訂，待地政局確認後調整。"),
     ("底圖", "國土測繪中心瓦片在境外主機的連線需確認；金山一帶已快取可離線。"),
@@ -537,9 +542,9 @@ s = prs.slides.add_slide(BLANK)
 rect(s, 0, 0, W, H, NAVY)
 text(s, Inches(0.7), Inches(0.4), Inches(12), Inches(0.8), "Demo 與結語", size=28, color=WHITE, bold=True)
 text(s, Inches(0.7), Inches(1.15), Inches(12), Inches(0.6), "估價單位送來什麼就逐格核算；沒送也能先產一版；每個數字都能點回法源。", size=18, color=PINK)
-for i, (t, img, cap_) in enumerate([("場景一　送審書表 → 逐格核算", "review_pass.png", "上傳 PDF，10 秒進審查"),
-                                    ("場景二　填載錯誤 → 裁決 → 意見書", "opinion.png", "5 項不符，承辦裁決寫進意見書"),
-                                    ("場景三　地號 → 一鍵產出", "fill_report.png", "30 秒產出勘查表與比較標的")]):
+for i, (t, img, cap_) in enumerate([("送審書表 → 逐格核算", "review_pass.png", "範本案 212,958 元/m² 全部重現"),
+                                    ("決賽題目 → 全自動填表", "shulin_t4.png", "上傳兩個檔，約一分鐘填完六張表"),
+                                    ("容積率 → 抓出不一致", "frontage_3comps.png", "量臨路寬度套但書，列需確認不判錯")]):
     x = Inches(0.7) + i * Inches(4.15)
     text(s, x, Inches(1.9), Inches(3.9), Inches(0.5), t, size=15, color=CYAN, bold=True)
     picture(s, img, x, Inches(2.4), Inches(3.9), Inches(3.0), border=False)
@@ -549,6 +554,89 @@ picture(s, "qr_deploy.png", W - Inches(1.9), Inches(5.9), Inches(1.1), Inches(1.
 text(s, W - Inches(3.7), Inches(6.25), Inches(1.7), Inches(0.4), "掃描開啟系統 →", size=12, color=CYAN, align=PP_ALIGN.RIGHT)
 text(s, Inches(0.7), Inches(6.2), Inches(9), Inches(0.5), "隊名 AI城市起風　吳昭奇・洪湛閎・丁家麒", size=14, color=WHITE)
 footer(s, dark=True)
+
+# ───────────────────────────── 新增：決賽題目實戰（流程、產出、抓到的問題）＋附錄分隔頁
+s = prs.slides.add_slide(BLANK)                                          # A 流程（深藍）
+rect(s, 0, 0, W, H, NAVY)
+text(s, Inches(0.7), Inches(0.4), Inches(12), Inches(0.8), "決賽題目：上傳兩個檔，全自動填完六張表", size=28, color=WHITE, bold=True)
+text(s, Inches(0.7), Inches(1.15), Inches(12), Inches(0.5), "新北市樹林區普通住宅用地｜比準地 樹德段1415地號｜四個地價區段、三筆比較標的｜題目表4 個別因素全部空白", size=15, color=PINK)
+flow = [("上傳", "題目.pdf\n評價基準明細表.pdf"), ("解析", "四張勘查表、表5-1、表4\n基準表 29＋20 細項"), ("宗地界線", "開放地籍查詢\n比準地與三筆比較標的"), ("區段範圍", "四至文字＋路網\n圍出四個區段"),
+        ("勘查表", "四個區段\n各推算 28 欄"), ("設施距離", "步行路網量測\n學校、市場、公園…"), ("個別因素", "表4 第 7～25 項\n面積、寬深、臨路…"), ("核算", "表5-1、表4\n比較價格")]
+bw, bh, step = Inches(2.75), Inches(1.2), Inches(3.1)
+for i, (t, b) in enumerate(flow):                      # 蛇行：第一列左→右，第二列右→左
+    r, c = divmod(i, 4)
+    col = c if r == 0 else 3 - c
+    x, y = Inches(0.7) + col * step, Inches(1.95) + r * Inches(1.75)
+    box(s, x, y, bw, bh, t, b, tsize=16, bsize=11)
+    if c < 3:
+        if r == 0:
+            arrow(s, x + bw, y + bh // 2, x + step, y + bh // 2)
+        else:
+            arrow(s, x, y + bh // 2, x - (step - bw), y + bh // 2)
+xc = Inches(0.7) + 3 * step + bw // 2
+arrow(s, xc, Inches(1.95) + bh, xc, Inches(3.7), color=PINK)
+bullets(s, Inches(0.7), Inches(5.2), Inches(12), Inches(1.8), [
+    ("時間", "本機從上傳到填完約 20 秒；正式站約 1 分鐘。"),
+    ("讀懂備註", "表5-1「使用分區、建蔽率、容積率併同表4 考量」→ 三項在表5-1 自動免修正。"),
+    ("審查也讀備註", "表4 全案備註已敘明查估辦法 §17 第3項擴大蒐集期間 → 交易日期只列備註。"),
+], size=14, color=WHITE)
+footer(s, dark=True)
+
+s = content_slide("決賽題目產出：直接寫進地政局範本", "決賽題目", None, layout="text")   # B 產出
+bullets(s, Inches(0.6), Inches(1.25), Inches(12.1), Inches(1.2), [
+    ("區域因素總修正數", "18.00%／14.75%／6.75%（使用分區、建蔽率、容積率依表5-1 備註免修正）"),
+    ("個別因素合計", "−15.75%／−23.25%／−26.25%；權重 30／50／20（差異百分率絕對值加總排名）"),
+    ("比準地比較價格", "131,529 元/m²；比準地地價 132,000 元/m²（查估辦法 §21 尾數）"),
+], size=14, gap=2)
+picture(s, "shulin_t3_p002.png", Inches(0.6), Inches(2.6), Inches(3.3), Inches(4.1))
+picture(s, "shulin_t4.png", Inches(4.1), Inches(2.6), Inches(8.7), Inches(4.1))
+caption(s, Inches(0.6), Inches(6.75), Inches(12.1), "左：地價區段勘查表 P002-00（四個區段各一頁）　右：比較法調查估價表（個別因素 7～25 全部填好，全案備註讀自題目）")
+
+s = content_slide("系統抓到的問題：容積率 200% 還是 260%？", "決賽題目", None, layout="text")   # C 問題
+bullets(s, Inches(0.6), Inches(1.2), Inches(12.1), Inches(2.2), [
+    ("題目勘查表", "P002-00 填 200%；P001、P003、P004 填 260%。同為第一種住宅區，數字不同。"),
+    ("核對土管要點", "樹林都市計畫 2020 通盤檢討與 2023 第四點修正兩版：住一 260%；但書：面臨計畫道路未達 8 m 或依現有巷道建築者，住一、住二上限 200%。"),
+    ("量臨路寬度", "以都市計畫圖道路用地量宗地臨路寬：三筆比較標的都適用但書。P002-00 的 200% 吻合；P003、P004 的 260% 與宗地不一致。"),
+    ("系統處理", "列「需確認」並附但書原文，交承辦裁定，不判錯；容積率在基準表為人工判定項，不影響比較價格。"),
+], size=14, gap=3)
+picture(s, "frontage_3comps.png", Inches(0.6), Inches(3.5), Inches(12.1), Inches(3.2))
+caption(s, Inches(0.6), Inches(6.75), Inches(12.1), "紅＝宗地界線（開放地籍查詢）　灰＝都市計畫道路用地　藍線＝路網　底圖：國土測繪中心")
+
+section_slide("附錄", "功能細節與技術說明", "統問統答時依題目翻閱；依原流程排列")
+
+# ───────────────────────────── 頁序：主線 10 頁（6 分鐘）＋附錄。數字＝建立順序（舊頁碼），A/B/C＝決賽題目三頁，X＝附錄分隔頁
+ORDER = [1, 2, 3, 5, 20, "A", "B", "C", 34, 36, "X",
+         4, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 35]
+IDX = {"A": 36, "B": 37, "C": 38, "X": 39}
+lst = prs.slides._sldIdLst
+ids = list(lst)
+assert len(ids) == 40 and sorted(IDX.get(k, k - 1 if isinstance(k, int) else k) for k in ORDER) == list(range(40)), "頁序對不上建立順序"
+for el in ids:
+    lst.remove(el)
+for k in ORDER:
+    lst.append(ids[IDX[k] if isinstance(k, str) else k - 1])
+for i, sl in enumerate(prs.slides, start=1):                              # 重編頁碼（封面沒有頁碼）
+    for sh in sl.shapes:
+        if sh.name == "page_no" and sh.has_text_frame:
+            sh.text_frame.paragraphs[0].runs[0].text = str(i)
+
+
+def load_script() -> dict[int, str]:
+    """docs/13_講稿_逐字稿.md 的「### P<頁>」段落 → {頁: 備忘稿}。"""
+    import re
+    f = HERE.parent / "13_講稿_逐字稿.md"
+    if not f.exists():
+        return {}
+    parts = re.split(r"^### P(\d+)\b.*$", f.read_text(encoding="utf-8"), flags=re.M)
+    return {int(parts[i]): parts[i + 1].split("\n## ")[0].strip() for i in range(1, len(parts), 2)}
+
+
+for n, body in load_script().items():
+    if 1 <= n <= len(prs.slides):
+        notes(prs.slides[n - 1], body)
+for sl in list(prs.slides)[10:]:
+    if not sl.has_notes_slide or not sl.notes_slide.notes_text_frame.text.strip():
+        notes(sl, "附錄：統問統答時依題目翻閱。")
 
 prs.save(OUT)
 print("saved", OUT, "slides", len(prs.slides))
