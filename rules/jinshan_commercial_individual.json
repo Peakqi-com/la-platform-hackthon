@@ -1,0 +1,175 @@
+{
+  "$schema_note": "影響地價個別因素評價基準明細表 → 可執行規則。item_no 對應比較法調查估價表(表4)及宗地個別因素清冊(表7)的欄位編號 7~25。修正率 = (比較標的等級索引 − 比準地等級索引) × step。",
+  "id": "jinshan_commercial_individual",
+  "source": "新北市金山區商業用地影響地價個別因素評價基準明細表（範例）",
+  "land_use": "商業用地",
+  "table": "4",
+  "scope": "individual",
+  "groups": [
+    {"no": 1, "name": "宗地條件"},
+    {"no": 2, "name": "道路條件"},
+    {"no": 3, "name": "接近條件"},
+    {"no": 4, "name": "周邊環境條件"},
+    {"no": 5, "name": "行政條件"},
+    {"no": 6, "name": "其他"}
+  ],
+  "rules": [
+    {
+      "id": "I7", "item_no": 7, "group": 1, "name": "面積(M2)",
+      "levels": ["優", "稍優", "普通", "稍劣", "劣"], "max_pct": 8,
+      "criteria": {"type": "bands", "unit": "m2", "bands": [
+        {"level": "優", "min": 93}, {"level": "稍優", "min": 83, "max": 93}, {"level": "普通", "min": 73, "max": 83},
+        {"level": "稍劣", "min": 63, "max": 73}, {"level": "劣", "max": 63}]},
+      "parcel_field": "area_m2"
+    },
+    {
+      "id": "I8", "item_no": 8, "group": 1, "name": "寬度(M)",
+      "levels": ["優", "稍優", "普通", "稍劣", "劣"], "max_pct": 4,
+      "criteria": {"type": "bands", "unit": "m", "bands": [
+        {"level": "優", "min": 40}, {"level": "稍優", "min": 20, "max": 40}, {"level": "普通", "min": 10, "max": 20},
+        {"level": "稍劣", "min": 5, "max": 10}, {"level": "劣", "max": 5}]},
+      "parcel_field": "width_m"
+    },
+    {
+      "id": "I9", "item_no": 9, "group": 1, "name": "深度(M)",
+      "levels": ["優", "稍優", "普通", "稍劣", "劣"], "max_pct": 4,
+      "criteria": {"type": "bands", "unit": "m", "bands": [
+        {"level": "優", "min": 40, "max": 100}, {"level": "稍優", "min": 30, "max": 40}, {"level": "普通", "min": 20, "max": 30},
+        {"level": "稍劣", "min": 10, "max": 20}, {"level": "劣", "max": 10}, {"level": "劣", "min": 100}]},
+      "parcel_field": "depth_m"
+    },
+    {
+      "id": "I10", "item_no": 10, "group": 1, "name": "形狀",
+      "levels": ["優", "劣"], "max_pct": 5,
+      "criteria": {"type": "enum", "map": {"方形": "優", "不規則形": "劣"}},
+      "parcel_field": "shape"
+    },
+    {
+      "id": "I11", "item_no": 11, "group": 1, "name": "臨街情形",
+      "levels": ["優", "稍優", "普通", "稍劣", "劣"], "max_pct": 8,
+      "criteria": {"type": "enum", "map": {"3面以上臨街": "優", "路角地": "稍優", "雙面臨街": "普通", "單面臨街": "稍劣", "非臨街地": "劣"}},
+      "parcel_field": "frontage"
+    },
+    {
+      "id": "I12", "item_no": 12, "group": 1, "name": "地勢",
+      "levels": ["優", "普通", "劣"], "max_pct": 3,
+      "criteria": {"type": "enum", "map": {"平坦": "優", "緩坡": "普通", "低窪": "劣"}},
+      "parcel_field": "terrain"
+    },
+
+    {
+      "id": "I13", "item_no": 13, "group": 2, "name": "道路種類",
+      "levels": ["優", "稍優", "普通", "稍劣", "劣"], "max_pct": 8,
+      "criteria": {"type": "enum", "map": {"主要道路": "優", "次要道路": "稍優", "巷道": "普通", "既成巷道": "稍劣", "私設巷道": "劣"}},
+      "parcel_field": "road_type"
+    },
+    {
+      "id": "I14", "item_no": 14, "group": 2, "name": "面前道路寬度",
+      "levels": ["優", "稍優", "普通", "稍劣", "劣"], "max_pct": 10,
+      "criteria": {"type": "bands", "unit": "m", "bands": [
+        {"level": "優", "min": 20}, {"level": "稍優", "min": 15, "max": 20}, {"level": "普通", "min": 8, "max": 15},
+        {"level": "稍劣", "min": 4, "max": 8}, {"level": "劣", "max": 4}]},
+      "parcel_field": "front_road_width_m"
+    },
+
+    {
+      "id": "I15", "item_no": 15, "group": 3, "name": "接近學校之程度",
+      "levels": ["優", "稍優", "普通", "稍劣", "劣"], "max_pct": 4,
+      "criteria": {"type": "distance", "none_level": "劣", "bands": [
+        {"level": "優", "max": 200}, {"level": "稍優", "min": 200, "max": 600}, {"level": "普通", "min": 600, "max": 1200},
+        {"level": "稍劣", "min": 1200, "max": 2000}, {"level": "劣", "min": 2000}]},
+      "facility_types": ["school"],
+      "parcel_field": "school"
+    },
+    {
+      "id": "I16", "item_no": 16, "group": 3, "name": "接近市場之程度",
+      "levels": ["優", "稍優", "普通", "稍劣", "劣"], "max_pct": 10,
+      "criteria": {"type": "distance", "none_level": "劣", "bands": [
+        {"level": "優", "max": 500}, {"level": "稍優", "min": 500, "max": 1000}, {"level": "普通", "min": 1000, "max": 1500},
+        {"level": "稍劣", "min": 1500, "max": 2000}, {"level": "劣", "min": 2000}]},
+      "facility_types": ["traditional_market", "supermarket", "hypermarket"],
+      "parcel_field": "market"
+    },
+    {
+      "id": "I17", "item_no": 17, "group": 3, "name": "接近公園、廣場之程度",
+      "levels": ["優", "稍優", "普通", "稍劣", "劣"], "max_pct": 4,
+      "criteria": {"type": "distance", "none_level": "劣", "bands": [
+        {"level": "優", "max": 300}, {"level": "稍優", "min": 300, "max": 500}, {"level": "普通", "min": 500, "max": 1000},
+        {"level": "稍劣", "min": 1000, "max": 1500}, {"level": "劣", "min": 1500}]},
+      "facility_types": ["park", "plaza"],
+      "parcel_field": "park"
+    },
+    {
+      "id": "I18", "item_no": 18, "group": 3, "name": "接近車站之程度",
+      "levels": ["優", "稍優", "普通", "稍劣", "劣"], "max_pct": 4,
+      "criteria": {"type": "distance", "none_level": "劣", "bands": [
+        {"level": "優", "max": 300}, {"level": "稍優", "min": 300, "max": 400}, {"level": "普通", "min": 400, "max": 600},
+        {"level": "稍劣", "min": 600, "max": 800}, {"level": "劣", "min": 800}]},
+      "facility_types": ["bus_stop", "rail_station", "mrt_station", "intercity_bus_station"],
+      "parcel_field": "station"
+    },
+    {
+      "id": "I19", "item_no": 19, "group": 3, "name": "接近商圈之程度",
+      "levels": ["優", "稍優", "普通", "稍劣", "劣"], "max_pct": 8,
+      "criteria": {"type": "distance", "none_level": "劣", "bands": [
+        {"level": "優", "max": 500}, {"level": "稍優", "min": 500, "max": 1000}, {"level": "普通", "min": 1000, "max": 1800},
+        {"level": "稍劣", "min": 1800, "max": 2800}, {"level": "劣", "min": 2800}]},
+      "facility_types": ["commercial_district"],
+      "parcel_field": "commercial_district"
+    },
+
+    {
+      "id": "I20", "item_no": 20, "group": 4, "name": "嫌惡設施(類型)",
+      "levels": ["優", "稍優", "普通", "稍劣", "劣"], "max_pct": 6,
+      "criteria": {"type": "distance", "direction": "farther_is_better", "none_level": "優", "aggregate": "worst", "bands": [
+        {"level": "優", "min": 500}, {"level": "稍優", "min": 300, "max": 500}, {"level": "普通", "min": 200, "max": 300},
+        {"level": "稍劣", "min": 100, "max": 200}, {"level": "劣", "max": 100}]},
+      "facility_types": ["cemetery", "funeral_home", "crematorium", "columbarium", "substation", "hv_tower", "gas_station", "gas_tank", "incinerator", "landfill", "sewage_plant", "pollution_source"],
+      "parcel_field": "nuisance"
+    },
+    {
+      "id": "I21", "item_no": 21, "group": 4, "name": "停車方便性",
+      "levels": ["優", "劣"], "max_pct": 2,
+      "criteria": {"type": "enum", "map": {"可路邊停車": "優", "不可路邊停車": "劣"}},
+      "parcel_field": "street_parking"
+    },
+
+    {
+      "id": "I22", "item_no": 22, "group": 5, "name": "使用分區或編定用地",
+      "levels": ["優", "稍優", "普通", "稍劣", "劣"], "max_pct": 15,
+      "criteria": {"type": "enum", "map": {"商業區": "優", "住宅區": "稍優", "甲建": "普通", "乙建": "普通", "農業區建地目": "稍劣", "保護區建地目": "稍劣", "農業區已建築用地": "劣", "保護區已建築用地": "劣"},
+                   "normalize": {"第一種商業區": "商業區", "第二種商業區": "商業區", "第三種商業區": "商業區", "第四種商業區": "商業區", "第一種住宅區": "住宅區", "第二種住宅區": "住宅區", "第三種住宅區": "住宅區", "第四種住宅區": "住宅區"}},
+      "parcel_field": "zoning"
+    },
+    {
+      "id": "I23", "item_no": 23, "group": 5, "name": "建蔽率(%)",
+      "levels": ["優", "稍優", "普通", "稍劣", "劣"], "max_pct": 10,
+      "criteria": {"type": "bands", "unit": "%", "bands": [
+        {"level": "優", "min": 80}, {"level": "稍優", "min": 70, "max": 80}, {"level": "普通", "min": 60, "max": 70},
+        {"level": "稍劣", "min": 50, "max": 60}, {"level": "劣", "max": 50}]},
+      "parcel_field": "bcr_pct"
+    },
+    {
+      "id": "I24", "item_no": 24, "group": 5, "name": "容積率(%)",
+      "levels": ["優", "稍優", "普通", "稍劣", "劣"], "max_pct": 40,
+      "criteria": {"type": "bands", "unit": "%", "bands": [
+        {"level": "優", "min": 300}, {"level": "稍優", "min": 240, "max": 300}, {"level": "普通", "min": 200, "max": 240},
+        {"level": "稍劣", "min": 120, "max": 200}, {"level": "劣", "max": 120}]},
+      "parcel_field": "far_pct"
+    },
+    {
+      "id": "I25", "item_no": 25, "group": 5, "name": "有無禁限建",
+      "levels": ["優", "劣"], "max_pct": 40,
+      "criteria": {"type": "boolean", "true_level": "劣", "false_level": "優", "note": "有禁止或限制建築=劣"},
+      "parcel_field": "building_restricted"
+    },
+
+    {
+      "id": "I6", "item_no": 6, "group": 6, "name": "其他",
+      "levels": ["優", "劣"], "max_pct": 30,
+      "criteria": {"type": "manual"},
+      "parcel_field": "other",
+      "note": "免修正以「-」表示；估價師自填並於備註敘明"
+    }
+  ]
+}

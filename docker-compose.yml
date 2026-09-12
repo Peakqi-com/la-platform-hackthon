@@ -1,0 +1,42 @@
+# 本機與 EC2 共用的部署定義。當天在 EC2 上就是：git clone → docker compose up -d
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      - LLM_PROVIDER=${LLM_PROVIDER:-anthropic}     # anthropic | bedrock
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - BEDROCK_MODEL_ID=${BEDROCK_MODEL_ID:-}
+      - OSRM_URL=${OSRM_URL:-}                    # 有預處理好的 OSRM 才設 http://osrm:5000；沒設用內建步行路網
+    volumes:
+      - ./data:/srv/data                             # 圖資＋案件、操作紀錄、底圖快取都寫在這裡，不能唯讀
+    ports: ["8000:8000"]
+
+  frontend:
+    build:
+      context: ./frontend                            # Next.js output: 'standalone'
+      args:
+        BACKEND_URL: http://backend:8000             # rewrites 在 build 時寫入，所以用 build arg 不是 runtime env
+    ports: ["3000:3000"]
+    depends_on: [backend]
+
+  osrm:                                              # 選用：只有 data/osrm 有預處理產物時才啟（docker compose --profile osrm up）
+    profiles: [osrm]
+    image: osrm/osrm-backend
+    command: osrm-routed --algorithm mld /data/taiwan-latest.osrm
+    volumes:
+      - ./data/osrm:/data                            # 預先用 foot.lua 處理好的台灣路網（見 deploy/osrm.md）
+    ports: ["5000:5000"]
+
+  caddy:                                             # 當天才需要：自動 HTTPS
+    image: caddy:2
+    ports: ["80:80", "443:443"]
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    depends_on: [frontend, backend]
+
+volumes:
+  caddy_data:

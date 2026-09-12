@@ -1,0 +1,341 @@
+{
+  "$note": "地政局提供之查估書表範本，轉成內部 schema。input = 系統的輸入（勘查表事實 + 宗地條件 + 實例），expected = 範本上估價師實際填的值，用來做驗收測試。",
+  "case": {
+    "case_no": "1140901-99-001",
+    "valuation_date": "1140901",
+    "district": "新北市金山區",
+    "land_use": "商業用地",
+    "rulesets": {
+      "regional": "jinshan_commercial_regional",
+      "individual": "jinshan_commercial_individual"
+    }
+  },
+  "sections": {
+    "P002-00": {
+      "section_id": "P002-00",
+      "survey_date": "114-09-18",
+      "range_desc": "北側至金包里街以北臨路第一筆宗地，南側至中山路以南第一筆宗地，西側至中正路，東側至福德街之第二種商業區土地劃為P002-00區段。",
+      "survey": {
+        "land_control": {
+          "urban_plan": "都市計畫內",
+          "zoning": "第二種商業區",
+          "bcr": 70,
+          "far": 240,
+          "building_prohibited": false,
+          "building_restricted": false
+        },
+        "transport": {
+          "main_road_width_m": {
+            "name": "中山路",
+            "value": 18
+          },
+          "avg_road_width_m": {
+            "value": 12
+          },
+          "major_station": [
+            {
+              "name": "國光客運金山站",
+              "type": "intercity_bus_station",
+              "in_section": false,
+              "distance_m": 300
+            }
+          ],
+          "bus_stop": [
+            {
+              "name": "金山區公所站",
+              "type": "bus_stop",
+              "in_section": true,
+              "density": "密集"
+            }
+          ],
+          "interchange": [],
+          "road_development": "已完全開發"
+        },
+        "natural": {
+          "drainage": "有排水系統不易淹水",
+          "terrain": "該區地勢平坦"
+        },
+        "public": {
+          "market": [
+            {
+              "name": "金山區第一零售傳統市場",
+              "type": "traditional_market",
+              "in_section": true
+            }
+          ],
+          "park": [
+            {
+              "name": "中山溫泉里鄰公園",
+              "type": "park",
+              "in_section": true
+            }
+          ],
+          "tourism": [
+            {
+              "name": "金包里老街",
+              "type": "tourist_attraction",
+              "in_section": true
+            }
+          ],
+          "parking": [
+            {
+              "name": "金包里老街停車場",
+              "type": "parking_lot",
+              "in_section": false,
+              "distance_m": 120
+            }
+          ]
+        },
+        "special": {
+          "utility": [
+            {
+              "name": "金山變電所",
+              "type": "substation",
+              "in_section": false,
+              "distance_m": 700
+            },
+            {
+              "name": "中油金山站",
+              "type": "gas_station",
+              "in_section": false,
+              "distance_m": 440
+            }
+          ],
+          "funeral": [
+            {
+              "name": "金山第1公墓",
+              "type": "cemetery",
+              "in_section": false,
+              "distance_m": 80
+            },
+            {
+              "name": "金山區公所福緣納骨堂",
+              "type": "columbarium",
+              "in_section": false,
+              "distance_m": 750
+            }
+          ],
+          "waste": []
+        },
+        "pollution": {
+          "source": []
+        },
+        "commerce": {
+          "department_store": [],
+          "bank": [
+            {
+              "name": "新北市金山地區農會",
+              "type": "bank",
+              "in_section": false,
+              "distance_m": 210
+            }
+          ],
+          "entertainment": [],
+          "hotel": [
+            {
+              "name": "新北北海溫泉洲際酒店",
+              "type": "tourist_hotel",
+              "in_section": false,
+              "distance_m": 850
+            }
+          ],
+          "foot_traffic": "顧客通行量多",
+          "shop_ratio_pct": 90
+        },
+        "other": null
+      }
+    }
+  },
+  "subject_parcel": {
+    "parcel_id": "金美段489地號",
+    "address": "新北市金山區金美段489地號",
+    "section_id": "P002-00",
+    "area_m2": 113.21,
+    "width_m": 5,
+    "depth_m": 23,
+    "shape": "方形",
+    "frontage": "單面臨街",
+    "terrain": "平坦",
+    "road_type": "主要道路",
+    "front_road": {
+      "name": "中山路",
+      "width_m": 18
+    },
+    "school": {
+      "name": "金山國小",
+      "distance_m": 150
+    },
+    "market": {
+      "name": "金山市場",
+      "distance_m": 30
+    },
+    "park": {
+      "name": "中山溫泉公園",
+      "distance_m": 190
+    },
+    "station": {
+      "name": "金山區公所站",
+      "distance_m": 80
+    },
+    "commercial_district": {
+      "name": "老街商圈",
+      "distance_m": 0
+    },
+    "nuisance": [
+      {
+        "name": "金山第一公墓",
+        "type": "cemetery",
+        "distance_m": 260
+      }
+    ],
+    "street_parking": "可路邊停車",
+    "zoning": "第二種商業區",
+    "bcr_pct": 70,
+    "far_pct": 240,
+    "building_restricted": false,
+    "other": null
+  },
+  "comparables": [
+    {
+      "comp_no": 1,
+      "parcel_id": "溫泉段218地號",
+      "address": "新北市金山區溫泉段218地號",
+      "section_id": "P002-00",
+      "normal_unit_price": 184763,
+      "transaction_date": "114.05.28",
+      "date_adjustment": {
+        "index_at_valuation": 48481,
+        "index_at_transaction": 47513,
+        "note": "第64期都市地價指數；金山區商業區年漲幅 6.18%；調整率約 2% =（48,481／47,513）−1，填 2.00%",
+        "pct": 2.0
+      },
+      "area_m2": 111.85,
+      "width_m": 7,
+      "depth_m": 16,
+      "shape": "方形",
+      "frontage": "單面臨街",
+      "terrain": "平坦",
+      "road_type": "次要道路",
+      "front_road": {
+        "name": "金包里街",
+        "width_m": 6
+      },
+      "school": {
+        "name": "金山國小",
+        "distance_m": 100
+      },
+      "market": {
+        "name": "金山市場",
+        "distance_m": 92
+      },
+      "park": {
+        "name": "中山溫泉公園",
+        "distance_m": 200
+      },
+      "station": {
+        "name": "金山區公所站",
+        "distance_m": 190
+      },
+      "commercial_district": {
+        "name": "老街商圈",
+        "distance_m": 0
+      },
+      "nuisance": [
+        {
+          "name": "金山第一公墓",
+          "type": "cemetery",
+          "distance_m": 80
+        }
+      ],
+      "street_parking": "不可路邊停車",
+      "zoning": "第二種商業區",
+      "bcr_pct": 70,
+      "far_pct": 240,
+      "building_restricted": false,
+      "other": null,
+      "weight_pct": 100
+    }
+  ],
+  "expected": {
+    "table5": {
+      "subject_levels": {
+        "R1-1": "優",
+        "R1-2": "優",
+        "R1-3": "優",
+        "R1-4": "優",
+        "R1-5": "優",
+        "R1-6": "優",
+        "R2-1": "普通",
+        "R2-2": "普通",
+        "R2-3": "優",
+        "R2-4": "優",
+        "R2-5": "劣",
+        "R2-6": "優",
+        "R3-1": "稍優",
+        "R3-2": "優",
+        "R4-1": "優",
+        "R4-2": "優",
+        "R4-3": "優",
+        "R4-4": "稍優",
+        "R5-1": "劣",
+        "R5-2": "劣",
+        "R5-3": "優",
+        "R6-1": "優",
+        "R7-1": "劣",
+        "R7-2": "稍優",
+        "R7-3": "劣",
+        "R7-4": "普通",
+        "R7-5": "優",
+        "R7-6": "優"
+      },
+      "comparable_1": {
+        "section_id": "P002-00",
+        "group_subtotals": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "total_pct": 0.0
+      }
+    },
+    "table4": {
+      "comparable_1": {
+        "date_adjustment_pct": 2.0,
+        "price_at_valuation_date": 188459,
+        "regional_adjustment_pct": 0.0,
+        "individual": {
+          "7": 0.0,
+          "8": 0.0,
+          "9": 1.0,
+          "10": 0.0,
+          "11": 0.0,
+          "12": 0.0,
+          "13": 2.0,
+          "14": 5.0,
+          "15": 0.0,
+          "16": 0.0,
+          "17": 0.0,
+          "18": 0.0,
+          "19": 0.0,
+          "20": 3.0,
+          "21": 2.0,
+          "22": 0.0,
+          "23": 0.0,
+          "24": 0.0,
+          "25": 0.0
+        },
+        "individual_total_pct": 13.0,
+        "abs_sum_pct": 15.0,
+        "similarity": "普通",
+        "weight_pct": 100,
+        "trial_price": 212958
+      },
+      "subject_comparison_price": 212958
+    }
+  }
+}

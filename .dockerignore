@@ -1,0 +1,7 @@
+data/
+frontend/node_modules/
+frontend/.next/
+backend/.venv/
+**/__pycache__/
+output測試檔/
+.git/

@@ -1,0 +1,37 @@
+[project]
+name = "appraisal-review-backend"
+version = "0.1.0"
+description = "AI 輔助不動產估價案件審查 — 規則引擎與 API"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.30",
+  "pydantic>=2.7",
+  "openpyxl>=3.1",
+  "shapely>=2.0",
+  "pyproj>=3.6",
+  "httpx>=0.27",
+  "pymupdf>=1.24",
+  "python-multipart>=0.0.9",
+  "reportlab>=4.0",
+  "python-docx>=1.1",
+  "pyshp>=2.3",
+  "pillow>=10",
+  "certifi",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.5"]
+llm = ["anthropic>=0.40", "boto3>=1.34"]
+scripts = ["pypdf>=4", "osmium>=3.7", "py7zr>=0.20"]     # 資料建置腳本用（土管要點 PDF、OSM 全量檔、淹水潛勢 7z），伺服器不需要
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+filterwarnings = [
+  "ignore:builtin type .* has no __module__ attribute:DeprecationWarning",
+  "ignore:The anyio.abc.BlockingPortal alias is deprecated:DeprecationWarning",
+]
+
+[tool.ruff]
+line-length = 120

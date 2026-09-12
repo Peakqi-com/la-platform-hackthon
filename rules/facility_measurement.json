@@ -1,0 +1,53 @@
+{
+  "$schema_note": "設施類型 → 距離量測方式。依作業手冊 p.24 8(3)：需「通達」的設施採路線(步行)距離，影響來自擴散(空氣、視覺、心理)的設施採直線距離；同一案內每一細項的量測標準必須一致。這份設定檔是預設值，UI 必須允許估價師逐項覆寫，且輸出時要註明每筆距離用的量測方式與資料來源。",
+  "modes": {
+    "walking": "OSRM foot profile 路徑距離（公尺），起點/終點皆先 snap 到路網",
+    "straight": "大地測量直線距離（公尺），WGS84 → TWD97/TM2 投影後計算"
+  },
+  "origin_convention": {
+    "individual": "宗地多邊形質心；若宗地臨路，改用臨路邊界中點（可設定）",
+    "regional": "地價區段邊界最近點（範本『本區段外(距 X M)』推定量法）；備選：比準地位置。此為推定，需在 UI 明示並可切換"
+  },
+  "reference_facility_rule": "同一細項若有多個設施，取『對當地影響最大者』（預設：距離最近者），且同一徵收案內所有宗地/區段以同一參照設施填寫（手冊 p.24 8(2)）。實作：案件層級先選定每類設施的參照點，再逐宗地算距離。",
+  "facility_types": {
+    "school":              {"label": "學校（國小/國中/高中/大專）", "mode": "walking",  "source": "教育部全國各級學校基本資料"},
+    "traditional_market":  {"label": "傳統市場",                    "mode": "walking",  "source": "經濟部公有零售市場資料"},
+    "supermarket":         {"label": "超級市場",                    "mode": "walking",  "source": "OSM shop=supermarket（政府無完整資料）"},
+    "hypermarket":         {"label": "超大型購物中心",              "mode": "walking",  "source": "OSM"},
+    "park":                {"label": "公園/里鄰公園",               "mode": "walking",  "source": "新北市公園資料"},
+    "plaza":               {"label": "廣場/徒步區",                 "mode": "walking",  "source": "都市計畫廣場用地"},
+    "pedestrian_zone":     {"label": "徒步區",                      "mode": "walking",  "source": "OSM"},
+    "bus_stop":            {"label": "公車站牌",                    "mode": "walking",  "source": "TDX 公車站牌"},
+    "intercity_bus_station": {"label": "客運站",                    "mode": "walking",  "source": "TDX 公路客運站"},
+    "rail_station":        {"label": "火車站",                      "mode": "walking",  "source": "TDX 臺鐵車站"},
+    "hsr_station":         {"label": "高鐵站",                      "mode": "walking",  "source": "TDX 高鐵車站"},
+    "mrt_station":         {"label": "捷運站",                      "mode": "walking",  "source": "TDX 捷運車站"},
+    "highway_interchange": {"label": "交流道",                      "mode": "walking",  "source": "高公局交流道資料", "note": "實務為車行距離；以路網距離代之"},
+    "parking_lot":         {"label": "停車場",                      "mode": "walking",  "source": "新北市停車場資料 / TDX"},
+    "roadside_parking":    {"label": "路邊停車格",                  "mode": "straight", "source": "新北市交通局 路邊停車空位查詢（data.gov.tw 122901）", "note": "只供停車方便性推定，不進距離規則"},
+    "commercial_district": {"label": "商圈",                        "mode": "walking",  "source": "經濟部商圈資料 / 人工標定"},
+    "bank":                {"label": "金融機構",                    "mode": "walking",  "source": "金融機構分支據點資料"},
+    "post_office_bank":    {"label": "郵局",                        "mode": "walking",  "source": "中華郵政據點"},
+    "department_store":    {"label": "百貨公司",                    "mode": "walking",  "source": "OSM / 人工標定"},
+    "cinema":              {"label": "電影院/娛樂設施",             "mode": "walking",  "source": "OSM / 人工標定"},
+    "entertainment":       {"label": "娛樂設施",                    "mode": "walking",  "source": "OSM"},
+    "exhibition_center":   {"label": "大型展示中心",                "mode": "walking",  "source": "人工標定"},
+    "tourist_hotel":       {"label": "觀光飯店",                    "mode": "walking",  "source": "觀光署旅宿資料"},
+    "tourist_attraction":  {"label": "觀光遊憩設施",                "mode": "walking",  "source": "觀光署景點資料"},
+    "shop":                {"label": "店舖（工商活動推定用）",       "mode": "walking",  "source": "OSM shop=*（政府無店舖點位資料）"},
+
+    "cemetery":            {"label": "公墓",                        "mode": "straight", "source": "內政部殯葬設施資料"},
+    "columbarium":         {"label": "納骨塔",                      "mode": "straight", "source": "內政部殯葬設施資料"},
+    "funeral_home":        {"label": "殯儀館",                      "mode": "straight", "source": "內政部殯葬設施資料"},
+    "crematorium":         {"label": "火葬場",                      "mode": "straight", "source": "內政部殯葬設施資料"},
+    "substation":          {"label": "變電所",                      "mode": "straight", "source": "台電資料 / OSM power=substation"},
+    "hv_tower":            {"label": "高壓鐵塔",                    "mode": "straight", "source": "OSM power=tower（政府無）"},
+    "gas_station":         {"label": "加油站",                      "mode": "straight", "source": "經濟部能源署加油站資料"},
+    "gas_tank":            {"label": "瓦斯槽",                      "mode": "straight", "source": "人工標定"},
+    "oil_tank":            {"label": "儲油槽",                      "mode": "straight", "source": "人工標定"},
+    "incinerator":         {"label": "焚化爐",                      "mode": "straight", "source": "環境部"},
+    "landfill":            {"label": "垃圾場/掩埋場",               "mode": "straight", "source": "環境部"},
+    "sewage_plant":        {"label": "污水處理場",                  "mode": "straight", "source": "環境部 / 水利局"},
+    "pollution_source":    {"label": "污染源",                      "mode": "straight", "source": "環境部列管污染源"}
+  }
+}

@@ -1,0 +1,91 @@
+@import "tailwindcss";
+
+:root { --background: #fbf7f2; --foreground: #2a1d14; }
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: system-ui, -apple-system, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+}
+html { font-size: 20px; }   /* 預設字級加大：投影幕與長者可讀；Tailwind 的 text-sm 等會一起放大 */
+html, body { background: var(--background); color: var(--foreground); }
+/* 可點選元素的回饋：游標、滑過、按下、鍵盤焦點、停用 */
+button:not(:disabled), a[href], summary, .clickable, label:has(> input[type="checkbox"]), label:has(> input[type="radio"]) { cursor: pointer; }
+button, a[href], summary, .clickable { transition: background-color .12s ease, color .12s ease, border-color .12s ease, box-shadow .12s ease, transform .06s ease, opacity .12s ease; }
+button:not(:disabled):hover, a[href].rounded:hover, summary:hover { filter: brightness(0.95); box-shadow: 0 1px 3px rgba(0,0,0,.14); }
+button:not(:disabled):active, a[href].rounded:active, summary:active { transform: translateY(1px) scale(.985); filter: brightness(0.88); box-shadow: none; }
+a.underline:hover { color: #c2410c; }
+button:focus-visible, a[href]:focus-visible, summary:focus-visible { outline: 2px solid #ea580c; outline-offset: 2px; }
+input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid #fb923c; outline-offset: 1px; border-color: #fb923c; }
+button:disabled { cursor: not-allowed; opacity: .5; box-shadow: none; }
+table.grid tr.clickable:active td { background: #ffe4cc; }
+/* 匯入／匯出標示 */
+.io-mark { display: inline-block; font-size: 10px; line-height: 1; padding: 1px 3px; border-radius: 3px; margin-left: 4px; vertical-align: middle; cursor: help; border: 1px solid; }
+.io-import { color: #c2410c; border-color: #fdba74; background: #fff7ed; }
+.io-export { color: #047857; border-color: #6ee7b7; background: #ecfdf5; }
+.io-both { color: #6d28d9; border-color: #c4b5fd; background: #f5f3ff; }
+.io-badge { display: inline-block; font-size: 11px; line-height: 1.4; padding: 1px 6px; border-radius: 4px; border: 1px dashed; white-space: nowrap; }
+.io-badge.io-import { border-color: #fb923c; }
+.io-badge.io-export { border-color: #34d399; }
+.btn-io-import { border: 1px dashed #fb923c !important; color: #c2410c !important; background: #fff7ed !important; }
+/* 法源提示：滑過或聚焦顯示辦法條號／手冊頁碼 */
+.tip { position: relative; cursor: help; border-bottom: 1px dotted #64748b; }
+.tip-i { font-size: 10px; color: #475569; border: 1px solid #94a3b8; border-radius: 3px; padding: 0 3px; margin-left: 2px; vertical-align: middle; }
+.tip::after { content: attr(data-tip); position: absolute; left: 0; top: calc(100% + 4px); z-index: 1500; width: 24rem; max-width: 70vw; background: #431407; color: #fff; font-size: 12px; line-height: 1.5;
+  font-weight: normal; font-family: inherit; text-align: left; padding: 6px 9px; border-radius: 4px; white-space: normal; display: none; box-shadow: 0 4px 12px rgba(0,0,0,.25); }
+.tip:hover::after, .tip:focus::after { display: block; }
+.print-only { display: none; }
+/* 列印：只留主內容與表格，黑框、避免跨頁切列 */
+@media print {
+  .no-print, aside, button, .leaflet-container { display: none !important; }
+  html { font-size: 12pt; }
+  body { background: #fff; }
+  main { max-width: none !important; padding: 0 !important; }
+  table.grid { font-size: 9.5pt; }
+  table.grid th, table.grid td { border-color: #000; padding: 2px 4px; }
+  table.grid th { background: #eee !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  table.grid tr { break-inside: avoid; }
+  section { break-inside: avoid; border: 0 !important; padding: 0 !important; }
+  input, select { border: 0 !important; background: transparent !important; }
+  a { text-decoration: none; color: inherit; }
+  .tip::after { display: none !important; }
+  @page { margin: 12mm; }
+  @page landscape-page { size: A4 landscape; margin: 10mm; }
+  .print-landscape { page: landscape-page; }
+  .print-only { display: inline; }
+  table.grid th.print-hide, table.grid td.print-hide { display: none; }
+  table.grid { font-size: 8.5pt; }
+  table.grid td, table.grid th { white-space: normal; word-break: break-word; }
+  table.grid td.font-mono, table.grid td.print-nowrap, table.grid th.print-nowrap { white-space: nowrap; }
+  /* 書表預覽：每頁一張，橫直依表 */
+  @page sheet-landscape { size: A4 landscape; margin: 8mm; }
+  @page sheet-portrait { size: A4 portrait; margin: 8mm; }
+  .sheet { box-shadow: none !important; border: 0 !important; margin: 0 !important; break-before: page; break-inside: avoid; width: auto !important; height: auto !important; overflow: visible !important; }
+  .sheet[data-orient="landscape"] { page: sheet-landscape; }
+  .sheet[data-orient="portrait"] { page: sheet-portrait; }
+  .sheet > div { transform: none !important; position: static !important; zoom: var(--print-zoom, 1); }   /* --print-zoom 由 beforeprint 依表寬與頁寬算 */
+  .sheet img { max-width: 100% !important; max-height: 180mm !important; }
+  .sheets-page-head { display: none !important; }
+}
+table.grid { display: table; table-layout: auto; border-collapse: collapse; width: 100%; font-size: 0.8rem; }
+table.grid th, table.grid td { border: 1px solid #e2d6cc; padding: 3px 6px; vertical-align: top; }
+table.grid thead th { vertical-align: middle; }   /* 表頭文字上下置中（比較標的欄有地號輸入框與清空兩行）*/
+table.grid th { background: #ffedd5; font-weight: 600; }
+table.grid tr.clickable:hover td { background: #fff7ed; cursor: pointer; }
+table.grid tr.selected td { background: #ffe4cc; }
+.lbl { background: rgba(255,255,255,.9); border: 0; border-radius: 3px; padding: 1px 4px; font-size: 11px; white-space: nowrap; }
+.leaflet-container { font: inherit; }
+
+/* 審查意見書預覽（Markdown → HTML） */
+.report-md h1 { font-size: 1.15rem; font-weight: 700; margin: 0 0 .75rem; }
+.report-md h2 { font-size: 1rem; font-weight: 700; margin: 1rem 0 .4rem; border-bottom: 1px solid #e2d6cc; padding-bottom: .15rem; }
+.report-md h3 { font-size: .95rem; font-weight: 600; margin: .75rem 0 .3rem; }
+.report-md ul { list-style: disc; padding-left: 1.4rem; margin: .25rem 0 .5rem; }
+.report-md li { margin: .15rem 0; }
+.report-md p { margin: .35rem 0; }
+.report-md img { max-width: 100%; border: 1px solid #e2d6cc; margin: .25rem 0; }
+.report-md hr { border: 0; border-top: 1px solid #e2d6cc; margin: .75rem 0; }
+
+/* 補充說明：預設收起，點「說明」展開 */
+.help-toggle { font-size: .8rem; color: #64748b; text-decoration: underline dotted; cursor: pointer; background: none; border: 0; padding: 0; }
+.help-toggle:hover { color: #c2410c; }
+.help-body { font-size: .85rem; color: #475569; margin-top: .25rem; padding-left: .6rem; border-left: 3px solid #fed7aa; line-height: 1.6; }

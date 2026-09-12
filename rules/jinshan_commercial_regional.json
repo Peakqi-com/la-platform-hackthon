@@ -1,0 +1,258 @@
+{
+  "$schema_note": "影響地價區域因素評價基準明細表 → 可執行規則。levels 由優到劣排序；修正率 = (比較標的等級索引 − 比準地等級索引) × step，step = max_pct / (levels−1)。criteria 定義如何從勘查表事實推等級。距離單位公尺，min 含、max 不含。",
+  "id": "jinshan_commercial_regional",
+  "source": "新北市金山區商業用地影響地價區域因素評價基準明細表（範例）",
+  "land_use": "商業用地",
+  "table": "5-2",
+  "scope": "regional",
+  "groups": [
+    {"no": 1, "name": "土地使用管制"},
+    {"no": 2, "name": "交通運輸"},
+    {"no": 3, "name": "自然條件"},
+    {"no": 4, "name": "公共建設"},
+    {"no": 5, "name": "特殊設施"},
+    {"no": 6, "name": "環境污染"},
+    {"no": 7, "name": "工商活動"},
+    {"no": 8, "name": "其他影響因素"}
+  ],
+  "rules": [
+    {
+      "id": "R1-1", "group": 1, "name": "都市計畫（內、外）",
+      "levels": ["優", "劣"], "max_pct": 20,
+      "criteria": {"type": "enum", "map": {"都市計畫內": "優", "都市計畫外": "劣"}},
+      "survey_field": "land_control.urban_plan"
+    },
+    {
+      "id": "R1-2", "group": 1, "name": "使用分區(使用地類別)",
+      "levels": ["優", "稍優", "普通", "稍劣", "劣"], "max_pct": 20,
+      "criteria": {"type": "enum", "map": {"第二種商業區": "優", "市場用地": "稍優", "第二種住宅區": "普通", "第一種住宅區": "稍劣"}, "default": "劣"},
+      "survey_field": "land_control.zoning"
+    },
+    {
+      "id": "R1-3", "group": 1, "name": "建蔽率",
+      "levels": ["優", "稍優", "普通", "稍劣", "劣"], "max_pct": 10,
+      "criteria": {"type": "bands", "unit": "%", "bands": [
+        {"level": "優", "min": 60}, {"level": "稍優", "min": 50, "max": 60}, {"level": "普通", "min": 45, "max": 50},
+        {"level": "稍劣", "min": 40, "max": 45}, {"level": "劣", "max": 40}]},
+      "survey_field": "land_control.bcr"
+    },
+    {
+      "id": "R1-4", "group": 1, "name": "容積率",
+      "levels": ["優", "稍優", "普通", "稍劣", "劣"], "max_pct": 40,
+      "criteria": {"type": "bands", "unit": "%", "bands": [
+        {"level": "優", "min": 240}, {"level": "稍優", "min": 200, "max": 240}, {"level": "普通", "min": 160, "max": 200},
+        {"level": "稍劣", "min": 120, "max": 160}, {"level": "劣", "max": 120}]},
+      "survey_field": "land_control.far"
+    },
+    {
+      "id": "R1-5", "group": 1, "name": "有無禁止建築",
+      "levels": ["優", "劣"], "max_pct": 40,
+      "criteria": {"type": "boolean", "true_level": "劣", "false_level": "優", "note": "有禁止建築=劣"},
+      "survey_field": "land_control.building_prohibited"
+    },
+    {
+      "id": "R1-6", "group": 1, "name": "有無限制建築（整體開發、面積限制、高度限制……等）",
+      "levels": ["優", "劣"], "max_pct": 40,
+      "criteria": {"type": "boolean", "true_level": "劣", "false_level": "優"},
+      "survey_field": "land_control.building_restricted"
+    },
+
+    {
+      "id": "R2-1", "group": 2, "name": "主要道路寬度",
+      "levels": ["優", "稍優", "普通", "稍劣", "劣"], "max_pct": 15,
+      "criteria": {"type": "bands", "unit": "m", "none_level": "劣", "bands": [
+        {"level": "優", "min": 30}, {"level": "稍優", "min": 20, "max": 30}, {"level": "普通", "min": 15, "max": 20},
+        {"level": "稍劣", "min": 10, "max": 15}, {"level": "劣", "max": 10}]},
+      "survey_field": "transport.main_road_width_m"
+    },
+    {
+      "id": "R2-2", "group": 2, "name": "區段內道路平均寬度",
+      "levels": ["優", "稍優", "普通", "稍劣", "劣"], "max_pct": 10,
+      "criteria": {"type": "bands", "unit": "m", "none_level": "劣", "bands": [
+        {"level": "優", "min": 20}, {"level": "稍優", "min": 15, "max": 20}, {"level": "普通", "min": 10, "max": 15},
+        {"level": "稍劣", "min": 6, "max": 10}, {"level": "劣", "max": 6}]},
+      "survey_field": "transport.avg_road_width_m"
+    },
+    {
+      "id": "R2-3", "group": 2, "name": "接近大型車站之程度",
+      "levels": ["優", "稍優", "普通", "稍劣", "劣"], "max_pct": 10,
+      "criteria": {"type": "distance", "in_section_level": "優", "none_level": "劣", "bands": [
+        {"level": "優", "max": 500}, {"level": "稍優", "min": 500, "max": 1000}, {"level": "普通", "min": 1000, "max": 2000},
+        {"level": "稍劣", "min": 2000, "max": 3000}, {"level": "劣", "min": 3000}]},
+      "facility_types": ["hsr_station", "rail_station", "intercity_bus_station", "mrt_station"],
+      "survey_field": "transport.major_station"
+    },
+    {
+      "id": "R2-4", "group": 2, "name": "站牌之接近程度或密集程度",
+      "levels": ["優", "稍優", "普通", "稍劣", "劣"], "max_pct": 8,
+      "criteria": {"type": "distance", "in_section_level": "優", "none_level": "劣", "bands": [
+        {"level": "稍優", "max": 200}, {"level": "普通", "min": 200, "max": 400},
+        {"level": "稍劣", "min": 400, "max": 700}, {"level": "劣", "min": 700}]},
+      "facility_types": ["bus_stop"],
+      "survey_field": "transport.bus_stop"
+    },
+    {
+      "id": "R2-5", "group": 2, "name": "交流道之有無及接近交流道之程度",
+      "levels": ["優", "稍優", "普通", "稍劣", "劣"], "max_pct": 8,
+      "criteria": {"type": "distance", "in_section_level": "優", "none_level": "劣", "bands": [
+        {"level": "優", "max": 500}, {"level": "稍優", "min": 500, "max": 1500}, {"level": "普通", "min": 1500, "max": 3000},
+        {"level": "稍劣", "min": 3000, "max": 4500}, {"level": "劣", "min": 4500}]},
+      "facility_types": ["highway_interchange"],
+      "survey_field": "transport.interchange"
+    },
+    {
+      "id": "R2-6", "group": 2, "name": "區段內道路規劃及闢建程度",
+      "levels": ["優", "稍優", "普通", "稍劣", "劣"], "max_pct": 10,
+      "criteria": {"type": "enum", "map": {"已完全開發": "優", "大部分已完成": "稍優", "已規劃及闢建中": "普通", "已進行規劃": "稍劣", "尚未規劃": "劣"}},
+      "survey_field": "transport.road_development"
+    },
+
+    {
+      "id": "R3-1", "group": 3, "name": "排水之良否",
+      "levels": ["優", "稍優", "普通", "稍劣", "劣"], "max_pct": 10,
+      "criteria": {"type": "enum", "map": {"排水系統完善不曾淹水": "優", "有排水系統不易淹水": "稍優", "有排水系統偶有淹水但排水速度快": "普通", "有排水系統偶有淹水": "稍劣", "無排水系統易淹水": "劣"}},
+      "survey_field": "natural.drainage"
+    },
+    {
+      "id": "R3-2", "group": 3, "name": "地勢",
+      "levels": ["優", "稍優", "普通", "稍劣", "劣"], "max_pct": 10,
+      "criteria": {"type": "enum", "map": {"該區地勢平坦": "優", "該區大部分地勢平坦": "稍優", "該區一半地勢平坦": "普通", "該區大部分地勢高亢或低窪": "稍劣", "該區全部地勢高亢或低窪": "劣"}},
+      "survey_field": "natural.terrain"
+    },
+
+    {
+      "id": "R4-1", "group": 4, "name": "接近市場之程度（傳統市場、超級市場、超大型購物中心）",
+      "levels": ["優", "稍優", "普通", "稍劣", "劣"], "max_pct": 6,
+      "criteria": {"type": "distance", "in_section_level": "優", "none_level": "劣", "bands": [
+        {"level": "稍優", "max": 500}, {"level": "普通", "min": 500, "max": 1000},
+        {"level": "稍劣", "min": 1000, "max": 1800}, {"level": "劣", "min": 1800}]},
+      "facility_types": ["traditional_market", "supermarket", "hypermarket"],
+      "survey_field": "public.market"
+    },
+    {
+      "id": "R4-2", "group": 4, "name": "接近公園（里鄰公園、一般公園）、廣場、徒步區之程度",
+      "levels": ["優", "稍優", "普通", "稍劣", "劣"], "max_pct": 6,
+      "criteria": {"type": "distance", "in_section_level": "優", "none_level": "劣", "bands": [
+        {"level": "稍優", "max": 500}, {"level": "普通", "min": 500, "max": 1000},
+        {"level": "稍劣", "min": 1000, "max": 1800}, {"level": "劣", "min": 1800}]},
+      "facility_types": ["park", "plaza", "pedestrian_zone"],
+      "survey_field": "public.park"
+    },
+    {
+      "id": "R4-3", "group": 4, "name": "接近觀光遊憩設施之程度",
+      "levels": ["優", "稍優", "普通", "稍劣", "劣"], "max_pct": 3,
+      "criteria": {"type": "distance", "in_section_level": "優", "none_level": "劣", "bands": [
+        {"level": "稍優", "max": 500}, {"level": "普通", "min": 500, "max": 1000},
+        {"level": "稍劣", "min": 1000, "max": 1500}, {"level": "劣", "min": 1500}]},
+      "facility_types": ["tourist_attraction"],
+      "survey_field": "public.tourism"
+    },
+    {
+      "id": "R4-4", "group": 4, "name": "停車場地之便利程度",
+      "levels": ["優", "稍優", "普通", "稍劣", "劣"], "max_pct": 4,
+      "criteria": {"type": "distance", "in_section_level": "優", "none_level": "劣", "bands": [
+        {"level": "稍優", "max": 200}, {"level": "普通", "min": 200, "max": 400},
+        {"level": "稍劣", "min": 400, "max": 700}, {"level": "劣", "min": 700}]},
+      "facility_types": ["parking_lot"],
+      "survey_field": "public.parking"
+    },
+
+    {
+      "id": "R5-1", "group": 5, "name": "電業設施及公用氣體燃料設施之有無及接近程度",
+      "levels": ["優", "稍優", "普通", "稍劣", "劣"], "max_pct": 8,
+      "criteria": {"type": "distance", "direction": "farther_is_better", "none_level": "優", "in_section_level": "劣", "aggregate": "worst", "bands": [
+        {"level": "優", "min": 3000}, {"level": "稍優", "min": 2000, "max": 3000}, {"level": "普通", "min": 1000, "max": 2000},
+        {"level": "稍劣", "min": 500, "max": 1000}, {"level": "劣", "max": 500}]},
+      "facility_types": ["substation", "hv_tower", "gas_tank", "oil_tank", "gas_station"],
+      "survey_field": "special.utility",
+      "note": "範本：變電所 700m(稍劣)＋加油站 440m(劣) → 填「劣」，推定取最不利者（aggregate=worst），此推定需向估價師確認"
+    },
+    {
+      "id": "R5-2", "group": 5, "name": "殯葬設施之有無及接近程度",
+      "levels": ["優", "稍優", "普通", "稍劣", "劣"], "max_pct": 8,
+      "criteria": {"type": "distance", "direction": "farther_is_better", "none_level": "優", "in_section_level": "劣", "aggregate": "worst", "bands": [
+        {"level": "優", "min": 3000}, {"level": "稍優", "min": 2000, "max": 3000}, {"level": "普通", "min": 1000, "max": 2000},
+        {"level": "稍劣", "min": 500, "max": 1000}, {"level": "劣", "max": 500}]},
+      "facility_types": ["cemetery", "funeral_home", "crematorium", "columbarium"],
+      "survey_field": "special.funeral"
+    },
+    {
+      "id": "R5-3", "group": 5, "name": "廢棄物處理設施之有無及接近程度",
+      "levels": ["優", "稍優", "普通", "稍劣", "劣"], "max_pct": 8,
+      "criteria": {"type": "distance", "direction": "farther_is_better", "none_level": "優", "in_section_level": "劣", "aggregate": "worst", "bands": [
+        {"level": "優", "min": 3000}, {"level": "稍優", "min": 2000, "max": 3000}, {"level": "普通", "min": 1000, "max": 2000},
+        {"level": "稍劣", "min": 500, "max": 1000}, {"level": "劣", "max": 500}]},
+      "facility_types": ["sewage_plant", "landfill", "incinerator"],
+      "survey_field": "special.waste"
+    },
+
+    {
+      "id": "R6-1", "group": 6, "name": "水污染、噪音污染、廢氣污染、廢棄物污染等之有無及接近程度",
+      "levels": ["優", "稍優", "普通", "稍劣", "劣"], "max_pct": 6,
+      "criteria": {"type": "distance", "direction": "farther_is_better", "none_level": "優", "in_section_level": "劣", "aggregate": "worst", "bands": [
+        {"level": "優", "min": 3000}, {"level": "稍優", "min": 2000, "max": 3000}, {"level": "普通", "min": 1000, "max": 2000},
+        {"level": "稍劣", "min": 500, "max": 1000}, {"level": "劣", "max": 500}]},
+      "facility_types": ["pollution_source"],
+      "survey_field": "pollution.source"
+    },
+
+    {
+      "id": "R7-1", "group": 7, "name": "百貨公司之有無、數量、接近程度",
+      "levels": ["優", "稍優", "普通", "稍劣", "劣"], "max_pct": 8,
+      "criteria": {"type": "distance", "in_section_level": "優", "none_level": "劣", "bands": [
+        {"level": "稍優", "max": 500}, {"level": "普通", "min": 500, "max": 1000},
+        {"level": "稍劣", "min": 1000, "max": 1500}, {"level": "劣", "min": 1500}]},
+      "facility_types": ["department_store"],
+      "survey_field": "commerce.department_store"
+    },
+    {
+      "id": "R7-2", "group": 7, "name": "金融機構之有無、數量、接近程度",
+      "levels": ["優", "稍優", "普通", "稍劣", "劣"], "max_pct": 4,
+      "criteria": {"type": "distance", "in_section_level": "優", "none_level": "劣", "bands": [
+        {"level": "稍優", "max": 500}, {"level": "普通", "min": 500, "max": 1000},
+        {"level": "稍劣", "min": 1000, "max": 1500}, {"level": "劣", "min": 1500}]},
+      "facility_types": ["bank", "credit_union", "post_office_bank"],
+      "survey_field": "commerce.bank"
+    },
+    {
+      "id": "R7-3", "group": 7, "name": "娛樂設施之有無、數量、接近程度",
+      "levels": ["優", "稍優", "普通", "稍劣", "劣"], "max_pct": 4,
+      "criteria": {"type": "distance", "in_section_level": "優", "none_level": "劣", "bands": [
+        {"level": "稍優", "max": 500}, {"level": "普通", "min": 500, "max": 1000},
+        {"level": "稍劣", "min": 1000, "max": 1500}, {"level": "劣", "min": 1500}]},
+      "facility_types": ["cinema", "entertainment"],
+      "survey_field": "commerce.entertainment"
+    },
+    {
+      "id": "R7-4", "group": 7, "name": "大型展示中心或觀光飯店之有無、數量、接近程度",
+      "levels": ["優", "稍優", "普通", "稍劣", "劣"], "max_pct": 8,
+      "criteria": {"type": "distance", "in_section_level": "優", "none_level": "劣", "bands": [
+        {"level": "稍優", "max": 500}, {"level": "普通", "min": 500, "max": 1000},
+        {"level": "稍劣", "min": 1000, "max": 1500}, {"level": "劣", "min": 1500}]},
+      "facility_types": ["exhibition_center", "tourist_hotel"],
+      "survey_field": "commerce.hotel"
+    },
+    {
+      "id": "R7-5", "group": 7, "name": "顧客通行量之多寡",
+      "levels": ["優", "稍優", "普通", "稍劣", "劣"], "max_pct": 12,
+      "criteria": {"type": "enum", "map": {"顧客通行量多": "優", "顧客通行量稍多": "稍優", "顧客通行量普通": "普通", "顧客通行量較少": "稍劣", "顧客通行量少": "劣"}},
+      "survey_field": "commerce.foot_traffic"
+    },
+    {
+      "id": "R7-6", "group": 7, "name": "店舖之毗連狀態",
+      "levels": ["優", "稍優", "普通", "稍劣", "劣"], "max_pct": 12,
+      "criteria": {"type": "bands", "unit": "%", "bands": [
+        {"level": "優", "min": 80}, {"level": "稍優", "min": 70, "max": 80}, {"level": "普通", "min": 60, "max": 70},
+        {"level": "稍劣", "min": 50, "max": 60}, {"level": "劣", "max": 50}]},
+      "survey_field": "commerce.shop_ratio_pct"
+    },
+
+    {
+      "id": "R8-1", "group": 8, "name": "其他影響因素",
+      "levels": ["優", "劣"], "max_pct": 0,
+      "criteria": {"type": "manual"},
+      "survey_field": "other",
+      "note": "由估價師自行填列並於備註欄敘明；系統不推算，只檢查加總"
+    }
+  ]
+}

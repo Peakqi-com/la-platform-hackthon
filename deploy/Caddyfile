@@ -1,0 +1,9 @@
+# 當天把 {$PUBLIC_HOST} 換成 <EC2 公網IP>.sslip.io，Caddy 會自動申請 Let's Encrypt 憑證
+{$PUBLIC_HOST} {
+    handle /api/* {
+        reverse_proxy backend:8000
+    }
+    handle {
+        reverse_proxy frontend:3000
+    }
+}

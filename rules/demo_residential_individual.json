@@ -1,0 +1,806 @@
+{
+  "$schema_note": "【示範用】住宅用地個別因素基準表：max_pct 採內政部附件25 住宅用地上限（手冊 p.154）、級距沿用金山商業表假設。非正式基準表。",
+  "id": "demo_residential_individual",
+  "source": "示範用（非官方）",
+  "land_use": "住宅用地",
+  "table": "4",
+  "scope": "individual",
+  "groups": [
+    {
+      "no": 1,
+      "name": "宗地條件"
+    },
+    {
+      "no": 2,
+      "name": "道路條件"
+    },
+    {
+      "no": 3,
+      "name": "接近條件"
+    },
+    {
+      "no": 4,
+      "name": "周邊環境條件"
+    },
+    {
+      "no": 5,
+      "name": "行政條件"
+    },
+    {
+      "no": 6,
+      "name": "其他"
+    }
+  ],
+  "rules": [
+    {
+      "id": "I7",
+      "item_no": 7,
+      "group": 1,
+      "name": "面積(M2)",
+      "levels": [
+        "優",
+        "稍優",
+        "普通",
+        "稍劣",
+        "劣"
+      ],
+      "max_pct": 10,
+      "criteria": {
+        "type": "bands",
+        "unit": "m2",
+        "bands": [
+          {
+            "level": "優",
+            "min": 93
+          },
+          {
+            "level": "稍優",
+            "min": 83,
+            "max": 93
+          },
+          {
+            "level": "普通",
+            "min": 73,
+            "max": 83
+          },
+          {
+            "level": "稍劣",
+            "min": 63,
+            "max": 73
+          },
+          {
+            "level": "劣",
+            "max": 63
+          }
+        ]
+      },
+      "parcel_field": "area_m2",
+      "note": "示範用：級距沿用金山商業表假設、max_pct 為內政部住宅用地上限；非正式基準表"
+    },
+    {
+      "id": "I8",
+      "item_no": 8,
+      "group": 1,
+      "name": "寬度(M)",
+      "levels": [
+        "優",
+        "稍優",
+        "普通",
+        "稍劣",
+        "劣"
+      ],
+      "max_pct": 5,
+      "criteria": {
+        "type": "bands",
+        "unit": "m",
+        "bands": [
+          {
+            "level": "優",
+            "min": 40
+          },
+          {
+            "level": "稍優",
+            "min": 20,
+            "max": 40
+          },
+          {
+            "level": "普通",
+            "min": 10,
+            "max": 20
+          },
+          {
+            "level": "稍劣",
+            "min": 5,
+            "max": 10
+          },
+          {
+            "level": "劣",
+            "max": 5
+          }
+        ]
+      },
+      "parcel_field": "width_m",
+      "note": "示範用：級距沿用金山商業表假設、max_pct 為內政部住宅用地上限；非正式基準表"
+    },
+    {
+      "id": "I9",
+      "item_no": 9,
+      "group": 1,
+      "name": "深度(M)",
+      "levels": [
+        "優",
+        "稍優",
+        "普通",
+        "稍劣",
+        "劣"
+      ],
+      "max_pct": 5,
+      "criteria": {
+        "type": "bands",
+        "unit": "m",
+        "bands": [
+          {
+            "level": "優",
+            "min": 40,
+            "max": 100
+          },
+          {
+            "level": "稍優",
+            "min": 30,
+            "max": 40
+          },
+          {
+            "level": "普通",
+            "min": 20,
+            "max": 30
+          },
+          {
+            "level": "稍劣",
+            "min": 10,
+            "max": 20
+          },
+          {
+            "level": "劣",
+            "max": 10
+          },
+          {
+            "level": "劣",
+            "min": 100
+          }
+        ]
+      },
+      "parcel_field": "depth_m",
+      "note": "示範用：級距沿用金山商業表假設、max_pct 為內政部住宅用地上限；非正式基準表"
+    },
+    {
+      "id": "I10",
+      "item_no": 10,
+      "group": 1,
+      "name": "形狀",
+      "levels": [
+        "優",
+        "劣"
+      ],
+      "max_pct": 10,
+      "criteria": {
+        "type": "enum",
+        "map": {
+          "方形": "優",
+          "不規則形": "劣"
+        }
+      },
+      "parcel_field": "shape",
+      "note": "示範用：級距沿用金山商業表假設、max_pct 為內政部住宅用地上限；非正式基準表"
+    },
+    {
+      "id": "I11",
+      "item_no": 11,
+      "group": 1,
+      "name": "臨街情形",
+      "levels": [
+        "優",
+        "稍優",
+        "普通",
+        "稍劣",
+        "劣"
+      ],
+      "max_pct": 30,
+      "criteria": {
+        "type": "enum",
+        "map": {
+          "3面以上臨街": "優",
+          "路角地": "稍優",
+          "雙面臨街": "普通",
+          "單面臨街": "稍劣",
+          "非臨街地": "劣"
+        }
+      },
+      "parcel_field": "frontage",
+      "note": "示範用：級距沿用金山商業表假設、max_pct 為內政部住宅用地上限；非正式基準表"
+    },
+    {
+      "id": "I12",
+      "item_no": 12,
+      "group": 1,
+      "name": "地勢",
+      "levels": [
+        "優",
+        "普通",
+        "劣"
+      ],
+      "max_pct": 10,
+      "criteria": {
+        "type": "enum",
+        "map": {
+          "平坦": "優",
+          "緩坡": "普通",
+          "低窪": "劣"
+        }
+      },
+      "parcel_field": "terrain",
+      "note": "示範用：級距沿用金山商業表假設、max_pct 為內政部住宅用地上限；非正式基準表"
+    },
+    {
+      "id": "I13",
+      "item_no": 13,
+      "group": 2,
+      "name": "道路種類",
+      "levels": [
+        "優",
+        "稍優",
+        "普通",
+        "稍劣",
+        "劣"
+      ],
+      "max_pct": 5,
+      "criteria": {
+        "type": "enum",
+        "map": {
+          "主要道路": "優",
+          "次要道路": "稍優",
+          "巷道": "普通",
+          "既成巷道": "稍劣",
+          "私設巷道": "劣"
+        }
+      },
+      "parcel_field": "road_type",
+      "note": "示範用：級距沿用金山商業表假設、max_pct 為內政部住宅用地上限；非正式基準表"
+    },
+    {
+      "id": "I14",
+      "item_no": 14,
+      "group": 2,
+      "name": "面前道路寬度",
+      "levels": [
+        "優",
+        "稍優",
+        "普通",
+        "稍劣",
+        "劣"
+      ],
+      "max_pct": 15,
+      "criteria": {
+        "type": "bands",
+        "unit": "m",
+        "bands": [
+          {
+            "level": "優",
+            "min": 20
+          },
+          {
+            "level": "稍優",
+            "min": 15,
+            "max": 20
+          },
+          {
+            "level": "普通",
+            "min": 8,
+            "max": 15
+          },
+          {
+            "level": "稍劣",
+            "min": 4,
+            "max": 8
+          },
+          {
+            "level": "劣",
+            "max": 4
+          }
+        ]
+      },
+      "parcel_field": "front_road_width_m",
+      "note": "示範用：級距沿用金山商業表假設、max_pct 為內政部住宅用地上限；非正式基準表"
+    },
+    {
+      "id": "I15",
+      "item_no": 15,
+      "group": 3,
+      "name": "接近學校之程度",
+      "levels": [
+        "優",
+        "稍優",
+        "普通",
+        "稍劣",
+        "劣"
+      ],
+      "max_pct": 10,
+      "criteria": {
+        "type": "distance",
+        "none_level": "劣",
+        "bands": [
+          {
+            "level": "優",
+            "max": 200
+          },
+          {
+            "level": "稍優",
+            "min": 200,
+            "max": 600
+          },
+          {
+            "level": "普通",
+            "min": 600,
+            "max": 1200
+          },
+          {
+            "level": "稍劣",
+            "min": 1200,
+            "max": 2000
+          },
+          {
+            "level": "劣",
+            "min": 2000
+          }
+        ]
+      },
+      "facility_types": [
+        "school"
+      ],
+      "parcel_field": "school",
+      "note": "示範用：級距沿用金山商業表假設、max_pct 為內政部住宅用地上限；非正式基準表"
+    },
+    {
+      "id": "I16",
+      "item_no": 16,
+      "group": 3,
+      "name": "接近市場之程度",
+      "levels": [
+        "優",
+        "稍優",
+        "普通",
+        "稍劣",
+        "劣"
+      ],
+      "max_pct": 10,
+      "criteria": {
+        "type": "distance",
+        "none_level": "劣",
+        "bands": [
+          {
+            "level": "優",
+            "max": 500
+          },
+          {
+            "level": "稍優",
+            "min": 500,
+            "max": 1000
+          },
+          {
+            "level": "普通",
+            "min": 1000,
+            "max": 1500
+          },
+          {
+            "level": "稍劣",
+            "min": 1500,
+            "max": 2000
+          },
+          {
+            "level": "劣",
+            "min": 2000
+          }
+        ]
+      },
+      "facility_types": [
+        "traditional_market",
+        "supermarket",
+        "hypermarket"
+      ],
+      "parcel_field": "market",
+      "note": "示範用：級距沿用金山商業表假設、max_pct 為內政部住宅用地上限；非正式基準表"
+    },
+    {
+      "id": "I17",
+      "item_no": 17,
+      "group": 3,
+      "name": "接近公園、廣場之程度",
+      "levels": [
+        "優",
+        "稍優",
+        "普通",
+        "稍劣",
+        "劣"
+      ],
+      "max_pct": 15,
+      "criteria": {
+        "type": "distance",
+        "none_level": "劣",
+        "bands": [
+          {
+            "level": "優",
+            "max": 300
+          },
+          {
+            "level": "稍優",
+            "min": 300,
+            "max": 500
+          },
+          {
+            "level": "普通",
+            "min": 500,
+            "max": 1000
+          },
+          {
+            "level": "稍劣",
+            "min": 1000,
+            "max": 1500
+          },
+          {
+            "level": "劣",
+            "min": 1500
+          }
+        ]
+      },
+      "facility_types": [
+        "park",
+        "plaza"
+      ],
+      "parcel_field": "park",
+      "note": "示範用：級距沿用金山商業表假設、max_pct 為內政部住宅用地上限；非正式基準表"
+    },
+    {
+      "id": "I18",
+      "item_no": 18,
+      "group": 3,
+      "name": "接近車站之程度",
+      "levels": [
+        "優",
+        "稍優",
+        "普通",
+        "稍劣",
+        "劣"
+      ],
+      "max_pct": 20,
+      "criteria": {
+        "type": "distance",
+        "none_level": "劣",
+        "bands": [
+          {
+            "level": "優",
+            "max": 300
+          },
+          {
+            "level": "稍優",
+            "min": 300,
+            "max": 400
+          },
+          {
+            "level": "普通",
+            "min": 400,
+            "max": 600
+          },
+          {
+            "level": "稍劣",
+            "min": 600,
+            "max": 800
+          },
+          {
+            "level": "劣",
+            "min": 800
+          }
+        ]
+      },
+      "facility_types": [
+        "bus_stop",
+        "rail_station",
+        "mrt_station",
+        "intercity_bus_station"
+      ],
+      "parcel_field": "station",
+      "note": "示範用：級距沿用金山商業表假設、max_pct 為內政部住宅用地上限；非正式基準表"
+    },
+    {
+      "id": "I19",
+      "item_no": 19,
+      "group": 3,
+      "name": "接近商圈之程度",
+      "levels": [
+        "優",
+        "稍優",
+        "普通",
+        "稍劣",
+        "劣"
+      ],
+      "max_pct": 15,
+      "criteria": {
+        "type": "distance",
+        "none_level": "劣",
+        "bands": [
+          {
+            "level": "優",
+            "max": 500
+          },
+          {
+            "level": "稍優",
+            "min": 500,
+            "max": 1000
+          },
+          {
+            "level": "普通",
+            "min": 1000,
+            "max": 1800
+          },
+          {
+            "level": "稍劣",
+            "min": 1800,
+            "max": 2800
+          },
+          {
+            "level": "劣",
+            "min": 2800
+          }
+        ]
+      },
+      "facility_types": [
+        "commercial_district"
+      ],
+      "parcel_field": "commercial_district",
+      "note": "示範用：級距沿用金山商業表假設、max_pct 為內政部住宅用地上限；非正式基準表"
+    },
+    {
+      "id": "I20",
+      "item_no": 20,
+      "group": 4,
+      "name": "嫌惡設施(類型)",
+      "levels": [
+        "優",
+        "稍優",
+        "普通",
+        "稍劣",
+        "劣"
+      ],
+      "max_pct": 10,
+      "criteria": {
+        "type": "distance",
+        "direction": "farther_is_better",
+        "none_level": "優",
+        "aggregate": "worst",
+        "bands": [
+          {
+            "level": "優",
+            "min": 500
+          },
+          {
+            "level": "稍優",
+            "min": 300,
+            "max": 500
+          },
+          {
+            "level": "普通",
+            "min": 200,
+            "max": 300
+          },
+          {
+            "level": "稍劣",
+            "min": 100,
+            "max": 200
+          },
+          {
+            "level": "劣",
+            "max": 100
+          }
+        ]
+      },
+      "facility_types": [
+        "cemetery",
+        "funeral_home",
+        "crematorium",
+        "columbarium",
+        "substation",
+        "hv_tower",
+        "gas_station",
+        "gas_tank",
+        "incinerator",
+        "landfill",
+        "sewage_plant",
+        "pollution_source"
+      ],
+      "parcel_field": "nuisance",
+      "note": "示範用：級距沿用金山商業表假設、max_pct 為內政部住宅用地上限；非正式基準表"
+    },
+    {
+      "id": "I21",
+      "item_no": 21,
+      "group": 4,
+      "name": "停車方便性",
+      "levels": [
+        "優",
+        "劣"
+      ],
+      "max_pct": 5,
+      "criteria": {
+        "type": "enum",
+        "map": {
+          "可路邊停車": "優",
+          "不可路邊停車": "劣"
+        }
+      },
+      "parcel_field": "street_parking",
+      "note": "示範用：級距沿用金山商業表假設、max_pct 為內政部住宅用地上限；非正式基準表"
+    },
+    {
+      "id": "I22",
+      "item_no": 22,
+      "group": 5,
+      "name": "使用分區或編定用地",
+      "levels": [
+        "優",
+        "稍優",
+        "普通",
+        "稍劣",
+        "劣"
+      ],
+      "max_pct": 15,
+      "criteria": {
+        "type": "enum",
+        "map": {
+          "商業區": "優",
+          "住宅區": "稍優",
+          "甲建": "普通",
+          "乙建": "普通",
+          "農業區建地目": "稍劣",
+          "保護區建地目": "稍劣",
+          "農業區已建築用地": "劣",
+          "保護區已建築用地": "劣"
+        },
+        "normalize": {
+          "第一種商業區": "商業區",
+          "第二種商業區": "商業區",
+          "第三種商業區": "商業區",
+          "第四種商業區": "商業區",
+          "第一種住宅區": "住宅區",
+          "第二種住宅區": "住宅區",
+          "第三種住宅區": "住宅區",
+          "第四種住宅區": "住宅區"
+        }
+      },
+      "parcel_field": "zoning",
+      "note": "示範用：級距沿用金山商業表假設、max_pct 為內政部住宅用地上限；非正式基準表"
+    },
+    {
+      "id": "I23",
+      "item_no": 23,
+      "group": 5,
+      "name": "建蔽率(%)",
+      "levels": [
+        "優",
+        "稍優",
+        "普通",
+        "稍劣",
+        "劣"
+      ],
+      "max_pct": 10,
+      "criteria": {
+        "type": "bands",
+        "unit": "%",
+        "bands": [
+          {
+            "level": "優",
+            "min": 80
+          },
+          {
+            "level": "稍優",
+            "min": 70,
+            "max": 80
+          },
+          {
+            "level": "普通",
+            "min": 60,
+            "max": 70
+          },
+          {
+            "level": "稍劣",
+            "min": 50,
+            "max": 60
+          },
+          {
+            "level": "劣",
+            "max": 50
+          }
+        ]
+      },
+      "parcel_field": "bcr_pct",
+      "note": "示範用：級距沿用金山商業表假設、max_pct 為內政部住宅用地上限；非正式基準表"
+    },
+    {
+      "id": "I24",
+      "item_no": 24,
+      "group": 5,
+      "name": "容積率(%)",
+      "levels": [
+        "優",
+        "稍優",
+        "普通",
+        "稍劣",
+        "劣"
+      ],
+      "max_pct": 50,
+      "criteria": {
+        "type": "bands",
+        "unit": "%",
+        "bands": [
+          {
+            "level": "優",
+            "min": 300
+          },
+          {
+            "level": "稍優",
+            "min": 240,
+            "max": 300
+          },
+          {
+            "level": "普通",
+            "min": 200,
+            "max": 240
+          },
+          {
+            "level": "稍劣",
+            "min": 120,
+            "max": 200
+          },
+          {
+            "level": "劣",
+            "max": 120
+          }
+        ]
+      },
+      "parcel_field": "far_pct",
+      "note": "示範用：級距沿用金山商業表假設、max_pct 為內政部住宅用地上限；非正式基準表"
+    },
+    {
+      "id": "I25",
+      "item_no": 25,
+      "group": 5,
+      "name": "有無禁限建",
+      "levels": [
+        "優",
+        "劣"
+      ],
+      "max_pct": 50,
+      "criteria": {
+        "type": "boolean",
+        "true_level": "劣",
+        "false_level": "優",
+        "note": "有禁止或限制建築=劣"
+      },
+      "parcel_field": "building_restricted",
+      "note": "示範用：級距沿用金山商業表假設、max_pct 為內政部住宅用地上限；非正式基準表"
+    },
+    {
+      "id": "I6",
+      "item_no": 6,
+      "group": 6,
+      "name": "其他",
+      "levels": [
+        "優",
+        "劣"
+      ],
+      "max_pct": 30,
+      "criteria": {
+        "type": "manual"
+      },
+      "parcel_field": "other",
+      "note": "示範用：級距沿用金山商業表假設、max_pct 為內政部住宅用地上限；非正式基準表；免修正以「-」表示；估價師自填並於備註敘明"
+    }
+  ]
+}

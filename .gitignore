@@ -1,0 +1,16 @@
+.env
+data/
+__pycache__/
+*.pyc
+.pytest_cache/
+node_modules/
+.next/
+frontend/.env*
+.DS_Store
+*.egg-info/
+output測試檔/
+backend/.venv/
+docs/demo/recordings/*.gif
+docs/demo/deck_img/kv_169.jpg
+*.doc
+*.DOC

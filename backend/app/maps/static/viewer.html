@@ -1,0 +1,44 @@
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><title>圖說檢視</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>body{margin:0;font-family:system-ui,"Noto Sans TC",sans-serif}#map{position:absolute;top:44px;bottom:0;left:0;right:0}
+#bar{height:44px;display:flex;gap:8px;align-items:center;padding:0 12px;background:#1f2a37;color:#fff}
+button{padding:6px 12px;border:0;border-radius:6px;cursor:pointer;background:#3b4b60;color:#fff}button.on{background:#e5533d}
+#info{position:absolute;right:10px;top:54px;z-index:1000;background:#fff;padding:8px 10px;border-radius:6px;font-size:12px;max-width:340px;box-shadow:0 1px 6px rgba(0,0,0,.3)}
+.lbl{background:rgba(255,255,255,.85);border:0;border-radius:3px;padding:1px 4px;font-size:11px;white-space:nowrap}</style></head>
+<body><div id="bar"><b>估價案件審查輔助系統</b>
+<button id="b1" class="on">區段略圖</button><button id="b2">使用分區圖</button><button id="b3">地價區段圖</button>
+<span id="status" style="margin-left:auto;font-size:12px"></span></div>
+<div id="map"></div><div id="info">載入中…</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const map = L.map('map', {zoomControl:true});
+L.tileLayer('https://wmts.nlsc.gov.tw/wmts/EMAP/default/GoogleMapsCompatible/{z}/{y}/{x}', {maxZoom:20, attribution:'© 國土測繪中心'}).addTo(map);
+const landsect = L.tileLayer.wms('https://wms.nlsc.gov.tw/wms', {layers:'LANDSECT', format:'image/png', transparent:true, attribution:'段籍圖 © 國土測繪中心', maxZoom:20});
+const groups = {sections:L.layerGroup(), parcels:L.layerGroup(), facilities:L.layerGroup(), distance_lines:L.layerGroup(), zoning:L.layerGroup(), roads:L.layerGroup()};
+const modes = {b1:['sections','parcels','roads'], b2:['zoning','sections'], b3:['sections','parcels','facilities','distance_lines']};
+function setMode(id){ for (const k in groups) map.removeLayer(groups[k]); modes[id].forEach(k=>groups[k].addTo(map));
+  document.querySelectorAll('#bar button').forEach(b=>b.classList.toggle('on', b.id===id)); if(id==='b3') landsect.addTo(map); else map.removeLayer(landsect); }
+document.querySelectorAll('#bar button').forEach(b=>b.onclick=()=>setMode(b.id));
+function label(latlng, text, cls){ return L.marker(latlng,{icon:L.divIcon({className:'lbl',html:text}),interactive:false}); }
+function render(L_){
+  const g = groups;
+  L.geoJSON(L_.zoning,{style:f=>({color:'#555',weight:.5,fillColor:f.properties.color,fillOpacity:.45}),onEachFeature:(f,l)=>l.bindTooltip(f.properties.zone)}).addTo(g.zoning);
+  L.geoJSON(L_.roads,{style:{color:'#666',weight:2},onEachFeature:(f,l)=>l.bindTooltip(f.properties.name)}).addTo(g.roads);
+  L.geoJSON(L_.sections,{style:{color:'#d00',weight:3,fill:false,dashArray:'6 4'},onEachFeature:(f,l)=>{l.bindPopup('<b>'+f.properties.section_id+'</b><br>'+(f.properties.range_desc||'')+'<br><i>'+(f.properties.status||'')+' '+(f.properties.geometry_source||'')+'</i>');
+    label(l.getBounds().getCenter(), f.properties.section_id).addTo(g.sections);}}).addTo(g.sections);
+  L.geoJSON(L_.parcels,{style:f=>({color:f.properties.role==='subject'?'#e5533d':'#1f77b4',weight:2,fillOpacity:.5}),onEachFeature:(f,l)=>l.bindPopup('<b>'+f.properties.label+'</b><br>幾何來源：'+(f.properties.geometry_source||'?')+'<br>'+(f.properties.geometry_note||''))}).addTo(g.parcels);
+  L.geoJSON(L_.distance_lines,{style:f=>({color:f.properties.measure==='walking'?'#2a9d8f':'#e76f51',weight:1.5,dashArray:f.properties.measure==='straight_estimated'?'3 3':null}),onEachFeature:(f,l)=>l.bindTooltip(f.properties.label)}).addTo(g.distance_lines);
+  L.geoJSON(L_.facilities,{pointToLayer:(f,ll)=>L.circleMarker(ll,{radius:6,color:'#333',fillColor:f.properties.scope==='regional'?'#f2c744':'#57b96b',fillOpacity:.9}),
+    style:{color:'#333',weight:1,fillColor:'#f2c744',fillOpacity:.4},
+    onEachFeature:(f,l)=>l.bindPopup('<b>'+(f.properties.name||'(無名)')+'</b> '+f.properties.type+'<br>'+f.properties.field+'（'+f.properties.owner+'）<br>距離 '+(f.properties.distance_m??'-')+' m，'+(f.properties.measure||'')+'，起點 '+(f.properties.origin||'')+'<br>來源：'+(f.properties.source||'')+(f.properties.assumed?'<br><span style="color:#c00">量測方式為推定</span>':''))}).addTo(g.facilities);
+  if (L_.bbox) map.fitBounds([[L_.bbox[1],L_.bbox[0]],[L_.bbox[3],L_.bbox[2]]]); else map.setView([25.2217,121.6367],16);
+  document.getElementById('info').innerHTML = '圖層：區段 '+L_.sections.features.length+'、宗地 '+L_.parcels.features.length+'、設施 '+L_.facilities.features.length+'、分區 '+L_.zoning.features.length+'、道路 '+L_.roads.features.length+
+    '<br>底圖：'+L_.attribution.basemap+(L_.attribution.zoning?'<br>分區：'+L_.attribution.zoning:'')+(L_.attribution.roads?'<br>路網：'+L_.attribution.roads:'')+
+    '<br><span style="color:#c00">紅框＝區段（草稿以來源標示）</span>；綠線＝步行距離、橘線＝直線、虛線＝直線估算';
+  setMode('b1');
+}
+(async()=>{ const s=document.getElementById('status'); s.textContent='載入範例案件…';
+  const demo = await (await fetch('/api/cases/demo')).json();
+  s.textContent='計算圖層…'; const layers = await (await fetch('/api/maps/layers',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(demo)})).json();
+  render(layers); s.textContent = demo.case.case_no+' '+demo.case.district; })().catch(e=>{document.getElementById('info').textContent='載入失敗：'+e;});
+</script></body></html>
