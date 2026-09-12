@@ -198,6 +198,26 @@ def derive_parcel_attributes(parcel: dict, *, roads=None, zoning=None, overwrite
             filled.append("front_road")
     else:
         notes.append(f"{road_max_m:.0f} m 內沒有有名道路，道路種類與面前道路未推定")
+    # 計畫道路：都市計畫圖道路用地量寬度（比路網等級預設準）；宗地不鄰道路用地 → 面臨現有巷道（土管但書用）
+    if zoning is not None and len(zoning):
+        try:
+            from .planned_road import SOURCE as PLANNED_SRC
+            from .planned_road import planned_road_frontage
+            pr = planned_road_frontage(g, zoning, roads)
+        except Exception:  # noqa: BLE001
+            pr = None
+        fr = parcel.get("front_road") or {}
+        if pr and (overwrite or "front_road" in derived or _blank(fr.get("name"))):
+            if pr["kind"] == "計畫道路" and pr.get("width_m") is not None:
+                name = pr["names"][0] if pr["names"] else (fr.get("name") or "")
+                parcel["front_road"] = {**fr, "name": name, "width_m": pr["width_m"], "kind": "計畫道路"}
+                derived["front_road"] = {"source": PLANNED_SRC, "note": pr["note"]}
+                if "front_road" not in filled:
+                    filled.append("front_road")
+            elif pr["kind"] == "現有巷道":
+                parcel["front_road"] = {**fr, "kind": "現有巷道"}
+                d0 = derived.get("front_road") or {"source": "路網", "note": ""}
+                derived["front_road"] = {"source": d0.get("source", "路網"), "note": (d0.get("note", "") + "；" if d0.get("note") else "") + pr["note"]}
     sp = _street_parking(g, parcel, store)
     if sp:
         put("street_parking", sp["value"], sp["source"], sp["note"])

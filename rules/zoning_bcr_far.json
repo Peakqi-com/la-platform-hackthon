@@ -1,5 +1,5 @@
 {
- "$schema_note": "法定建蔽率／容積率對照表（行政條件推定用）。順序：細部計畫土管要點（細分區）→ 施行細則附表一（主分區，容積率依都市計畫書者留空）→ 施行細則附表三（公共設施用地）。數值逐字抄自新北市政府電子法規查詢系統的現行附表（見 sources），換版時請重新核對；手冊 p.51 (六)4 行政條件容積率係指法定容積率，推定值仍標「推定」由承辦確認。其他都市計畫區的細分區容積率請依該計畫書土管要點加到 plans（districts 列該計畫涵蓋的鄉鎮市區）。 plans[].zones[].bcr_by_county=true 表示計畫書寫「建蔽率依施行細則規定辦理」，查表時由 county_default 補；check=true 表示抽取數值不唯一，需人工核對。 districts_secondary：地區型（子）計畫區所在的行政區，主計畫查不到該分區時才查，結果一律 check=true。 plans[].zones[].bcr_by_county=true 表示計畫書寫「建蔽率依施行細則規定辦理」，查表時由 county_default 補；check=true 表示抽取數值不唯一，需人工核對。 plans[].zones[].bcr_by_county=true 表示計畫書寫「建蔽率依施行細則規定辦理」，查表時由 county_default 補；check=true 表示抽取數值不唯一，需人工核對。 plans[].provisos[] 為計畫書但書：符合 when（目前只有 front_road_width_lt_m＝面前道路寬度未達 N 公尺）的分區改用該 far，結果一律標 check（需確認）。",
+ "$schema_note": "法定建蔽率／容積率對照表（行政條件推定用）。順序：細部計畫土管要點（細分區）→ 施行細則附表一（主分區，容積率依都市計畫書者留空）→ 施行細則附表三（公共設施用地）。數值逐字抄自新北市政府電子法規查詢系統的現行附表（見 sources），換版時請重新核對；手冊 p.51 (六)4 行政條件容積率係指法定容積率，推定值仍標「推定」由承辦確認。其他都市計畫區的細分區容積率請依該計畫書土管要點加到 plans（districts 列該計畫涵蓋的鄉鎮市區）。 plans[].zones[].bcr_by_county=true 表示計畫書寫「建蔽率依施行細則規定辦理」，查表時由 county_default 補；check=true 表示抽取數值不唯一，需人工核對。 districts_secondary：地區型（子）計畫區所在的行政區，主計畫查不到該分區時才查，結果一律 check=true。 plans[].zones[].bcr_by_county=true 表示計畫書寫「建蔽率依施行細則規定辦理」，查表時由 county_default 補；check=true 表示抽取數值不唯一，需人工核對。 plans[].zones[].bcr_by_county=true 表示計畫書寫「建蔽率依施行細則規定辦理」，查表時由 county_default 補；check=true 表示抽取數值不唯一，需人工核對。 plans[].provisos[] 為計畫書但書：符合 when（front_road_width_lt_m＝面臨計畫道路寬度未達 N 公尺；existing_lane＝面臨現有巷道即適用）的分區改用該 far，結果一律標 check（需確認）。",
  "sources": {
   "施行細則": "都市計畫法新北市施行細則（新北市政府電子法規查詢系統，最近修正 114.11.05）附表一「土地使用分區建蔽率及容積率規定表」（第 36 條附件，Download.ashx?pfid=0000144481），2026-09-09 逐格核對",
   "金山都市計畫": "變更金山細部計畫（土地使用分區管制要點專案通盤檢討）書 1091023 用印版 第四點「各土地使用分區建蔽率及容積率規定」（新北市政府城鄉發展局公告 2020-12-09）",
@@ -1463,7 +1463,8 @@
       "第二種住宅區"
      ],
      "when": {
-      "front_road_width_lt_m": 8
+      "front_road_width_lt_m": 8,
+      "existing_lane": true
      },
      "far": 200,
      "note": "土管要點四(三)：依指定現有巷道建築者及面臨計畫道路寬度未達 8 公尺者，第一種及第二種住宅區容積率不得大於 200%（但現有巷道可連通 8 公尺以上已開闢計畫道路且具公用地役權寬度達 8 公尺者不受此限；都更事業且臨路 6～8 公尺者得調整為 240%）；2023-12-26 版 PDF 第 3 頁、2020-11-10 版 PDF 第 19 頁同文"

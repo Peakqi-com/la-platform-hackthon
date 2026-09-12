@@ -54,3 +54,35 @@ def test_dash_with_zero_pct_is_not_flagged():
     assert not [f for f in fs if f["item_no"] == 23 and f["comp_no"] == 1 and f["kind"] == "mismatch" and "未修正" in f["message"]]
     f22 = [f for f in fs if f["item_no"] == 22 and f["comp_no"] == 1 and "未修正" in f["message"]]
     assert f22 and "核算差異率為" in f22[0]["message"]
+
+
+def _local_feature(zone: str, coords_m: list[tuple[float, float]], lon0: float = 121.42, lat0: float = 24.99) -> dict:
+    import math
+    my = 111320.0
+    mx = my * math.cos(math.radians(lat0))
+    ring = [(lon0 + x / mx, lat0 + y / my) for x, y in coords_m]
+    return {"type": "Feature", "properties": {"zone": zone, "ZONE": zone}, "geometry": {"type": "Polygon", "coordinates": [ring + [ring[0]]]}}
+
+
+def test_planned_road_width_measured_from_zoning_road_land():
+    from app.maps.zoning import ZoningStore
+    from app.spatial.bootstrap import Roads
+    from app.spatial.planned_road import planned_road_frontage
+    parcel = _local_feature("第一種住宅區", [(0, 0), (10, 0), (10, 10), (0, 10)])
+    road = _local_feature("道路用地", [(10.2, -50), (17.2, -50), (17.2, 50), (10.2, 50)])          # 7 m 寬計畫道路貼宗地東邊
+    zoning = ZoningStore([parcel, road], name_field="zone")
+    line = {"type": "Feature", "properties": {"name": "測試街", "highway": "residential"},
+            "geometry": {"type": "LineString", "coordinates": [list(_local_feature("x", [(13.7, -50)])["geometry"]["coordinates"][0][0]), list(_local_feature("x", [(13.7, 50)])["geometry"]["coordinates"][0][0])]}}
+    pr = planned_road_frontage(parcel["geometry"], zoning, Roads([line]))
+    assert pr["kind"] == "計畫道路" and 6.5 <= pr["width_m"] <= 7.5 and pr["names"] == ["測試街"]
+    far = _local_feature("第一種住宅區", [(-40, 0), (-30, 0), (-30, 10), (-40, 10)])              # 離道路用地 40 m → 現有巷道
+    assert planned_road_frontage(far["geometry"], zoning)["kind"] == "現有巷道"
+    assert planned_road_frontage(far["geometry"], ZoningStore([parcel], name_field="zone")) is None   # 範圍內沒有道路用地 → 無法判定
+
+
+def test_existing_lane_triggers_proviso():
+    v = bcr_far_for("第一種住宅區", "新北市樹林區", existing_lane=True)
+    assert v["far"] == 200 and v["check"] and "現有巷道" in v["note"]
+    p = {"parcel_id": "太平段367地號", "zoning": "第一種住宅區", "front_road": {"name": "鎮前街367巷4弄", "width_m": 6.0, "kind": "現有巷道"}}
+    fill_parcel_admin(p, district="新北市樹林區")
+    assert p["far_pct"] == 200 and "現有巷道" in p["derived"]["far_pct"]["note"]
