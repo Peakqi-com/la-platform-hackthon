@@ -258,10 +258,20 @@ def zoning_legend(layers: dict[str, Any], limit: int = 16) -> list[tuple[str, tu
         color.setdefault(z, f["properties"].get("color") or "#dddddd")
         area[z] = area.get(z, 0.0) + sum(_ring_area(r) for r in _rings(f["geometry"]))
     order = sorted(area, key=lambda z: -area[z])
-    out = [(z, _hex(color[z], 255)[:3]) for z in order[:limit]]
+    out = [(z, _legend_swatch(color[z])) for z in order[:limit]]
     if len(order) > limit:
-        out.append((f"其他分區（{len(order) - limit} 種）", (221, 221, 221)))
+        out.append((f"其他分區（{len(order) - limit} 種）", _legend_swatch("#dddddd")))
     return out
+
+
+ZONING_ALPHA = 120     # 圖上分區色塊的透明度（疊在底圖上）
+
+
+def _legend_swatch(hex_color: str) -> tuple[int, int, int]:
+    """圖例色塊要和圖上看到的一樣：圖上是色塊以 ZONING_ALPHA 疊在（近白的）底圖上，所以圖例也用同樣透明度混白。"""
+    r, g, b, _a = _hex(hex_color, 255)
+    a = ZONING_ALPHA / 255
+    return (round(r * a + 255 * (1 - a)), round(g * a + 255 * (1 - a)), round(b * a + 255 * (1 - a)))
 
 
 def _render(layers: dict[str, Any], mode: str, *, highlight: str | None, size: tuple[int, int], basemap: bool, tile_timeout: float,
@@ -296,7 +306,7 @@ def _render(layers: dict[str, Any], mode: str, *, highlight: str | None, size: t
 
     if "zoning" in show:
         for f in fc("zoning"):
-            col = _hex(f["properties"].get("color"), 120)
+            col = _hex(f["properties"].get("color"), ZONING_ALPHA)
             for ring in _rings(f["geometry"]):
                 d.polygon([P(*p) for p in ring], fill=col, outline=(90, 90, 90, 200))
     if "cadastre" in show:
