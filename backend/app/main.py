@@ -1220,6 +1220,32 @@ def _remove_input(cid: str, iid: str, actor: dict | None) -> dict:
     return {"record": C.get_case(cid), "removed": entry, "replayed": replayed, "failed": failed}
 
 
+def _auto_from_lot(cid: str, request: Request, results: list[dict]) -> None:
+    """輸入檔併入後的自動補齊（與單檔上傳同一條管線）：比準地有地號但沒有界線，或送審表4 個別因素空白 → 依地號產生（界線、區段範圍、勘查表、宗地屬性），填載值不動、不找比較標的。"""
+    from app import cases as C
+    rec = C.get_case(cid)
+    if not rec:
+        return
+    data = rec["data"]
+    subj = data.get("subject_parcel") or {}
+    if not subj.get("parcel_id"):
+        return
+    t4 = rec.get("submitted_table4") or {}
+    comps_sub = (t4.get("comparables") or {}).values() if isinstance(t4, dict) else []
+    t4_blank = bool(rec.get("submitted_table4") or rec.get("submitted_table5")) and not any((c or {}).get("individual") for c in comps_sub)
+    need_geom = subj.get("geometry") is None or any(c.get("geometry") is None for c in data.get("comparables") or []) or any(sec.get("geometry") is None for sec in (data.get("sections") or {}).values())
+    if not (t4_blank or need_geom):
+        return
+    try:
+        out = cases_from_lot(cid, FromLotPayload(parcel_id=subj["parcel_id"], overwrite=False, with_comparables=False), request)
+        steps = out.get("steps") or []
+        results.append({"filename": "依地號自動產生", "kind": "auto", "kind_label": "系統補齊", "summary": "；".join(f"{st.get('step')}：{st.get('note')}" for st in steps if st.get("note"))[:400]})
+    except HTTPException as e:
+        results.append({"filename": "依地號自動產生", "kind": "auto", "error": str(e.detail)})
+    except Exception as e:  # noqa: BLE001 - 圖資或外部查詢失敗不擋建案
+        results.append({"filename": "依地號自動產生", "kind": "auto", "error": str(e)})
+
+
 @app.post("/api/cases/{cid}/inputs")
 async def cases_inputs_add(cid: str, request: Request, files: list[UploadFile] = File(...), kind: str = Form("auto"), use_vision: str = Form("auto")):   # noqa: B008
     """一次加入多份輸入檔到同一案件（書表 PDF、清冊、實例、基準表、地籍圖、區段圖）；依種類順序併入：書表 → 基準表 → 清冊 → 實例 → 地籍圖 → 區段圖。每份各回一筆結果，失敗的不影響其他份。"""
@@ -1245,13 +1271,15 @@ async def cases_inputs_add(cid: str, request: Request, files: list[UploadFile] =
             results.append(_apply_one_input(cid, content, fn, kind=k or "auto", use_vision=use_vision, actor=actor))
         except HTTPException as e:
             results.append({"filename": fn, "kind": k, "error": e.detail})
+    if any(r.get("kind") in ("pdf_forms", "parcels", "comparables") and not r.get("error") and not r.get("skipped") for r in results):
+        _auto_from_lot(cid, request, results)
     rec = C.get_case(cid)
     return {"record": rec, "results": results, "inputs_summary": C.inputs_status(rec)}
 
 
 @app.post("/api/cases/from_inputs")
 async def cases_from_inputs(request: Request, files: list[UploadFile] = File(...), name: str | None = Form(None), case_no: str = Form(""),   # noqa: B008
-                            valuation_date: str = Form(""), district: str = Form("新北市金山區"), land_use: str = Form(""), section_id: str = Form(""),
+                            valuation_date: str = Form(""), district: str = Form(""), land_use: str = Form(""), section_id: str = Form(""),
                             use_vision: str = Form("auto")):
     """從多份輸入檔建立一個案件：先建空案（案號等以表單值起頭，書表 PDF 會補上），再依種類順序把每份檔併入。沒有書表 PDF 時必須給案號與估價基準日。"""
     from app import cases as C
@@ -1299,9 +1327,12 @@ async def cases_from_inputs(request: Request, files: list[UploadFile] = File(...
     c = rec["data"]["case"]
     if not c.get("land_use"):
         c["land_use"] = "商業用地"
+    if not c.get("district"):
+        c["district"] = "新北市"                                        # 書表沒寫鄉鎮市區：先記到縣市，依地號產生時由地籍查詢補鄉鎮
     if not c.get("rulesets"):
         c["rulesets"] = C.pick_rulesets(c.get("land_use"))
     rec = C.save_case(rec["data"], cid=cid, submitted_table5=rec.get("submitted_table5"), submitted_table4=rec.get("submitted_table4"))
+    _auto_from_lot(cid, request, results)                              # 與單檔上傳同一條管線：沒界線或表4 個別因素空白 → 依地號產生
     if not name:
         cn = c.get("case_no") or (rec["inputs"][0]["filename"] if rec.get("inputs") else cid)
         C.patch_case(cid, name=f"{cn}（送審書表）" if has_pdf else f"{cn} {c.get('district') or ''} {next(iter(rec['data'].get('sections') or {}), '')}".strip())
