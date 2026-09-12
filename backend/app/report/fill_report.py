@@ -17,7 +17,7 @@ PARCEL_EXTRA = [("bcr_pct", "建蔽率(%)"), ("far_pct", "容積率(%)"), ("buil
 
 
 
-_GEOM_SRC_ZH = {"cadastre_file": "地籍圖檔", "nlsc_api": "國土測繪中心地籍 API", "synthetic": "依清冊面積合成", "section_map": "地價區段圖",
+_GEOM_SRC_ZH = {"cadastre_file": "地籍圖檔", "twland": "開放地籍查詢（推定）", "nlsc_api": "國土測繪中心地籍 API", "synthetic": "依清冊面積合成", "section_map": "地價區段圖",
                 "estimate_osm_block": "路網推估街廓", "manual": "人工點圖", "address": "門牌定位", "road_midpoint": "路段中點"}
 _MEASURE_ZH = {"walking": "步行距離", "straight": "直線距離", "straight_estimated": "直線估算距離", "osrm": "步行距離"}
 _ORIGIN_ZH = {"parcel_centroid": "宗地中心", "parcel_boundary": "宗地界線", "section_boundary": "區段邊界", "section_centroid": "區段中心", "road_access": "出入口"}

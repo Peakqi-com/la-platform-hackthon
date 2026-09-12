@@ -29,6 +29,8 @@
 | 百貨、電影院 | OSM + 人工標定 | R7-1 / R7-3 | 例外 |
 | 店舖點位 | OSM shop=*（全區 20,501 筆）→ 設施庫 shop | 店舖毗連狀態、顧客通行量推定 | 例外（政府無店舖點位） |
 | 全區 OSM 圖資 | Geofabrik taiwan-latest.osm.pbf → `scripts/build_osm_ntpc.py` → `data/osm/roads.sqlite`（有名道路 74,472）、`walk.sqlite`（highway 191,251）、`poi_osm.sqlite`（設施 57,343）、`districts.geojson`（鄉鎮市區界，admin_level=7）；依案件 bbox 局部載入（`app/spatial/geodb.py`） | 路網、步行圖、設施距離、行政區範圍 | ✅ 2026-09-10 |
+| 地籍界線（免申請） | g0v「地號查詢」開放 API（https://twland.ronny.tw，資料來自內政部地籍圖資網路便民服務系統；縣市,段名,地號 → 宗地多邊形，同段名跨區以鄉鎮篩）→ `spatial/cadastre.TwlandCadastreProvider`，快取 `data/cadastre/twland_cache.json`；順序在地籍圖檔之後、NLSC API 之前，界線標「推定／外部開放資料」 | 比準地與比較標的界線、面積、寬深、形狀 | ✅ 2026-09-12（決賽題目樹林 5 筆全部查到；非即時，正式以地政局地籍圖為準；`TWLAND_OFFLINE=1` 關閉） |
+| 公告土地現值（逐地號） | 新北市資料開放平臺 110（8d6485f1）、111（21466356）、112（aaa79697）、113（a8f022db）年公告土地現值；JSON API 可帶 segment、lid 篩選（CSV 整檔匯出被截在 1,048,575 列，樹林區 111 年在檔外，要走 API） | 期日調整（平均區段地價表替代）、比準地登記面積佐證 | 🔍 2026-09-12 抓法確認，尚未接進 market/index |
 | 門牌定位 | OSM addr:street＋addr:housenumber（新北一帶 3,673,486 筆）→ `scripts/build_addresses.py` → `data/osm/addresses.sqlite`（name 索引） | 無地籍界線之比較標的位置推定 | ✅ 2026-09-11 |
 | 全區使用分區 | 城鄉局使用分區 shapefile 34,190 面 → `scripts/build_zoning_db.py` → `data/zoning/ntpc_zoning.sqlite`（R-tree） | 使用分區、道路闢建程度、分區圖 | ✅ 2026-09-10 |
 | 淹水潛勢圖 | 經濟部水利署第三代淹水潛勢圖（data.gov.tw 25766，新北市 7z：6／12／24 小時 10 情境 shp）→ `data/flood/ntpc_24h350r.geojson`（24 小時 350 mm，屬性 class／depth_m） | 排水之良否推定 | ✅ 2026-09-10 |

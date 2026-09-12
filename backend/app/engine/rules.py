@@ -154,6 +154,9 @@ def grade(rule: Rule, obs: Any) -> str | None:
         key = c.get("normalize", {}).get(key, key)
         if key in c["map"]:
             return c["map"][key]
+        contained = [k for k in c["map"] if k and (k in key or key in k)]            # 「既成巷道」→「巷道」、「第一種住宅區」→「住宅區」
+        if contained:
+            return c["map"][max(contained, key=len)]
         if "default" in c:
             return c["default"]
         raise GradeError(f"{rule.id} {rule.name}: 「{key}」不在判定條件 {list(c['map'])}")

@@ -19,6 +19,7 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
+import certifi
 import httpx
 from shapely.geometry import Point, Polygon, mapping, shape
 
@@ -211,6 +212,54 @@ class NLSCCadastreProvider:
         raise CadastreNotConfigured("NLSC CAD_004 介接尚未依規格文件實作（拿到 API 文件後補）")
 
 
+class TwlandCadastreProvider:
+    """g0v「地號查詢」開放 API（https://twland.ronny.tw，資料來自內政部地籍圖資網路便民服務系統）：
+    縣市,段名,地號 → 宗地界線 GeoJSON，免金鑰。同段名可能跨區（樹德段在樹林、蘆洲都有）→ 以鄉鎮市區篩。
+    非即時圖資，界線標「推定／外部開放資料」，正式版仍以地政局地籍圖為準。查過的存 data/cadastre/twland_cache.json。"""
+    name = "twland"
+    source = "地籍圖資網路便民服務系統開放查詢（g0v twland）"
+    URL = "https://twland.ronny.tw/index/search"
+
+    def __init__(self, cache_path: Path | None = None, client: httpx.Client | None = None, offline: bool = False):
+        self.cache_path = cache_path or (CACHE_PATH.parent / "twland_cache.json")
+        try:
+            self.cache: dict[str, Any] = json.loads(self.cache_path.read_text(encoding="utf-8")) if self.cache_path.exists() else {}
+        except (OSError, json.JSONDecodeError):
+            self.cache = {}
+        self.client = client
+        self.offline = offline or os.environ.get("TWLAND_OFFLINE") == "1"
+
+    def lookup(self, county: str, section: str, lot_no: str, district: str | None = None) -> dict | None:
+        if self.offline:                                               # 測試與離線：不查快取也不上網
+            return None
+        lot = normalize_lot_no(lot_no)
+        key = f"{county}|{district or ''}|{section}|{lot}"
+        if key in self.cache:
+            return self.cache[key] or None
+        q = f"{county},{section},{lot.replace('-0', '') if lot.endswith('-0') else lot.replace('-', '之')}"
+        try:
+            cl = self.client or httpx.Client(timeout=60, verify=certifi.where(), headers={"User-Agent": "ntpc-appraisal-review"})
+            r = cl.get(self.URL, params={"lands[]": q})
+            r.raise_for_status()
+            d = r.json()
+        except (httpx.HTTPError, ValueError) as e:
+            raise CadastreError(f"twland 查詢失敗：{e}") from e
+        hit = None
+        for f in d.get("features") or []:
+            pr = f.get("properties") or {}
+            if district and pr.get("鄉鎮") and pr["鄉鎮"] not in district:
+                continue
+            hit = {"geometry": f["geometry"], "properties": {"section": pr.get("地段"), "lot": lot, "district": pr.get("鄉鎮"), "id": pr.get("id")}}
+            break
+        self.cache[key] = hit
+        try:
+            self.cache_path.parent.mkdir(parents=True, exist_ok=True)
+            self.cache_path.write_text(json.dumps(self.cache, ensure_ascii=False), encoding="utf-8")
+        except OSError:
+            pass
+        return hit
+
+
 # ------------------------------------------------------------------ 合成幾何（只有質心時）
 
 
@@ -248,9 +297,9 @@ def synthesize_parcel_geometry(centroid: Any, area_m2: float | None, width_m: fl
 def resolve_parcel_geometry(parcel: dict, *, file_provider: FileCadastreProvider | None = None,
                             nlsc: NLSCCadastreProvider | None = None, manual_point: Any = None,
                             section_codes: SectionCodes | None = None, district: str | None = None,
-                            overwrite: bool = False) -> dict[str, Any]:
+                            overwrite: bool = False, twland: TwlandCadastreProvider | None = None) -> dict[str, Any]:
     """
-    依序嘗試：地籍圖檔 → NLSC API → 質心合成。成功時寫 parcel.geometry / geometry_source / geometry_note。
+    依序嘗試：地籍圖檔 → twland 開放查詢 → NLSC API → 質心合成。成功時寫 parcel.geometry / geometry_source / geometry_note。
     回傳 {"ok": bool, "source": str|None, "note": str}。
     """
     if parcel.get("geometry") is not None and not overwrite and parcel.get("geometry_source") not in (None, "synthetic"):
@@ -265,6 +314,18 @@ def resolve_parcel_geometry(parcel: dict, *, file_provider: FileCadastreProvider
             parcel["geometry_note"] = f"{file_provider.source}：{sec}{lot}"
             return {"ok": True, "source": file_provider.name, "note": parcel["geometry_note"]}
         notes.append(f"地籍圖檔沒有 {sec}{lot}")
+    if twland is not None and sec and lot:
+        try:
+            m = re.match(r"^(.*?[市縣])(.*?[區鄉鎮市])$", district or "")
+            hit = twland.lookup(m.group(1) if m else "新北市", sec, lot, district=m.group(2) if m else None)
+            if hit:
+                parcel["geometry"] = hit["geometry"]
+                parcel["geometry_source"] = twland.name
+                parcel["geometry_note"] = f"{twland.source}：{sec}{lot}（非即時地籍圖，界線推定，需以地政局地籍圖確認）"
+                return {"ok": True, "source": twland.name, "note": parcel["geometry_note"]}
+            notes.append(f"開放地籍查詢沒有 {sec}{lot}")
+        except CadastreError as e:
+            notes.append(str(e))
     if nlsc is not None and sec and lot:
         try:
             code = None

@@ -23,7 +23,7 @@ HIGHWAY_TO_ROAD_TYPE = {
     "residential": "巷道", "unclassified": "巷道",
     "service": "既成巷道", "living_street": "既成巷道", "pedestrian": "既成巷道",
 }
-REAL_SOURCES = ("cadastre_file", "nlsc_api")
+REAL_SOURCES = ("cadastre_file", "nlsc_api", "twland")
 FIELD_LABELS = {"area_m2": "面積", "width_m": "寬度", "depth_m": "深度", "shape": "形狀", "frontage": "臨街情形", "road_type": "道路種類",
                 "front_road": "面前道路", "street_parking": "停車方便性", "zoning": "使用分區", "bcr_pct": "建蔽率", "far_pct": "容積率", "building_restricted": "禁限建", "terrain": "地勢"}
 
@@ -232,7 +232,7 @@ def _major_zone(polygon: Any, zoning) -> str | None:
     return hit["zone"] if hit else None
 
 
-SOURCE_LABELS = {"cadastre_file": "地籍圖", "section_map": "地價區段圖", "nlsc_api": "國土測繪中心地籍查詢", "synthetic": "依清冊面積合成", "estimate_osm_block": "路網推估街廓（草稿）", "address_estimate": "依門牌路段推定位置（示意）"}
+SOURCE_LABELS = {"cadastre_file": "地籍圖", "twland": "開放地籍查詢（推定）", "section_map": "地價區段圖", "nlsc_api": "國土測繪中心地籍查詢", "synthetic": "依清冊面積合成", "estimate_osm_block": "路網推估街廓（草稿）", "address_estimate": "依門牌路段推定位置（示意）"}
 
 
 def generate_from_lot(data: dict, *, parcel_id: str, manual_point: list[float] | None, overwrite: bool,
@@ -289,9 +289,24 @@ def generate_from_lot(data: dict, *, parcel_id: str, manual_point: list[float] |
     sec = data.setdefault("sections", {}).setdefault(sid, {"section_id": sid, "range_desc": "", "survey": {}})
     src = sec.get("geometry_source")
     if sec.get("geometry") is None or (ow and src in (None, "estimate_osm_block")):
-        c = centroid(subject["geometry"])
-        res = block_from_roads([(c.x, c.y)], roads) if roads is not None and getattr(roads, "items", None) else None
-        if res:
+        res = None
+        if (sec.get("range_desc") or "").strip():                       # 有四至文字：先依路名圍面（題目給的區段範圍）
+            r_ = section_from_range_text(sec, roads, zoning)
+            if r_["ok"]:
+                from shapely.geometry import shape as _shape
+                if _shape(sec["geometry"]).buffer(0.0005).contains(centroid(subject["geometry"])):
+                    steps.append({"step": "區段範圍", "ok": True, "note": r_["note"]})
+                    res = "done"
+                else:
+                    for k in ("geometry", "geometry_source", "geometry_note", "status"):
+                        sec.pop(k, None)
+                    steps.append({"step": "區段範圍（四至）", "ok": False, "note": "依四至圍出的面不含比準地，改用路網推估街廓；請確認四至或地籍"})
+        if res == "done":
+            pass
+        else:
+            c = centroid(subject["geometry"])
+            res = block_from_roads([(c.x, c.y)], roads) if roads is not None and getattr(roads, "items", None) else None
+        if res and res != "done":
             z = _major_zone(res["geometry"], zoning)
             rng = describe_range(res["geometry"], roads, zoning=z, section_id=sid)
             sec["geometry"], sec["geometry_source"], sec["status"] = res["geometry"], "estimate_osm_block", "draft"
@@ -299,24 +314,50 @@ def generate_from_lot(data: dict, *, parcel_id: str, manual_point: list[float] |
             if ow or _blank(sec.get("range_desc")):
                 sec["range_desc"] = rng["range_desc"]
             steps.append({"step": "區段範圍", "ok": True, "note": f"路網推估街廓 {res['area_m2']:,.0f} m²，邊界道路 {'、'.join(res['bounding_roads'])}；四至草稿已填（草稿）"})
-        else:
+        elif res != "done":
             steps.append({"step": "區段範圍", "ok": False, "note": "路網圍不出包含比準地的街廓；請匯入地價區段圖或在圖上推估區段範圍"})
     else:
         steps.append({"step": "區段範圍", "ok": True, "note": f"沿用既有範圍（{SOURCE_LABELS.get(src or '', src) or '勘查表／區段圖'}）"})
+    # 2b. 比較標的宗地屬性（已有界線者）與比準地建蔽率／容積率退回區段勘查表值
+    comp_notes = []
+    for c_ in data.get("comparables") or []:
+        if c_.get("geometry") is not None and c_.get("geometry_source") in REAL_SOURCES:
+            dc = derive_parcel_attributes(c_, roads=roads, zoning=zoning, overwrite=False, district=data["case"].get("district") or "", store=store)
+            if dc["filled"]:
+                comp_notes.append(f"{c_.get('parcel_id')}：推定 {'、'.join(field_label(f) for f in dc['filled'])}")
+    if comp_notes:
+        steps.append({"step": "比較標的宗地屬性", "ok": True, "note": "；".join(comp_notes)})
+    lc_ = ((sec.get("survey") or {}).get("land_control") or {})
+    for pf, sf in (("bcr_pct", "bcr"), ("far_pct", "far")):
+        if _blank(subject.get(pf)) and lc_.get(sf) is not None:
+            subject[pf] = lc_[sf]
+            subject.setdefault("derived", {})[pf] = {"source": "區段勘查表", "note": f"比準地無分區細目可查（{subject.get('zoning') or '—'}），依所在區段勘查表填載值 {lc_[sf]}% 推定"}
 
-    # 4. 勘查表
-    if sec.get("geometry") is not None:
+    # 3b. 其他區段（比較標的所在區段）：有四至文字、沒有多邊形 → 由路名圍面（草稿）
+    other_notes = []
+    for osid, osec in (data.get("sections") or {}).items():
+        if osid == sid or osec.get("geometry") is not None or not (osec.get("range_desc") or "").strip():
+            continue
+        r_ = section_from_range_text(osec, roads, zoning)
+        other_notes.append(f"{osid}：{'已圍出' if r_['ok'] else '圍不出'}（{r_['note'][:60]}）")
+    if other_notes:
+        steps.append({"step": "其他區段範圍", "ok": True, "note": "；".join(other_notes)})
+
+    # 4. 勘查表（有範圍的每個區段都推算；比準地區段帶比準地）
+    from .admin import fill_section_admin
+    for osid, osec in (data.get("sections") or {}).items():
+        if osec.get("geometry") is None:
+            if osid == sid:
+                steps.append({"step": "勘查表", "ok": False, "note": "沒有區段範圍，略過"})
+            continue
         try:
-            sd = draft_section_survey(sec, regional, store=store, zoning=zoning, roads=roads, osrm=osrm, walk_graph=walk_graph, overwrite=ow, subject=subject)
-            from .admin import fill_section_admin
-            adm = fill_section_admin(sec, district=data["case"].get("district") or "", overwrite=ow)
+            sd = draft_section_survey(osec, regional, store=store, zoning=zoning, roads=roads, osrm=osrm, walk_graph=walk_graph, overwrite=ow, subject=subject if osid == sid else None)
+            adm = fill_section_admin(osec, district=data["case"].get("district") or "", overwrite=ow)
             sd["filled"] = list(sd["filled"]) + adm
-            n_manual = len(sec.get("survey_provenance", {}).get("manual") or sd.get("manual") or {})
-            steps.append({"step": "勘查表", "ok": True, "note": f"推算 {len(sd['filled'])} 個欄位、建議值 {len(sd['suggestions'])} 項、需人工填載 {n_manual} 項" + ("；" + "；".join(sd["warnings"]) if sd.get("warnings") else "")})
+            n_manual = len(osec.get("survey_provenance", {}).get("manual") or sd.get("manual") or {})
+            steps.append({"step": f"勘查表 {osid}" if osid != sid else "勘查表", "ok": True, "note": f"推算 {len(sd['filled'])} 個欄位、建議值 {len(sd['suggestions'])} 項、需人工填載 {n_manual} 項" + ("；" + "；".join(sd["warnings"]) if sd.get("warnings") else "")})
         except Exception as e:  # noqa: BLE001 - 推算失敗不擋其他步驟
-            steps.append({"step": "勘查表", "ok": False, "note": f"推算失敗：{e}"})
-    else:
-        steps.append({"step": "勘查表", "ok": False, "note": "沒有區段範圍，略過"})
+            steps.append({"step": f"勘查表 {osid}", "ok": False, "note": f"推算失敗：{e}"})
 
     # 5. 設施距離
     try:
@@ -329,7 +370,7 @@ def generate_from_lot(data: dict, *, parcel_id: str, manual_point: list[float] |
 
 # ---------------------------------------------------------------- 無地號入口：區段範圍文字 → 區段多邊形 → 自動選比準地
 
-ROAD_RE = re.compile(r"([一-鿿A-Za-z0-9]{1,8}?(?:大道|路|街|巷|弄))")
+ROAD_RE = re.compile(r"([一-鿿A-Za-z0-9]{1,12}(?:大道|路|街|巷|弄))")            # 貪婪：「潭興街107巷21弄」整個抓，不是只抓「潭興街」
 SIDE_RE = re.compile(r"[北南東西]側至([一-鿿A-Za-z0-9]{1,12}?(?:大道|路|街|巷|弄))")
 SPLIT_RE = re.compile(r"[，,、；;。\s（）()]|及|與|和|由|所圍|以[北南東西]|[北南東西]側至|之")
 
@@ -344,7 +385,8 @@ def road_names_from_text(text: str) -> list[str]:
                 names.append(m.group(1))
     out: list[str] = []
     for n in names:
-        if n not in out:
+        n = re.sub(r"^(?:沿|自|從|經)", "", n)                       # 「沿潭興街以西」→ 潭興街
+        if n and n not in out:
             out.append(n)
     return out
 
