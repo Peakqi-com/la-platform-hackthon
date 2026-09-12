@@ -16,6 +16,7 @@ interface Ctx {
   generate: () => Promise<CaseRecord | null>;
   reset: () => Promise<CaseRecord | null>;
   clear: () => Promise<CaseRecord | null>;
+  resetAll: () => Promise<number>;   // 重置所有案件：後端清空後，前端回到「沒有案件」狀態
   refreshList: () => Promise<Any[]>;
   ruleName: (id?: string) => string;
   label: (kind: "facility_types" | "measure_labels" | "origin_labels" | "geometry_sources" | "checklist" | "tables", key?: string | null) => string;
@@ -75,6 +76,12 @@ export function CaseProvider({ children }: { children: React.ReactNode }) {
     try { r = await api.generate(rec.id); } catch { /* 清空後先產生一次；失敗就維持未產生 */ }
     setRec(r); await refreshList(); return r;
   }, [rec, refreshList]);
+  const resetAll = useCallback(async () => {
+    const r = await api.resetAllCases();
+    setRec(null); setCases([]); setStatus(EMPTY); setError(null);
+    const u = new URL(window.location.href); u.searchParams.delete("case"); window.history.replaceState({}, "", u.toString());
+    return r.cases;
+  }, []);
   const stale = !!rec && (!rec.outputs || rec.outputs.input_hash !== rec.input_hash);
   const mode: "review" | "generate" = rec && (rec.submitted_table4 || rec.submitted_table5) ? "review" : "generate";
 
@@ -104,6 +111,6 @@ export function CaseProvider({ children }: { children: React.ReactNode }) {
 
   const ruleName = (id?: string) => (id && meta?.rulesets?.[id]?.source) || id || "—";
   const label: Ctx["label"] = (kind, key) => (key ? (meta?.[kind]?.[key] ?? key) : "—");
-  return <C.Provider value={{ rec, loading, error, cases, meta, status, loadCase, loadDemo, save, patch, duplicate, refreshList, ruleName, label, stale, generating, generate, reset, clear, mode }}>{children}</C.Provider>;
+  return <C.Provider value={{ rec, loading, error, cases, meta, status, loadCase, loadDemo, save, patch, duplicate, refreshList, ruleName, label, stale, generating, generate, reset, clear, resetAll, mode }}>{children}</C.Provider>;
 }
 export const useCase = () => { const c = useContext(C); if (!c) throw new Error("CaseProvider missing"); return c; };

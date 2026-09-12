@@ -400,3 +400,20 @@ def test_range_text_entry_and_representative_parcel():
     fp = FileCadastreProvider([lot(0, 10, 20), lot(10, 10, 20), lot(20, 30, 20), lot(50, 10, 20), lot(200, 10, 20)])   # 最後一筆在區段外
     pick = pick_representative_parcel(mapping(sec), fp)
     assert pick and pick["parcel_id"] in ("測段0地號", "測段10地號", "測段50地號") and "§18" in pick["note"]        # 中位數 200 m² 的三筆之一
+
+
+def test_delete_all_cases(tmp_path):
+    """重置所有案件：清單清空、檔案與操作紀錄移除，之後仍能重新建 demo。"""
+    a = client.get("/api/cases/demo", params={"save": "true"}).json()
+    b = client.get("/api/cases/demo", params={"variant": "tampered", "save": "true"}).json()
+    client.post(f"/api/cases/{b['id']}/archive")
+    from app import audit as AUD
+    AUD.log(a["id"], None, "save", "測試")
+    assert (C.CASES_DIR / f"{a['id']}.json").exists()
+    assert (C.CASES_DIR.parent / "audit" / f"{a['id']}.jsonl").exists()
+    r = client.delete("/api/cases").json()
+    assert r["ok"] and r["cases"] == 2 and r["files"] == 2
+    assert client.get("/api/cases").json()["cases"] == []
+    assert not list(C.CASES_DIR.glob("*.json")) and not list((C.CASES_DIR.parent / "audit").glob("*.jsonl"))
+    assert client.get(f"/api/cases/{a['id']}").status_code == 404
+    assert client.get("/api/cases/demo", params={"save": "true"}).status_code == 200

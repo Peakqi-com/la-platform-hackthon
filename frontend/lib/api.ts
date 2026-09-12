@@ -67,6 +67,7 @@ export const api = {
   fromLot: (id: string, p: { parcel_id: string; manual_point?: [number, number]; overwrite?: boolean; parcel_changed?: boolean }) =>
     post<{ rec: CaseRecord; steps: { step: string; ok: boolean; note: string; filled?: string[] }[]; parcel_changed: boolean }>(`/api/cases/${encodeURIComponent(id)}/from_lot`, p),
   deleteCase: (id: string) => j(`/api/cases/${encodeURIComponent(id)}`, { method: "DELETE" }),
+  resetAllCases: () => j<{ ok: boolean; cases: number; files: number; aux_files: number }>("/api/cases", { method: "DELETE" }),
   archiveCase: (id: string, undo = false) => post<CaseRecord>(`/api/cases/${encodeURIComponent(id)}/archive${undo ? "?undo=true" : ""}`, {}),
   run: (data: CaseData) => post("/api/run", data),
   verify: (data: CaseData, t5: Any, t4: Any) => post<{ findings: Finding[]; computed: Any }>("/api/verify", { ...data, submitted_table5: t5, submitted_table4: t4 }),

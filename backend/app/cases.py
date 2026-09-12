@@ -212,6 +212,32 @@ def delete_case(cid: str) -> bool:
     return True
 
 
+def delete_all_cases() -> dict:
+    """重置所有案件：清記憶體與 data/cases/*.json（含封存案件），連同各案的操作紀錄與匯入的地籍圖／區段圖檔。回傳移除數量。"""
+    _load_all()
+    ids = list(_mem.keys())
+    _mem.clear()
+    n_files = 0
+    if CASES_DIR.exists():
+        for p in CASES_DIR.glob("*.json"):
+            try:
+                p.unlink()
+                n_files += 1
+            except OSError:
+                pass
+    n_aux = 0
+    for d in (CASES_DIR.parent / "audit", CASES_DIR.parent / "cadastre" / "cases"):
+        if not d.exists():
+            continue
+        for p in list(d.glob("*.jsonl")) + list(d.glob("*.geojson")):
+            try:
+                p.unlink()
+                n_aux += 1
+            except OSError:
+                pass
+    return {"cases": len(ids), "files": n_files, "aux_files": n_aux}
+
+
 # ------------------------------------------------------------------ demo 變體
 
 

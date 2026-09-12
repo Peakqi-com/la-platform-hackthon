@@ -1,8 +1,9 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Suspense } from "react";
-import { findingKey } from "@/lib/api";
+import { Suspense, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Any, findingKey } from "@/lib/api";
 import { useCase } from "./CaseContext";
 import { Help } from "./ui";
 import ActorBox from "./Actor";
@@ -43,9 +44,10 @@ function NavInner() {
   const q = rec ? `?case=${encodeURIComponent(rec.id)}` : "";
   const done = useStepStatus();
   const sub = (it: { href: string; sub?: string }) => (mode === "review" && it.href === "/input" ? "基準表・核對送審書表填載值" : mode === "review" && it.href === "/sheets" ? "重算的六頁書表・地圖" : it.sub);
+  const items = rec ? NAV : NAV.filter((it) => it.href === "/");   // 還沒選案件：①～④ 都是針對某個案件的步驟，只留案件總覽
   return (
     <nav className="flex-1 px-2 py-3 text-sm">
-      {NAV.map((it) => {
+      {items.map((it) => {
         const active = it.match.includes(path);
         return (
           <Link key={it.href} href={it.href + (it.href === "/" ? "" : q)} className={`block px-3 py-2 rounded-lg mb-1 ${active ? "bg-[#ea580c] text-white" : "hover:bg-orange-100"}`}>
@@ -54,7 +56,39 @@ function NavInner() {
           </Link>
         );
       })}
+      {!rec && <div className="px-3 py-2 text-[11px] opacity-60">開啟或建立案件後，這裡會出現 ①～④ 的步驟。</div>}
     </nav>
+  );
+}
+
+/* 左下角：重置所有案件。兩段式確認（按一次展開，再按「確定清除」才送出），清後端全部案件、操作紀錄與匯入圖檔，不可復原。 */
+function ResetAllBox() {
+  const { cases, resetAll } = useCase();
+  const router = useRouter();
+  const [arm, setArm] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const run = async () => {
+    setBusy(true); setMsg(null);
+    try { const n = await resetAll(); setArm(false); setMsg(`已清除 ${n} 件案件`); router.push("/"); }
+    catch (e: Any) { setMsg(`清除失敗：${String(e?.message || e)}`); }
+    finally { setBusy(false); }
+  };
+  return (
+    <div className="px-3 py-2 border-t border-orange-200 text-xs">
+      {!arm ? (
+        <button type="button" className="text-red-700 underline hover:text-red-900" title="清除全部案件資料、操作紀錄與匯入的地籍圖檔，不可復原" onClick={() => { setArm(true); setMsg(null); }}>重置所有案件</button>
+      ) : (
+        <div className="rounded border border-red-300 bg-red-50 p-2 text-red-900">
+          <div className="mb-1">將清除全部 {cases.length} 件案件（含封存）、操作紀錄與匯入圖檔，<b>不可復原</b>。</div>
+          <div className="flex gap-2">
+            <button type="button" disabled={busy} className="px-2 py-0.5 rounded bg-red-600 text-white disabled:opacity-50" onClick={run}>{busy ? "清除中…" : "確定清除"}</button>
+            <button type="button" disabled={busy} className="px-2 py-0.5 rounded border border-slate-300 bg-white text-slate-700" onClick={() => setArm(false)}>取消</button>
+          </div>
+        </div>
+      )}
+      {msg && <div className="mt-1 opacity-80">{msg}</div>}
+    </div>
   );
 }
 
@@ -68,6 +102,7 @@ export default function Sidebar() {
       <Suspense fallback={<nav className="flex-1" />}><NavInner /></Suspense>
       <ActorBox />
       <div className="px-4 py-2 border-t border-orange-200"><Help label="核算依據">依《土地徵收補償市價查估辦法》與作業手冊核算；每個等級與修正率都能對回評價基準明細表格位。</Help></div>
+      <ResetAllBox />
     </aside>
   );
 }

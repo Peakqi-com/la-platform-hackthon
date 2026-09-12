@@ -1248,6 +1248,13 @@ def cases_get(cid: str, touch: bool = True):
     return rec
 
 
+@app.delete("/api/cases")
+def cases_delete_all():
+    """重置所有案件：清掉全部案件資料、操作紀錄與匯入的地籍圖檔（不可復原）。demo 前回到乾淨狀態用。"""
+    from app import cases as C
+    return {"ok": True, **C.delete_all_cases()}
+
+
 @app.delete("/api/cases/{cid}")
 def cases_delete(cid: str, request: Request):
     from app import cases as C
