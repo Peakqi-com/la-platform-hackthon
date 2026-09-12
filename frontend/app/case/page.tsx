@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useCase } from "@/components/CaseContext";
 import PageHeader from "@/components/PageHeader";
-import { vdateHint } from "@/components/vdate";
+import { VDateSelect } from "@/components/vdate";
 import { Btn, Card, Empty, Help } from "@/components/ui";
 import { actorHeaders, api, Any, zhError } from "@/lib/api";
 import FillReport from "@/components/FillReport";
@@ -150,9 +150,10 @@ export default function CasePage({ embedded = false }: { embedded?: boolean } = 
         <div>
           <Card title="案件" right={<Btn kind={caseMode === "review" ? "primary" : "ghost"} onClick={doSave} disabled={busy} busy={busy}>儲存並重新產生書表</Btn>}>
             <div className="text-sm space-y-2">
-              {[["case.case_no", "案號"], ["case.valuation_date", "估價基準日（年期，民國 7 碼）"], ["case.district", "鄉鎮市區"], ["case.appraiser", "不動產估價師（書表與圖說簽章欄）"], ["case.fill_date", "填寫日期（如 114 年 09 月 18 日）"]].map(([k, l]) => (
-                <label key={k} className="block"><span className="text-xs text-slate-500">{l}</span><input className="ctl w-full" value={k.split(".").reduce((a: Any, x) => a?.[x], draft) ?? ""} onChange={(e) => upd(k, e.target.value)} />
-                  {k === "case.valuation_date" && vdateHint(draft.case.valuation_date)}</label>))}
+              {[["case.case_no", "案號"], ["case.valuation_date", "估價基準日（年期）"], ["case.district", "鄉鎮市區"], ["case.appraiser", "不動產估價師（書表與圖說簽章欄）"], ["case.fill_date", "填寫日期（如 114 年 09 月 18 日）"]].map(([k, l]) => (
+                <label key={k} className="block"><span className="text-xs text-slate-500">{l}</span>
+                  {k === "case.valuation_date" ? <VDateSelect value={draft.case.valuation_date || ""} onChange={(v) => upd(k, v)} />
+                    : <input className="ctl w-full" value={k.split(".").reduce((a: Any, x) => a?.[x], draft) ?? ""} onChange={(e) => upd(k, e.target.value)} />}</label>))}
               {caseMode === "generate" && <div className="border border-orange-200 bg-orange-50/60 rounded p-2 space-y-1">
                 <label className="block"><span className="text-xs text-slate-700 font-medium">比準地地號</span><input className="ctl w-full" placeholder="例：金美段489地號" value={draft.subject_parcel.parcel_id ?? ""} onChange={(e) => upd("subject_parcel.parcel_id", e.target.value)} /></label>
                 <div className="flex flex-wrap items-center gap-2">

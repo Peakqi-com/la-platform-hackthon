@@ -6,7 +6,7 @@ import { useCase } from "@/components/CaseContext";
 import PageHeader from "@/components/PageHeader";
 import { IOBadge } from "@/components/IO";
 import { Btn, Card, Help, Modal } from "@/components/ui";
-import { vdateHint } from "@/components/vdate";
+import { latestVdate, VDateSelect } from "@/components/vdate";
 import { InputBadges, InputDetail } from "@/components/Inputs";
 import { api, Any, fmtMoney, INPUT_KIND_LABEL, InputResult, LOW_CONF, STATUS_LABEL } from "@/lib/api";
 
@@ -23,7 +23,7 @@ type NewMethod = "upload" | "lot" | "example";
 export default function Dashboard() {
   const router = useRouter();
   const { rec, loadDemo, loading, error, cases, loadCase, refreshList } = useCase();
-  const [nc, setNc] = useState({ case_no: "", valuation_date: "", district: "新北市金山區", land_use: "商業用地", section_id: "", range_desc: "", subject_parcel_id: "" });
+  const [nc, setNc] = useState({ case_no: "", valuation_date: latestVdate(), district: "新北市金山區", land_use: "商業用地", section_id: "", range_desc: "", subject_parcel_id: "" });
   const [autoFill, setAutoFill] = useState(true);      // 建立後立即依地號產生（含實價登錄比較標的）
   const [lots, setLots] = useState<{ section: string; lot: string; parcel_id: string; district?: string | null }[]>([]);   // 預載地籍圖的地號清單（比準地下拉，依鄉鎮市區篩）
   const [manualLot, setManualLot] = useState(false);       // 地籍圖沒有的地號：改手動輸入
@@ -49,7 +49,7 @@ export default function Dashboard() {
   const [batchMsg, setBatchMsg] = useState<string | null>(null);
   const [umode, setUmode] = useState<"one" | "each" | "existing">("one");
   const [targetCase, setTargetCase] = useState("");
-  const [nf, setNf] = useState({ case_no: "", valuation_date: "", district: "新北市金山區" });   // 沒有書表 PDF 時建案要的基本資料
+  const [nf, setNf] = useState({ case_no: "", valuation_date: latestVdate(), district: "新北市金山區" });   // 沒有書表 PDF 時建案要的基本資料
   function previewOf(u: Upload, r: Any): Upload["preview"] {
     const d = r.data || {};
     const base = { filename: u.filename, kind: r.kind, kind_label: INPUT_KIND_LABEL[r.kind] || r.kind, missing: r.missing_fields || [], warnings: r.warnings || [], confidence: r.confidence || {}, data: d, pages: d.pages || [], summary: "" };
@@ -295,7 +295,7 @@ export default function Dashboard() {
                       <div className="grid grid-cols-3 gap-2 text-xs">
                         <div className="col-span-3 text-amber-800">沒有送審書表 PDF，請填案件基本資料：</div>
                         <label className="block"><span className="text-slate-500">案號 *</span><input className="border rounded px-2 py-1 w-full" value={nf.case_no} onChange={(e) => setNf({ ...nf, case_no: e.target.value })} /></label>
-                        <label className="block"><span className="text-slate-500">估價基準日（民國 7 碼）*</span><input className="border rounded px-2 py-1 w-full" value={nf.valuation_date} onChange={(e) => setNf({ ...nf, valuation_date: e.target.value })} />{vdateHint(nf.valuation_date)}</label>
+                        <label className="block"><span className="text-slate-500">估價基準日 *</span><VDateSelect value={nf.valuation_date} onChange={(v) => setNf({ ...nf, valuation_date: v })} /></label>
                         <label className="block"><span className="text-slate-500">鄉鎮市區</span><select className="border rounded px-2 py-1 w-full" value={nf.district} onChange={(e) => setNf({ ...nf, district: e.target.value })}>{NTPC_DISTRICTS.map((d) => <option key={d} value={`新北市${d}`}>新北市{d}</option>)}</select></label>
                       </div>)}
                     <div className="flex flex-wrap items-center gap-2">
@@ -316,8 +316,8 @@ export default function Dashboard() {
             <div>
               <div className="text-xs text-slate-600 mb-3">系統找地籍界線、推定宗地屬性與區段範圍、推算勘查表、量測設施距離、從實價登錄選比較標的，再產生書表與填寫結果清單。</div>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-x-3 gap-y-2 text-sm">
-                {([["case_no", "案號 *"], ["valuation_date", "估價基準日（民國 7 碼）*"]] as [keyof typeof nc, string][]).map(([k, l]) => (
-                  <label key={k} className="block"><span className="text-xs text-slate-500">{l}</span><input className="border rounded px-2 py-1 w-full" value={nc[k]} onChange={(e) => setNc({ ...nc, [k]: e.target.value })} />{k === "valuation_date" && vdateHint(nc.valuation_date)}</label>))}
+                <label className="block"><span className="text-xs text-slate-500">案號 *</span><input className="border rounded px-2 py-1 w-full" value={nc.case_no} onChange={(e) => setNc({ ...nc, case_no: e.target.value })} /></label>
+                <label className="block"><span className="text-xs text-slate-500" title="查估辦法 §17 第 2 項：3 月 1 日或 9 月 1 日">估價基準日 *</span><VDateSelect value={nc.valuation_date} onChange={(v) => setNc({ ...nc, valuation_date: v })} /></label>
                 <label className="block"><span className="text-xs text-slate-500">鄉鎮市區 *</span><select className="border rounded px-2 py-1 w-full" value={nc.district} onChange={(e) => setNc({ ...nc, district: e.target.value })}>{NTPC_DISTRICTS.map((d) => <option key={d} value={`新北市${d}`}>新北市{d}</option>)}</select></label>
                 <label className="block"><span className="text-xs text-slate-500" title="沒有地號時改填下方「區段範圍」，系統會圍出區段並依查估辦法 §18 自動選比準地">比準地地號 *</span>
                   {(() => {
