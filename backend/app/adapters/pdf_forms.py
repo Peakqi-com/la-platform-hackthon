@@ -188,7 +188,8 @@ def parse_table1(page, result: AdapterResult) -> tuple[dict | None, dict[str, An
                 if "區段編號" in c and i + 1 < len(row):
                     section["section_id"] = next((x for x in row[i + 1:] if x), None)
                 if "區段範圍" in c:
-                    section["range_desc"] = next((x for x in row[i + 1:] if x and "區段" in x and len(x) > 8), None)
+                    cand = next((x for x in row[i + 1:] if x and len(x.strip()) > 4 and not x.strip().startswith(("(公共", "（公共"))), None)
+                    section["range_desc"] = _full_line(text, cand) if cand else None
             continue
         n = len(row)
         half = 9 if n >= 14 else n
@@ -229,6 +230,24 @@ def parse_table1(page, result: AdapterResult) -> tuple[dict | None, dict[str, An
     for p in seen_paths:
         result.confidence[f"sections.{section['section_id']}.survey.{p}"] = 1.0
     return section, header
+
+
+def _full_line(page_text: str, cell: str | None) -> str | None:
+    """find_tables 的儲存格文字會在欄寬處截斷；用頁面全文把同一句補完整（下一行若是接續的括號也接上）。"""
+    if not cell:
+        return None
+    head = cell.strip().replace("\n", "")[:10]
+    lines = [ln.strip() for ln in page_text.splitlines()]
+    for i, ln in enumerate(lines):
+        if ln.startswith(head):
+            out = ln
+            j = i + 1
+            while (out.count("(") + out.count("（")) > (out.count(")") + out.count("）")) and j < len(lines):
+                out += lines[j]
+                j += 1
+            out = out.replace("\n", "")
+            return out if len(out) >= len(cell.strip().replace("\n", "")) else cell.strip().replace("\n", "")
+    return cell.strip().replace("\n", "")
 
 
 def _t1_dispatch(label_raw: str, values: list[str], lv: tuple[str, str], put, get, result: AdapterResult) -> None:
@@ -504,7 +523,7 @@ def parse_table4(page, individual: RuleSet, result: AdapterResult) -> dict[str, 
                 if comp(k) is None:
                     continue
                 if r[a]:
-                    comp(k)["transaction_date"] = r[a]
+                    comp(k)["transaction_date"] = _norm_date(r[a])
                 if r[p]:
                     sub(k)["date_adjustment_pct"] = to_number(r[p])
             continue
@@ -580,12 +599,18 @@ def parse_table4(page, individual: RuleSet, result: AdapterResult) -> dict[str, 
 # ------------------------------------------------------------------ 表4 條件 → Parcel
 
 
+def _norm_date(v: str) -> str:
+    """「110年9月14日」「110/9/14」→「110.09.14」；已是點分格式就原樣。"""
+    m = re.match(r"^\s*(\d{2,3})\s*[年./-]\s*(\d{1,2})\s*[月./-]\s*(\d{1,2})\s*日?\s*$", v or "")
+    return f"{int(m.group(1))}.{int(m.group(2)):02d}.{int(m.group(3)):02d}" if m else (v or "").strip()
+
+
 def _parcel_from_t4(entry: dict, individual: RuleSet, result: AdapterResult, path: str, source: str) -> dict:
     items = entry.get("items", {})
     p: dict[str, Any] = {}
     addr = entry.get("address")
     p["address"] = addr
-    m = re.search(r"([^\s市區鄉鎮縣]{1,8}段\d+(?:-\d+)?地號)", addr or "")
+    m = re.search(r"([^\s市區鄉鎮縣]{1,8}段[\d、,，\-]+地號)", addr or "")
     p["parcel_id"] = m.group(1) if m else addr
     if p["parcel_id"] is None:
         result.missing(f"{path}.parcel_id")
@@ -593,6 +618,12 @@ def _parcel_from_t4(entry: dict, individual: RuleSet, result: AdapterResult, pat
     for rule in sorted([r for r in individual.rules if r.item_no], key=lambda r: r.item_no):
         f = rule.parcel_field
         v = items.get(rule.item_no)
+        if isinstance(v, dict) and str(v.get("name") or "").strip() in ("M", "m", "M)", "公尺"):      # 單位格「M」被當成名稱 → 空
+            v = {**v, "name": None}
+            if v.get("num") is None:
+                v = None
+        elif isinstance(v, str) and v.strip() in ("M", "m"):
+            v = None
         ctype = rule.criteria.get("type")
         if f == "front_road_width_m":
             if isinstance(v, dict):
@@ -648,7 +679,7 @@ def _parcel_from_t4(entry: dict, individual: RuleSet, result: AdapterResult, pat
 # ------------------------------------------------------------------ 主流程
 
 
-def pick_rulesets(land_use: str | None, result: AdapterResult, override: dict | None = None) -> tuple[RuleSet, RuleSet, dict]:
+def pick_rulesets(land_use: str | None, result: AdapterResult, override: dict | None = None, district: str | None = None) -> tuple[RuleSet, RuleSet, dict]:
     ids = {"regional": None, "individual": None}
     if override:
         ids.update({k: v for k, v in override.items() if v})
@@ -663,9 +694,10 @@ def pick_rulesets(land_use: str | None, result: AdapterResult, override: dict | 
                 result.warn(f"基準表 {p.name} 讀取失敗：{e}")
                 continue
             if land_use is None or d.get("land_use") == land_use:
-                cands.append(p.stem)
-        # 正式表優先於示範表／上傳表
-        cands.sort(key=lambda n: (n.startswith(("demo_", "uploaded_")), n))
+                cands.append((p.stem, d.get("district") or ""))
+        # 同鄉鎮市區的表優先，其次正式表，示範表／上傳表最後
+        cands.sort(key=lambda t: (not (district and t[1] and t[1] in district), t[0].startswith(("demo_", "uploaded_")), t[0]))
+        cands = [t[0] for t in cands]
         if not cands:
             result.warn(f"找不到用地別「{land_use}」的 {scope} 基準表，改用金山商業用地表對照細項名稱（僅供抽取，非審查依據）")
             cands = [f"jinshan_commercial_{scope}"]
@@ -688,16 +720,35 @@ def read_pdf_forms(src: str | Path | bytes, *, filename: str | None = None, use_
     doc = fitz.open(stream=src, filetype="pdf") if isinstance(src, (bytes, bytearray)) else fitz.open(str(src))
     pages = [(i + 1, page, classify_page(page.get_text("text")), len(page.get_text("text").strip())) for i, page in enumerate(doc)]
     land_use = None
+    district = None
     for _, page, kind, _n in pages:
-        if kind == "t5":
-            m = re.search(r"[（(](住宅|商業|工業|農業|其他)用地[)）]", page.get_text("text"))
+        if kind in ("t5", "t1") and land_use is None:
+            m = re.search(r"[（(](?:普通|高級)?(住宅|商業|工業|農業|其他)用地[)）]", page.get_text("text"))
             if m:
                 land_use = m.group(1) + "用地"
+        if district is None:
+            m = re.search(r"(新北市|臺北市|台北市|桃園市|臺中市|台中市|臺南市|台南市|高雄市|[一-鿿]{2,3}縣)([一-鿿]{1,3}(?:區|鄉|鎮|市))", page.get_text("text"))
+            if m:
+                district = m.group(1) + m.group(2)
     if land_use is None and all(n < min_text_chars for *_x, n in pages):
         # 掃描件：頁面分類與用地別交給 vision（先用檔名/預設）
         pass
-    regional, individual, ids = pick_rulesets(land_use, result, rulesets)
+    regional, individual, ids = pick_rulesets(land_use, result, rulesets, district=district)
     ctx: dict[str, Any] = {"case": {"land_use": land_use, "rulesets": ids}, "sections": {}, "t5": {}, "t4": None}
+    # 表5 備註「使用分區、建蔽率、容積率修正併同於比較法調查估價表宗地個別因素考量調整修正」→ 該三項在表5 免修正
+    for _, page, kind, _n in pages:
+        if kind != "t5":
+            continue
+        m = re.search(r"([^\n。]*(?:併同|免修正|不另修正)[^\n。]*)", page.get_text("text"))
+        if not m:
+            continue
+        sentence = m.group(1).strip()
+        skip = [ru.id for ru in regional.rules if any(k in sentence for k in {ru.name, ru.name.replace("（", "(").split("(")[0]} if len(k) >= 2)]
+        if skip:
+            ctx["case"]["regional_no_adjust"] = skip
+            ctx["case"].setdefault("notes", {})["table5_case"] = sentence
+            result.warn(f"表5 備註載明免修正：{'、'.join(skip)}（{sentence[:40]}…），表5 該列填「-」不計入小計")
+        break
     vision_pages: list[tuple[int, Any, str]] = []
     for pno, page, kind, nchars in pages:
         method = "none"

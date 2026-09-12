@@ -515,6 +515,15 @@ def cases_save(payload: SaveCasePayload, request: Request):
     actor = AUD.actor_from_headers(request.headers)
     if prev is None:
         AUD.log(rec["id"], actor, "create", f"{rec.get('name') or ''}（來源 {_origin_label(rec.get('origin'))}）" + (f"；{'；'.join(geom_notes)}" if geom_notes else ""))
+        t4 = payload.submitted_table4 or {}
+        comps_sub = (t4.get("comparables") or {}).values() if isinstance(t4, dict) else []
+        t4_blank = bool(payload.submitted_table4 or payload.submitted_table5) and not any((c or {}).get("individual") for c in comps_sub)
+        if t4_blank and (data.get("subject_parcel") or {}).get("parcel_id"):      # 送審書表只給比較標的與價格、個別因素空白（決賽題目）→ 依地號自動補推定值，填載值不動
+            try:
+                out = cases_from_lot(rec["id"], FromLotPayload(parcel_id=data["subject_parcel"]["parcel_id"], overwrite=False, with_comparables=False), request)
+                rec = out["rec"]
+            except Exception as e:  # noqa: BLE001 - 圖資失敗不擋建案
+                AUD.log(rec["id"], actor, "from_lot", f"自動依地號產生失敗：{e}")
     else:
         changes = AUD.diff_paths({"data": prev.get("data"), "submitted_table5": prev.get("submitted_table5"), "submitted_table4": prev.get("submitted_table4"), "name": prev.get("name")},
                                  {"data": rec.get("data"), "submitted_table5": rec.get("submitted_table5"), "submitted_table4": rec.get("submitted_table4"), "name": rec.get("name")})
