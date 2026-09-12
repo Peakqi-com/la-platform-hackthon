@@ -725,6 +725,29 @@ def cases_todo(cid: str):
     return out
 
 
+def _path_value(data: Any, path: str) -> Any:
+    """「comparables[0].front_road.width_m」這種抽取缺漏路徑 → 目前案件資料裡的值；路徑不存在回 None。"""
+    cur = data
+    for part in re.findall(r"\[\d+\]|[^.\[\]]+", path or ""):
+        if part.startswith("["):
+            i = int(part[1:-1])
+            if not isinstance(cur, list) or i >= len(cur):
+                return None
+            cur = cur[i]
+        else:
+            if not isinstance(cur, dict):
+                return None
+            cur = cur.get(part)
+        if cur is None:
+            return None
+    return cur
+
+
+def _unfilled_paths(data: dict, paths: list[str]) -> list[str]:
+    """送審書表抽取時空白的欄位中，到現在（依地號產生、匯入、人工填載之後）仍然空白的。"""
+    return [p for p in paths if _path_value(data, p) in (None, "", [], {})]
+
+
 def _cases_todo(cid: str):
     """這一案還缺什麼：每項帶數量與要去的頁面（案件列的待辦清單用）。"""
     from app import cases as C
@@ -756,9 +779,9 @@ def _cases_todo(cid: str):
     n_inferred = sum(1 for r in rep["head"] + rep["subject"] + rep["section"] if r["status"] == "推定")
     if n_inferred and not review:
         items.append({"key": "inferred", "label": "推定值待確認", "count": n_inferred, "href": f"/input?tab=case&report=1&{q}", "level": "info"})
-    missing = (rec.get("extraction") or {}).get("missing_fields") or []
+    missing = _unfilled_paths(data, (rec.get("extraction") or {}).get("missing_fields") or [])   # 系統已補的不算
     if review and missing:
-        items.append({"key": "missing", "label": "送審書表抽取缺漏欄位", "count": len(missing), "href": f"/input?tab=parcels&{q}", "level": "warn"})
+        items.append({"key": "missing", "label": "送審書表缺漏且尚未補齊", "count": len(missing), "href": f"/input?tab=parcels&{q}", "level": "warn"})
     if stale:
         items.append({"key": "stale", "label": "產出已過期，請重新產生書表", "count": None, "href": f"/sheets?{q}", "level": "warn"})
     else:

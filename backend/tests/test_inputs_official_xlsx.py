@@ -67,3 +67,75 @@ def test_removing_an_input_reruns_auto_from_lot(monkeypatch, tmp_path):
     n = len(calls)
     r2 = client.delete(f"/api/cases/{cid}/inputs/{iid}")
     assert r2.status_code == 200 and len(calls) == n + 1 and calls[-1] == cid
+
+
+def test_pdf_merge_keeps_no_adjust_items_and_notes():
+    from app.inputs import merge_pdf_forms
+    parsed = {"case": {"case_no": "X", "regional_no_adjust": ["R1-2", "R1-3"], "notes": {"table5_case": "使用分區、建蔽率修正併同表4 考量"}},
+              "sections": {}, "comparables": [], "submitted": {}, "notes": {"case": "依查估辦法第17條第3項擴大蒐集期間", "subject": "S"}}
+    data, _t5, _t4, rep = merge_pdf_forms({"case": {}, "sections": {}, "comparables": []}, None, None, parsed)
+    assert data["case"]["regional_no_adjust"] == ["R1-2", "R1-3"] and "併同" in data["case"]["notes"]["table5_case"]
+    assert "第17條第3項" in data["case"]["notes"]["case"] and data["case"]["notes"]["subject"] == "S"
+    assert "case.regional_no_adjust" in rep.filled
+
+
+def test_blank_submitted_individual_and_widen_reason_in_notes():
+    import json as _json
+
+    from app.engine.rules import load_ruleset
+    from app.engine.tables import run_case
+    from app.engine.verify import collect_findings
+    d = _json.loads((Path(__file__).resolve().parents[2] / "fixtures" / "shulin_case_1110901.json").read_text(encoding="utf-8"))
+    data = {k: d[k] for k in ("case", "sections", "subject_parcel", "comparables")}
+    data["subject_parcel"]["zoning"] = "捷運開發區"
+    data["case"]["notes"] = {}                                           # 範例資料本身帶了 §17 第3項理由；先拿掉測「沒寫理由」
+    reg, ind = load_ruleset(data["case"]["rulesets"]["regional"]), load_ruleset(data["case"]["rulesets"]["individual"])
+    res = run_case(reg, ind, data)
+    blank = {"comparables": {"1": {"individual": {}}, "2": {"individual": {}}, "3": {"individual": {}}}}
+    fs = collect_findings(reg, ind, data, res, None, blank)
+    assert not [f for f in fs if "未修正" in f["message"]]                                  # 整欄空白＝待填，不列
+    dates = [f for f in fs if f["location"].endswith("交易日期")]
+    assert dates and all(f["severity"] == "warn" for f in dates)                             # 沒寫理由 → 需確認
+    data["notes"] = {"case": "比準地所在區段無適當成交案例，依土地徵收補償市價查估辦法第17條第3項規定，擴大選取範圍及案例蒐集期間"}
+    fs2 = collect_findings(reg, ind, data, res, None, blank)
+    dates2 = [f for f in fs2 if f["location"].endswith("交易日期")]
+    assert dates2 and all(f["severity"] == "info" and "已敘明" in f["message"] for f in dates2)
+
+
+def test_table4_case_note_row_not_mistaken_for_header():
+    """題目表4 最後一列「全案」備註含「比準地所在區段…」字樣，不能被當成比準地表頭列而跳過。"""
+    from app.adapters.common import AdapterResult
+    from app.adapters.pdf_forms import parse_table4
+    from app.engine.rules import load_ruleset
+
+    note = "1.價格日期調整係參酌平均區段地價表。\n2.比準地所在區段無適當成交案例，故依土地徵收補償市價查估辦法第17條第3項規定，擴大蒐集期間。"
+    rows = [["", "", "", "比準地", "", "", "1", "", "", "", "2", "", "", "", "3", "", "", ""],
+            ["全案", note] + [""] * 16]
+
+    class _T:
+        def extract(self):
+            return rows
+
+    class _TS:
+        def __init__(self):
+            self.tables = [_T()]
+
+    class _P:
+        def find_tables(self):
+            return _TS()
+
+        def get_text(self, _k="text"):
+            return "1110901-99-XXX\n全案\n" + note
+
+    out = parse_table4(_P(), load_ruleset("shulin_residential_individual"), AdapterResult(kind="pdf_forms", data={}))
+    assert "第17條第3項" in (out["notes"].get("case") or "")
+
+
+def test_todo_missing_counts_only_still_blank_fields():
+    from app.main import _path_value, _unfilled_paths
+    data = {"subject_parcel": {"area_m2": 25.44, "other": None, "front_road": {"name": "啟智街", "width_m": 6.8}},
+            "comparables": [{"shape": "方形", "school": {"name": "國小", "distance_m": 150}}, {"shape": None, "nuisance": []}]}
+    paths = ["subject_parcel.area_m2", "subject_parcel.other", "subject_parcel.front_road.width_m", "comparables[0].shape",
+             "comparables[0].school", "comparables[1].shape", "comparables[1].nuisance", "comparables[5].shape"]
+    assert _path_value(data, "comparables[0].school")["distance_m"] == 150
+    assert _unfilled_paths(data, paths) == ["subject_parcel.other", "comparables[1].shape", "comparables[1].nuisance", "comparables[5].shape"]

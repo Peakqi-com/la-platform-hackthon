@@ -497,6 +497,10 @@ def parse_table4(page, individual: RuleSet, result: AdapterResult) -> dict[str, 
     for row in rows:
         r = row + [""] * (18 - len(row))
         label = (r[0] + "|" + r[1] + "|" + r[2])
+        if "全案" in (r[0].strip(), r[1].strip()):                      # 放最前面：全案備註常含「比準地所在區段…」，不能被當成表頭列；標籤可能在第 1 或第 2 欄
+            li = 0 if r[0].strip() == "全案" else 1
+            out["notes"]["case"] = next((x.strip() for x in r[li + 1:] if x and x.strip()), None)
+            continue
         if "宗地流水號" in label or "比準地" in r[3]:
             subj["serial_no"] = r[5] or None
             for k, (a, b, c, p) in enumerate(blocks):
@@ -587,9 +591,6 @@ def parse_table4(page, individual: RuleSet, result: AdapterResult) -> dict[str, 
             for k, (a, b, c, p) in enumerate(blocks):
                 if r[a] and comp(k) is not None:
                     comp(k)["note"] = r[a]
-            continue
-        if r[1] == "全案":
-            out["notes"]["case"] = next((x for x in r[2:] if x), None)
             continue
     for cid, sub_d in out["submitted"]["comparables"].items():
         for k in sub_d.keys():  # noqa: SIM118
