@@ -46,14 +46,17 @@ def main_zone_of(zone: str) -> str | None:
     return None
 
 
-def bcr_far_for(zone: str, district: str) -> dict[str, Any] | None:
-    """{"bcr", "far", "note", "source", "zone"}；查不到 → None。"""
+def bcr_far_for(zone: str, district: str, *, front_road_width_m: float | None = None) -> dict[str, Any] | None:
+    """{"bcr", "far", "note", "source", "zone"}；查不到 → None。
+    front_road_width_m：宗地面前道路寬度；計畫書有「面臨道路未達 N 公尺者容積率不得大於 X%」但書（plans[].provisos）時據以套用，結果標 check（需確認）。"""
     z = (zone or "").split(":")[-1].strip()
     if not z:
         return None
     plan = _plan_for(district)
     county = load_table().get("county_default", {}).get("新北市", {})
     hit = _lookup_plan(plan, z, county) if plan else None
+    if hit is not None:
+        _apply_provisos(hit, plan, front_road_width_m)
     if hit is None:
         for sp in _secondary_plans(district):
             h2 = _lookup_plan(sp, z, county)
@@ -76,6 +79,31 @@ def bcr_far_for(zone: str, district: str) -> dict[str, Any] | None:
         v = pub[pkey]
         return {"bcr": v.get("bcr"), "far": v.get("far"), "note": v.get("note", ""), "source": load_table()["sources"].get("施行細則附表三", "施行細則附表三"), "zone": pkey}
     return None
+
+
+def _apply_provisos(hit: dict[str, Any], plan: tuple[str, dict], width_m: float | None) -> None:
+    """計畫書但書：面前道路寬度未達 N 公尺 → 容積率上限改為但書值。寬度未知只附註提醒；符合者改值並標 check。"""
+    for pv in plan[1].get("provisos", []) or []:
+        if hit.get("zone") not in (pv.get("zones") or []):
+            continue
+        lt = (pv.get("when") or {}).get("front_road_width_lt_m")
+        if lt is None or pv.get("far") is None:
+            continue
+        if width_m is None:
+            hit["note"] = (hit["note"] + "；" if hit["note"] else "") + f"另有但書：面前道路寬度未達 {lt:g} 公尺者容積率上限 {pv['far']}%，請依實際路寬確認"
+            hit["proviso_possible"] = True
+        elif float(width_m) < float(lt):
+            hit["far_base"] = hit.get("far")
+            hit["far"] = pv["far"]
+            hit["check"] = True
+            hit["proviso"] = pv.get("note", "")
+            hit["note"] = (hit["note"] + "；" if hit["note"] else "") + f"面前道路寬 {float(width_m):g} 公尺未達 {lt:g} 公尺，依但書容積率上限 {pv['far']}%（原分區上限 {hit['far_base']}%）；{pv.get('note', '')}"
+
+
+def plan_provisos(district: str) -> list[dict[str, Any]]:
+    """該行政區主計畫的但書清單（審查交叉核對用）。"""
+    plan = _plan_for(district)
+    return list((plan[1].get("provisos") or []) if plan else [])
 
 
 def _lookup_plan(plan: tuple[str, dict], z: str, county: dict) -> dict[str, Any] | None:
@@ -141,14 +169,17 @@ def fill_parcel_admin(parcel: dict, *, district: str, overwrite: bool = False) -
             derived["zoning"] = {"source": "實價登錄（該筆土地交易紀錄之使用分區）", "note": "細分區取自實價登錄該地號的交易紀錄；請與都市計畫圖核對"}
             filled.append("zoning")
     zone = parcel.get("zoning") or ""
-    v = bcr_far_for(zone, district)
+    v = bcr_far_for(zone, district, front_road_width_m=(parcel.get("front_road") or {}).get("width_m"))
     if v:
         for field, key, label in (("bcr_pct", "bcr", "建蔽率"), ("far_pct", "far", "容積率")):
             if v.get(key) is None:
                 continue
             if overwrite or _blank(parcel.get(field)) or field in derived:
                 parcel[field] = v[key]
-                derived[field] = {"source": v["source"], "note": f"{zone.split(':')[-1] or v['zone']} 法定{label} {v[key]}%；{v['note']}（手冊 p.51 (六)4 容積率指法定容積率）" + ("；計畫書抽取數值不唯一，需人工核對" if v.get("check") else "")}
+                tail = "；計畫書抽取數值不唯一，需人工核對" if (v.get("check") and not v.get("proviso")) else ""
+                if key == "far" and v.get("proviso"):
+                    tail = "；依計畫書但書套用面前道路寬度（路寬為推定值者請實地量測後確認）"
+                derived[field] = {"source": v["source"], "note": f"{zone.split(':')[-1] or v['zone']} 法定{label} {v[key]}%；{v['note']}（手冊 p.51 (六)4 容積率指法定容積率）" + tail}
                 filled.append(field)
         if v.get("far") is None and (overwrite or _blank(parcel.get("far_pct"))):
             derived.setdefault("far_pct_note", {"source": v["source"], "note": v["note"]})

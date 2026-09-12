@@ -18,7 +18,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 RULES = ROOT / "rules" / "zoning_bcr_far.json"
 MERGED = ROOT / "data" / "zoning_rules" / "merged.json"
-KEEP = {"金山都市計畫"}                       # 已逐格人工核對，不覆蓋
+KEEP = {"金山都市計畫", "樹林都市計畫"}           # 已逐格人工核對（樹林含 2020／2023 兩版與但書 provisos），不覆蓋
 
 # 計畫區 → 鄉鎮市區（都市計畫範圍所在行政區；跨區者列全部，查表時以地址所在區對應）
 PLAN_DISTRICTS: dict[str, list[str]] = {

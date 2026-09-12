@@ -143,7 +143,10 @@ def verify_table4(computed: Table4, submitted: dict) -> list[Finding]:
                     out.append(Finding("warn", "vii", "表4", loc, _fmt(sv), "-", "引擎判為免修正，估價師填了差異率；請確認並於備註敘明", item_no=row.item_no, comp_no=comp.comp_no))
                 continue
             if sv in (None, "-", "", "—"):
-                out.append(Finding("warn", "vii", "表4", loc, "-", _fmt(row.pct), "估價師未修正此項，但基準表判定兩者等級不同", item_no=row.item_no, comp_no=comp.comp_no))
+                if abs(row.pct) > PCT_TOL:      # 核算 0% 時填「-」視為相符，不列
+                    out.append(Finding("warn", "vii", "表4", loc, "-", _fmt(row.pct),
+                                       f"估價師填「-」未修正此項，但依基準表核算差異率為 {_fmt(row.pct)}%（比準地{row.subject_level or '—'}／比較標的{row.comparable_level or '—'}）",
+                                       f"item {row.item_no} 矩陣[{row.subject_level}][{row.comparable_level}]", item_no=row.item_no, comp_no=comp.comp_no))
                 continue
             svn = _num(sv)
             if svn is None:
@@ -382,6 +385,38 @@ def soften_inferred(findings: list[Finding], keys: set[tuple]) -> list[Finding]:
     return findings
 
 
+def verify_admin_consistency(data: dict) -> list[Finding]:
+    """宗地建蔽率／容積率（表4 第 23、24 項）與所在區段勘查表土地使用管制欄不一致 → 需確認。
+    同一分區兩者理應相同；不同時常見原因是計畫書但書（面臨道路未達 N 公尺者容積率上限較低）或勘查表抄錯。法定值定義：手冊 p.51 (六)4；行政條件：查估辦法 §20。"""
+    out: list[Finding] = []
+    sections = data.get("sections") or {}
+    district = (data.get("case") or {}).get("district") or ""
+    try:
+        from app.spatial.admin import plan_provisos
+        provisos = plan_provisos(district)
+    except Exception:  # noqa: BLE001
+        provisos = []
+    parcels: list[tuple[str, int | None, dict]] = [("比準地", None, data.get("subject_parcel") or {})]
+    parcels += [(f"比較標的{c.get('comp_no')}", c.get("comp_no"), c) for c in (data.get("comparables") or [])]
+    for label, comp_no, p in parcels:
+        lc = ((sections.get(p.get("section_id") or "") or {}).get("survey") or {}).get("land_control") or {}
+        derived = p.get("derived") or {}
+        for field, key, item_no, name in (("bcr_pct", "bcr", 23, "建蔽率(%)"), ("far_pct", "far", 24, "容積率(%)")):
+            pv, sv = _num(p.get(field)), _num(lc.get(key))
+            if pv is None or sv is None or abs(pv - sv) <= PCT_TOL:
+                continue
+            msg = f"宗地{name[:3]} {pv:g}% 與所在區段（{p.get('section_id') or '—'}）勘查表 {sv:g}% 不一致，請確認何者為該宗地之法定值"
+            hint = "；".join(x.get("note", "") for x in provisos if key == "far" and (p.get("zoning") or "").split(":")[-1] in (x.get("zones") or []))
+            if hint:
+                msg += f"（計畫書但書可能為差異原因：{hint[:80]}…）"
+            elif derived.get(field, {}).get("note"):
+                msg += f"（宗地值來源：{str(derived[field].get('source', ''))[:40]}）"
+            out.append(Finding("warn", "vii", "表4", f"{label} / {item_no} {name}", _fmt(sv), _fmt(pv), msg,
+                               "手冊 p.51 (六)4 法定容積率；查估辦法 §20 行政條件", item_no=item_no, comp_no=comp_no,
+                               kind="inferred" if field in derived else "mismatch"))
+    return out
+
+
 def collect_findings(regional: RuleSet, individual: RuleSet, data: dict, result: dict,
                      submitted_table5: dict | None, submitted_table4: dict | None) -> list[dict]:
     """一案的全部審查結果（各端點共用）：比較標的與蒐集期間 → 基準表上限 → 表5／表4 逐格比對 → 推定值降級 → 無送審書表時 error 一律標資料缺口。"""
@@ -393,6 +428,7 @@ def collect_findings(regional: RuleSet, individual: RuleSet, data: dict, result:
             findings += verify_table5(t5, sub, comp_no)
     if submitted_table4:
         findings += verify_table4(result["table4"], submitted_table4)
+    findings += verify_admin_consistency(data)
     soften_inferred(findings, inferred_keys(data, regional, individual))
     if not (submitted_table4 or t5s):
         for f in findings:
