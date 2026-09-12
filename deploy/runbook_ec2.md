@@ -12,6 +12,30 @@
 - [ ] 機密只走環境變數（`.env` 已在 .gitignore），repo 私有；不把 AWS 金鑰寫進任何檔案。
 - [ ] 沒用 Kiro，不需 `.kiro`。
 
+## 一鍵版（2026-09-12 起，優先用這個）
+`deploy/provision.sh` 把下面第 1–5 步全部自動化：金鑰對 → 安全群組（443／80 對外，22 只給本機 IP）→ IAM role（EC2 直接呼叫 Bedrock，不用金鑰）→ t3.medium Ubuntu 24.04 → 固定 IP → 上傳程式與 data/ → venv、npm build、systemd、Caddy → 預載範例 → 健康檢查。
+```bash
+brew install awscli                                   # 本機一次；憑證貼 ~/.aws/credentials（INI 格式，不是 export 格式）
+aws sts get-caller-identity                           # 確認身分與區域（us-west-2 或 us-east-1）
+./deploy/provision.sh                                 # 全部；結束印出 https://<IP>.sslip.io 與 ssh 指令
+DATA_TGZ=~/ntpc-data.tgz ./deploy/provision.sh        # 帶資料包；或本機有 data/ 就自動 rsync
+./deploy/provision.sh --sync-only                     # 改程式後重新上傳＋重啟（EC2 沿用）
+./deploy/teardown.sh                                  # 賽後收攤
+```
+- 可調：`NAME`、`INSTANCE_TYPE`、`REGION`、`BEDROCK_MODEL_ID`（預設 `us.anthropic.claude-sonnet-4-5-20250929-v1:0`，這個帳號要用 inference profile ID，直接模型 ID 不行；Opus 5／4.7 未開通）、`ANTHROPIC_API_KEY`（有給就改走 anthropic）、`SSH_CIDR`。
+- 服務用 systemd（`ntpc-backend`、`ntpc-frontend`、`caddy`），重開機自動起；log：`sudo journalctl -u ntpc-backend -n 50`。程式在 `/opt/app`，環境變數在 `/opt/app/.env`。
+- macOS 打包會夾帶 `._*` AppleDouble 檔，`rules/*.json` 的 glob 會把它們當 JSON 讀而 500；provision.sh 已用 `COPYFILE_DISABLE=1` 並排除，remote_setup.sh 解開後也會再清一次。
+- 本機 macOS 內建 bash 3.2：腳本裡變數後面緊接中文要寫 `${VAR}`，否則會被當成變數名的一部分。
+- 2026-09-12 已在帳號 565762307497（us-west-2）跑過一次：https://54.188.82.141.sslip.io，i-0028c53f20f3ccf9b，私鑰 `~/.ssh/ntpc-key.pem`。
+
+### 自動部署（push 到 main 即上線）
+EC2 上 `deploy/autodeploy.sh` 由 systemd timer 每 60 秒 `git fetch`，main 有新 commit 就 `reset --hard`、依變更重裝依賴／重建前端、重啟，健康檢查失敗自動回滾；紀錄在 `/opt/app/deploy.log`。拉取式，不開入站埠、不存 AWS 金鑰。
+```bash
+ssh -i ~/.ssh/ntpc-key.pem ubuntu@<IP> '/opt/app/deploy/autodeploy.sh install'   # 一次；印出公鑰 → GitHub repo Settings → Deploy keys（唯讀）
+ssh -i ~/.ssh/ntpc-key.pem ubuntu@<IP> '/opt/app/deploy/autodeploy.sh status'    # 目前 commit、timer、最近紀錄
+```
+改監看分支：`Environment=DEPLOY_BRANCH=release` 寫進 `/etc/systemd/system/ntpc-autodeploy.service` 後 `daemon-reload`。
+
 ## 0. 本機先準備（賽前）
 ```bash
 cd ntpc-appraisal-review
