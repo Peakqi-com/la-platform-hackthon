@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Any } from "@/lib/api";
 import { useCase } from "./CaseContext";
 import { SOURCE_STYLES, sourceKind } from "./Legend";
@@ -63,6 +63,27 @@ export function Help({ children, label = "說明", className = "" }: { children:
     <div className={`no-print ${className}`}>
       <button type="button" className="help-toggle" aria-expanded={open} onClick={() => setOpen(!open)}>{label} {open ? "▾" : "▸"}</button>
       {open && <div className="help-body">{children}</div>}
+    </div>
+  );
+}
+
+/* 置中對話框：點遮罩或按 Esc 關閉；內容超過視窗高度時內部捲動。標題列左側可放「← 換方式」之類的返回鍵（back）。 */
+export function Modal({ title, back, onClose, children, width = "w-[52rem]" }: { title: React.ReactNode; back?: React.ReactNode; onClose: () => void; children: React.ReactNode; width?: string }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  return (
+    <div className="fixed inset-0 z-[2000] bg-black/40 flex items-center justify-center p-4" onClick={onClose} role="presentation">
+      <div role="dialog" aria-modal="true" className={`bg-white rounded-lg shadow-xl ${width} max-w-[94vw] max-h-[90vh] flex flex-col`} onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-3 px-5 py-3 border-b border-slate-200">
+          {back}
+          <div className="font-semibold text-base flex-1">{title}</div>
+          <button type="button" className="w-7 h-7 rounded hover:bg-slate-100 text-slate-500 text-lg leading-none" title="關閉" aria-label="關閉" onClick={onClose}>×</button>
+        </div>
+        <div className="px-5 py-4 overflow-auto text-sm">{children}</div>
+      </div>
     </div>
   );
 }
