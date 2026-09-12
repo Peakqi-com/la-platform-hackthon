@@ -45,6 +45,32 @@ function Sheet({ g, scale }: { g: Any; scale: number }) {
   );
 }
 
+/* 圖說頁：PNG 由後端即時繪製（第一次要抓底圖瓦片、畫界線，可能要十幾秒），載入完成前顯示產生中；失敗可重試。 */
+function Figure({ url, title, scale }: { url: string; title: string; scale: number }) {
+  const [state, setState] = useState<"loading" | "ok" | "error">("loading");
+  const [tick, setTick] = useState(0);
+  const src = tick ? `${url}&retry=${tick}` : url;   // 網址換了由上層 key 重建元件；重試只換查詢字串
+  return (
+    <div className="sheet bg-white shadow border border-slate-300 mx-auto overflow-hidden flex items-center justify-center relative" style={{ width: 1123 * scale, height: 794 * scale }} data-orient="landscape">
+      {state !== "error" && <img src={src} alt={title} onLoad={() => setState("ok")} onError={() => setState("error")} style={{ maxWidth: 1083 * scale, maxHeight: 754 * scale, width: "auto", height: "auto", visibility: state === "ok" ? "visible" : "hidden" }} />}
+      {state === "loading" && (
+        <div className="no-print absolute inset-0 flex flex-col items-center justify-center gap-3 text-slate-500 bg-white" aria-busy="true">
+          <span className="inline-block w-8 h-8 rounded-full border-4 border-slate-300 border-t-[#ea580c] animate-spin" aria-hidden />
+          <div className="text-sm">{title} 產生中…</div>
+          <div className="text-xs text-slate-400">第一次要抓底圖與畫界線，約需十幾秒</div>
+        </div>
+      )}
+      {state === "error" && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-slate-600 bg-white">
+          <div className="text-sm">{title} 產生失敗</div>
+          <div className="text-xs text-slate-400">可能是底圖來源暫時無法連線或本案尚無幾何</div>
+          <button type="button" className="no-print h-8 px-3 rounded border border-slate-300 bg-white text-sm hover:bg-slate-50" onClick={() => { setState("loading"); setTick((t) => t + 1); }}>重試</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Sheets() {
   const { rec, stale, status } = useCase();
   const [data, setData] = useState<Any>(null);
@@ -116,9 +142,7 @@ export default function Sheets() {
         {data?.figures?.map((fg: Any, i: number) => (
           <div key={fg.mode}>
             <div className="no-print text-xs text-slate-500 mb-1">第 {(data.sheets?.length || 0) + i + 1} 頁　{fg.title}</div>
-            <div className="sheet bg-white shadow border border-slate-300 mx-auto overflow-hidden flex items-center justify-center" style={{ width: 1123 * scale, height: 794 * scale }} data-orient="landscape">
-              <img src={fg.url} alt={fg.title} style={{ maxWidth: 1083 * scale, maxHeight: 754 * scale, width: "auto", height: "auto" }} />
-            </div>
+            <Figure key={fg.url} url={fg.url} title={fg.title} scale={scale} />
           </div>))}
         {data && !data.figures?.length && <Card title="圖說"><div className="text-sm text-slate-600">本案尚無區段範圍或宗地位置，無法產生三張圖說。請到「案件與地價區段」分頁推估區段範圍或設定比準地位置。</div></Card>}
       </div>
