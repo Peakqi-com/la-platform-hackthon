@@ -13,6 +13,7 @@ severity: error（數字/等級不符）、warn（推定規則、四捨五入 ±
 """
 from __future__ import annotations
 
+import re
 from dataclasses import asdict, dataclass
 
 from .rules import RuleSet
@@ -135,6 +136,7 @@ def verify_table4(computed: Table4, submitted: dict) -> list[Finding]:
         chk("price_at_valuation_date", "調整至估價基準日單價", comp.price_at_valuation_date, 0, comp.comp_no,
             "土地正常單價×(1+期日調整率) 計算不符", tol=PRICE_TOL)
         sub_ind = s.get("individual", {})
+        ind_blank = not any(v not in (None, "", "—") for v in (sub_ind or {}).values())   # 個別因素整欄空白＝待填，不是估價師選擇不修正
         for row in comp.rows:
             sv = sub_ind.get(str(row.item_no))
             loc = f"{pre} / {row.item_no} {row.name}"
@@ -143,6 +145,8 @@ def verify_table4(computed: Table4, submitted: dict) -> list[Finding]:
                     out.append(Finding("warn", "vii", "表4", loc, _fmt(sv), "-", "引擎判為免修正，估價師填了差異率；請確認並於備註敘明", item_no=row.item_no, comp_no=comp.comp_no))
                 continue
             if sv in (None, "-", "", "—"):
+                if ind_blank:
+                    continue
                 if abs(row.pct) > PCT_TOL:      # 核算 0% 時填「-」視為相符，不列
                     out.append(Finding("warn", "vii", "表4", loc, "-", _fmt(row.pct),
                                        f"估價師填「-」未修正此項，但依基準表核算差異率為 {_fmt(row.pct)}%（比準地{row.subject_level or '—'}／比較標的{row.comparable_level or '—'}）",
@@ -282,8 +286,33 @@ def collection_window(valuation_date: str) -> tuple[tuple[int, int, int], tuple[
     return None
 
 
-def verify_comparables(case: dict, comparables: list[dict]) -> list[Finding]:
+_WIDEN_RE = re.compile(r"第\s*17\s*條\s*第\s*3\s*項|§\s*17\s*第\s*3\s*項|擴大[^。]{0,20}蒐集期間")
+
+
+def _notes_text(data_or_case: dict | None) -> str:
+    """案件裡所有備註文字（全案、比準地、各比較標的；表5 全案說明）串成一段，供核對「是否已於備註敘明」。"""
+    out: list[str] = []
+
+    def walk(v):
+        if isinstance(v, str):
+            out.append(v)
+        elif isinstance(v, dict):
+            for x in v.values():
+                walk(x)
+        elif isinstance(v, list):
+            for x in v:
+                walk(x)
+    d = data_or_case or {}
+    walk(d.get("notes"))
+    walk((d.get("case") or {}).get("notes"))
+    for c in d.get("comparables") or []:
+        walk(c.get("note"))
+    return "\n".join(out)
+
+
+def verify_comparables(case: dict, comparables: list[dict], notes_text: str = "") -> list[Finding]:
     out: list[Finding] = []
+    widen_stated = bool(_WIDEN_RE.search(notes_text or "") or _WIDEN_RE.search(_notes_text({"case": case})))
     n = len(comparables)
     if n == 0:
         out.append(Finding("error", "vii", "表4", "比較標的", "0", "1~3", "未選取比較標的", "查估辦法 §19 第1項第1款", kind="gap"))
@@ -306,10 +335,15 @@ def verify_comparables(case: dict, comparables: list[dict]) -> list[Finding]:
                                    "交易日期晚於估價基準日" + ref_note, "查估辦法 §17"))
             elif win and not (_ord(win[0]) <= _ord(td) <= _ord(win[1])):
                 if _ord(td) >= _year_before(vd):
-                    out.append(Finding("warn", "v", "表4", f"{pre} / 交易日期", c.get("transaction_date"),
-                                       f"{win[0][0]}.{win[0][1]:02d}.{win[0][2]:02d}～{win[1][0]}.{win[1][1]:02d}.{win[1][2]:02d}",
-                                       "交易日期在原則蒐集期間外、估價基準日前一年內：依查估辦法 §17 第3項放寬者，應於備註敘明無適當實例之理由",
-                                       "查估辦法 §17 第2、3項"))
+                    rng = f"{win[0][0]}.{win[0][1]:02d}.{win[0][2]:02d}～{win[1][0]}.{win[1][1]:02d}.{win[1][2]:02d}"
+                    if widen_stated:
+                        out.append(Finding("info", "v", "表4", f"{pre} / 交易日期", c.get("transaction_date"), rng,
+                                           "交易日期在原則蒐集期間外、估價基準日前一年內；備註已敘明依查估辦法 §17 第3項擴大蒐集期間之理由",
+                                           "查估辦法 §17 第2、3項"))
+                    else:
+                        out.append(Finding("warn", "v", "表4", f"{pre} / 交易日期", c.get("transaction_date"), rng,
+                                           "交易日期在原則蒐集期間外、估價基準日前一年內：依查估辦法 §17 第3項放寬者，應於備註敘明無適當實例之理由",
+                                           "查估辦法 §17 第2、3項"))
                 else:
                     out.append(Finding("error", "v", "表4", f"{pre} / 交易日期", c.get("transaction_date"), "估價基準日前一年內",
                                        "交易日期超過估價基準日前一年，逾查估辦法 §17 放寬上限" + ref_note, "查估辦法 §17 第3項"))
@@ -420,7 +454,7 @@ def verify_admin_consistency(data: dict) -> list[Finding]:
 def collect_findings(regional: RuleSet, individual: RuleSet, data: dict, result: dict,
                      submitted_table5: dict | None, submitted_table4: dict | None) -> list[dict]:
     """一案的全部審查結果（各端點共用）：比較標的與蒐集期間 → 基準表上限 → 表5／表4 逐格比對 → 推定值降級 → 無送審書表時 error 一律標資料缺口。"""
-    findings: list[Finding] = list(verify_comparables(data["case"], data.get("comparables") or [])) + list(verify_rulesets(regional, individual))
+    findings: list[Finding] = list(verify_comparables(data["case"], data.get("comparables") or [], _notes_text(data))) + list(verify_rulesets(regional, individual))
     t5s = submitted_table5 or {}
     for comp_no, t5 in result["table5"].items():
         sub = t5s.get(comp_no) or t5s.get(str(comp_no))

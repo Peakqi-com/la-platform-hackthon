@@ -588,8 +588,9 @@ def parse_table4(page, individual: RuleSet, result: AdapterResult) -> dict[str, 
                 if r[a] and comp(k) is not None:
                     comp(k)["note"] = r[a]
             continue
-        if r[1] == "全案":
-            out["notes"]["case"] = next((x for x in r[2:] if x), None)
+        if "全案" in (r[0].strip(), r[1].strip()):                      # 標籤可能在第 1 或第 2 欄（題目表4 在第 1 欄）
+            li = 0 if r[0].strip() == "全案" else 1
+            out["notes"]["case"] = next((x.strip() for x in r[li + 1:] if x and x.strip()), None)
             continue
     for cid, sub_d in out["submitted"]["comparables"].items():
         for k in sub_d.keys():  # noqa: SIM118

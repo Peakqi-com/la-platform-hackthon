@@ -127,6 +127,13 @@ def merge_pdf_forms(data: dict | None, t5: Any, t4: Any, parsed: dict) -> tuple[
     if _empty(case.get("rulesets")) and pcase.get("rulesets"):
         case["rulesets"] = copy.deepcopy(pcase["rulesets"])
         rep.filled.append("case.rulesets")
+    if pcase.get("regional_no_adjust") and _empty(case.get("regional_no_adjust")):     # 表5 備註「…併同…考量調整修正」→ 該幾項在表5 免修正
+        case["regional_no_adjust"] = list(pcase["regional_no_adjust"])
+        rep.filled.append("case.regional_no_adjust")
+    for nk, nv in (pcase.get("notes") or {}).items():                  # 書表備註（表5 全案說明等）：只補空的
+        if not _empty(nv) and _empty((case.get("notes") or {}).get(nk)):
+            case.setdefault("notes", {})[nk] = nv
+            rep.filled.append(f"case.notes.{nk}")
 
     # 區段：聯集；既有唯一區段是空白暫編（從零建案的 P001-00）且書表帶不同編號 → 改用書表的
     secs = data.setdefault("sections", {}) or {}
@@ -197,6 +204,11 @@ def merge_pdf_forms(data: dict | None, t5: Any, t4: Any, parsed: dict) -> tuple[
     _merge_dict(t4n, {k: v for k, v in inc4.items() if k != "comparables"}, "submitted_table4", rep)
     if parsed.get("notes") and _empty(data.get("notes")):
         data["notes"] = copy.deepcopy(parsed["notes"])
+    for nk in ("case", "subject"):                                       # 表4 備註（全案、比準地）也寫進 case.notes，輸出的表4 備註欄與審查才讀得到
+        nv = (parsed.get("notes") or {}).get(nk)
+        if not _empty(nv) and _empty((case.get("notes") or {}).get(nk)):
+            case.setdefault("notes", {})[nk] = nv
+            rep.filled.append(f"case.notes.{nk}")
     t5_out = t5n or None
     t4_out = t4n if (t4n.get("comparables") or any(not _empty(v) for k, v in t4n.items() if k != "comparables")) else None
     return data, t5_out, t4_out, rep
