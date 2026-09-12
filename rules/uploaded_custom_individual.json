@@ -1,0 +1,804 @@
+{
+  "$schema_note": "由 app/adapters/rules_table.py 自基準明細表轉出；數值皆來自輸入表，criteria 由備註欄條件文字解析。",
+  "id": "uploaded_custom_individual",
+  "source": "評價基準明細表.pdf 的副本.pdf",
+  "land_use": "住宅用地",
+  "table": "4",
+  "scope": "individual",
+  "groups": [
+    {
+      "no": 1,
+      "name": "宗地條件"
+    },
+    {
+      "no": 2,
+      "name": "道路條件"
+    },
+    {
+      "no": 3,
+      "name": "接近條件"
+    },
+    {
+      "no": 4,
+      "name": "周邊環境條件"
+    },
+    {
+      "no": 5,
+      "name": "行政條件"
+    },
+    {
+      "no": 6,
+      "name": "其他"
+    }
+  ],
+  "rules": [
+    {
+      "id": "I6",
+      "group": 6,
+      "name": "其他",
+      "levels": [
+        "優",
+        "劣"
+      ],
+      "max_pct": 5.0,
+      "criteria": {
+        "type": "enum",
+        "map": {
+          "無": "優",
+          "無尾巷": "劣"
+        }
+      },
+      "item_no": 6,
+      "parcel_field": "other",
+      "note": "以其他足以影響地價因素之程度衡量；原表細項名稱：無尾巷；來源：PDF p9 block2"
+    },
+    {
+      "id": "I7",
+      "group": 1,
+      "name": "面積(M2)",
+      "levels": [
+        "優",
+        "稍優",
+        "普通",
+        "稍劣",
+        "劣"
+      ],
+      "max_pct": 10.0,
+      "criteria": {
+        "type": "bands",
+        "unit": "m2",
+        "bands": [
+          {
+            "level": "優",
+            "min": 600.0
+          },
+          {
+            "level": "稍優",
+            "min": 400.0,
+            "max": 600.0
+          },
+          {
+            "level": "普通",
+            "min": 200.0,
+            "max": 400.0
+          },
+          {
+            "level": "稍劣",
+            "min": 50.0,
+            "max": 200.0
+          },
+          {
+            "level": "劣",
+            "max": 50.0
+          }
+        ]
+      },
+      "item_no": 7,
+      "parcel_field": "area_m2",
+      "note": "以宗地面積是否達最適開發規模衡量其優劣；來源：PDF p6 block1"
+    },
+    {
+      "id": "I8",
+      "group": 1,
+      "name": "寬度(M)",
+      "levels": [
+        "優",
+        "稍優",
+        "普通",
+        "稍劣",
+        "劣"
+      ],
+      "max_pct": 5.0,
+      "criteria": {
+        "type": "bands",
+        "unit": "m",
+        "bands": [
+          {
+            "level": "優",
+            "min": 20.0
+          },
+          {
+            "level": "稍優",
+            "min": 15.0,
+            "max": 20.0
+          },
+          {
+            "level": "普通",
+            "min": 8.0,
+            "max": 15.0
+          },
+          {
+            "level": "稍劣",
+            "min": 4.0,
+            "max": 8.0
+          },
+          {
+            "level": "劣",
+            "max": 4.0
+          }
+        ]
+      },
+      "item_no": 8,
+      "parcel_field": "width_m",
+      "note": "以宗地寬度衡量其優劣；來源：PDF p6 block2"
+    },
+    {
+      "id": "I9",
+      "group": 1,
+      "name": "深度(M)",
+      "levels": [
+        "優",
+        "稍優",
+        "普通",
+        "稍劣",
+        "劣"
+      ],
+      "max_pct": 5.0,
+      "criteria": {
+        "type": "bands",
+        "unit": "m",
+        "bands": [
+          {
+            "level": "優",
+            "min": 14.0,
+            "max": 30.0
+          },
+          {
+            "level": "稍優",
+            "min": 30.0,
+            "max": 40.0
+          },
+          {
+            "level": "普通",
+            "min": 7.0,
+            "max": 14.0
+          },
+          {
+            "level": "稍劣",
+            "min": 50.0,
+            "max": 60.0
+          },
+          {
+            "level": "劣",
+            "max": 7.0
+          },
+          {
+            "level": "劣",
+            "min": 60.0
+          }
+        ]
+      },
+      "item_no": 9,
+      "parcel_field": "depth_m",
+      "note": "以宗地深度衡量其優劣；來源：PDF p6 block3"
+    },
+    {
+      "id": "I10",
+      "group": 1,
+      "name": "形狀",
+      "levels": [
+        "優",
+        "劣"
+      ],
+      "max_pct": 5.0,
+      "criteria": {
+        "type": "enum",
+        "map": {
+          "方形": "優",
+          "梯形": "優",
+          "方形、梯形": "優",
+          "不規則形": "劣",
+          "長條形": "劣",
+          "不規則形、長條形": "劣"
+        }
+      },
+      "item_no": 10,
+      "parcel_field": "shape",
+      "note": "以宗地形狀是否易於規劃利用衡量其優劣；來源：PDF p6 block4"
+    },
+    {
+      "id": "I11",
+      "group": 1,
+      "name": "臨街情形",
+      "levels": [
+        "優",
+        "稍優",
+        "普通",
+        "稍劣",
+        "劣"
+      ],
+      "max_pct": 10.0,
+      "criteria": {
+        "type": "enum",
+        "map": {
+          "3面以上臨街": "優",
+          "路角地": "稍優",
+          "雙面臨街": "普通",
+          "單面臨街": "稍劣",
+          "未臨街地": "劣"
+        }
+      },
+      "item_no": 11,
+      "parcel_field": "frontage",
+      "note": "以宗地實際臨街情況衡量其優劣；原表細項名稱：臨路情形；來源：PDF p6 block5"
+    },
+    {
+      "id": "I12",
+      "group": 1,
+      "name": "地勢",
+      "levels": [
+        "優",
+        "劣"
+      ],
+      "max_pct": 10.0,
+      "criteria": {
+        "type": "enum",
+        "map": {
+          "平坦": "優",
+          "高亢或低窪": "劣"
+        }
+      },
+      "item_no": 12,
+      "parcel_field": "terrain",
+      "note": "以宗地地勢高低衡量其優劣。；來源：PDF p6 block6"
+    },
+    {
+      "id": "I13",
+      "group": 2,
+      "name": "道路種類",
+      "levels": [
+        "優",
+        "稍優",
+        "普通",
+        "稍劣",
+        "劣"
+      ],
+      "max_pct": 5.0,
+      "criteria": {
+        "type": "enum",
+        "map": {
+          "主要道路": "優",
+          "次要道路": "稍優",
+          "巷道": "普通",
+          "農路": "稍劣",
+          "無": "劣"
+        }
+      },
+      "item_no": 13,
+      "parcel_field": "road_type",
+      "note": "以道路種類衡量其優劣；來源：PDF p7 block1"
+    },
+    {
+      "id": "I14",
+      "group": 2,
+      "name": "面前道路寬度",
+      "levels": [
+        "優",
+        "稍優",
+        "普通",
+        "稍劣",
+        "劣"
+      ],
+      "max_pct": 12.0,
+      "criteria": {
+        "type": "bands",
+        "unit": "m",
+        "none_level": "劣",
+        "bands": [
+          {
+            "level": "優",
+            "min": 20.0
+          },
+          {
+            "level": "稍優",
+            "min": 12.0,
+            "max": 20.0
+          },
+          {
+            "level": "普通",
+            "min": 8.0,
+            "max": 12.0
+          },
+          {
+            "level": "稍劣",
+            "min": 5.0,
+            "max": 8.0
+          },
+          {
+            "level": "劣",
+            "max": 5.0
+          }
+        ]
+      },
+      "item_no": 14,
+      "parcel_field": "front_road_width_m",
+      "note": "以道路面前道路寬度量其優劣；來源：PDF p7 block2"
+    },
+    {
+      "id": "I15",
+      "group": 3,
+      "name": "接近學校之程度",
+      "levels": [
+        "優",
+        "稍優",
+        "普通",
+        "稍劣",
+        "劣"
+      ],
+      "max_pct": 5.0,
+      "criteria": {
+        "type": "distance",
+        "none_level": "劣",
+        "bands": [
+          {
+            "level": "優",
+            "max": 250.0
+          },
+          {
+            "level": "稍優",
+            "min": 250.0,
+            "max": 500.0
+          },
+          {
+            "level": "普通",
+            "min": 500.0,
+            "max": 1000.0
+          },
+          {
+            "level": "稍劣",
+            "min": 1000.0,
+            "max": 2000.0
+          },
+          {
+            "level": "劣",
+            "min": 2000.0
+          }
+        ]
+      },
+      "item_no": 15,
+      "parcel_field": "school",
+      "facility_types": [
+        "school"
+      ],
+      "note": "以宗地接近學校程度衡量其優劣；原表細項名稱：接近學校程度；來源：PDF p7 block3"
+    },
+    {
+      "id": "I16",
+      "group": 3,
+      "name": "接近市場之程度",
+      "levels": [
+        "優",
+        "稍優",
+        "普通",
+        "稍劣",
+        "劣"
+      ],
+      "max_pct": 5.0,
+      "criteria": {
+        "type": "distance",
+        "none_level": "劣",
+        "bands": [
+          {
+            "level": "優",
+            "max": 250.0
+          },
+          {
+            "level": "稍優",
+            "min": 250.0,
+            "max": 500.0
+          },
+          {
+            "level": "普通",
+            "min": 500.0,
+            "max": 1000.0
+          },
+          {
+            "level": "稍劣",
+            "min": 1000.0,
+            "max": 2000.0
+          },
+          {
+            "level": "劣",
+            "min": 2000.0
+          }
+        ]
+      },
+      "item_no": 16,
+      "parcel_field": "market",
+      "facility_types": [
+        "traditional_market",
+        "supermarket",
+        "hypermarket"
+      ],
+      "note": "以宗地接近市場程度衡量其優劣；原表細項名稱：接近市場程度；來源：PDF p7 block4"
+    },
+    {
+      "id": "I17",
+      "group": 3,
+      "name": "接近公園、廣場之程度",
+      "levels": [
+        "優",
+        "稍優",
+        "普通",
+        "稍劣",
+        "劣"
+      ],
+      "max_pct": 5.0,
+      "criteria": {
+        "type": "distance",
+        "none_level": "劣",
+        "bands": [
+          {
+            "level": "優",
+            "max": 250.0
+          },
+          {
+            "level": "稍優",
+            "min": 250.0,
+            "max": 500.0
+          },
+          {
+            "level": "普通",
+            "min": 500.0,
+            "max": 1000.0
+          },
+          {
+            "level": "稍劣",
+            "min": 1000.0,
+            "max": 2000.0
+          },
+          {
+            "level": "劣",
+            "min": 2000.0
+          }
+        ]
+      },
+      "item_no": 17,
+      "parcel_field": "park",
+      "facility_types": [
+        "park",
+        "plaza"
+      ],
+      "note": "以宗地接近公園、廣場程度衡量其優劣；原表細項名稱：接近公園、廣場程度；來源：PDF p7 block5"
+    },
+    {
+      "id": "I18",
+      "group": 3,
+      "name": "接近車站之程度",
+      "levels": [
+        "優",
+        "稍優",
+        "普通",
+        "稍劣",
+        "劣"
+      ],
+      "max_pct": 5.0,
+      "criteria": {
+        "type": "distance",
+        "none_level": "劣",
+        "bands": [
+          {
+            "level": "優",
+            "max": 250.0
+          },
+          {
+            "level": "稍優",
+            "min": 250.0,
+            "max": 500.0
+          },
+          {
+            "level": "普通",
+            "min": 500.0,
+            "max": 1000.0
+          },
+          {
+            "level": "稍劣",
+            "min": 1000.0,
+            "max": 2000.0
+          },
+          {
+            "level": "劣",
+            "min": 2000.0
+          }
+        ]
+      },
+      "item_no": 18,
+      "parcel_field": "station",
+      "facility_types": [
+        "bus_stop",
+        "rail_station",
+        "mrt_station",
+        "intercity_bus_station"
+      ],
+      "note": "以宗地接近車站程度衡量其優劣；原表細項名稱：接近車站程度；來源：PDF p7 block6"
+    },
+    {
+      "id": "I19",
+      "group": 3,
+      "name": "接近商圈之程度",
+      "levels": [
+        "優",
+        "稍優",
+        "普通",
+        "稍劣",
+        "劣"
+      ],
+      "max_pct": 10.0,
+      "criteria": {
+        "type": "distance",
+        "none_level": "劣",
+        "bands": [
+          {
+            "level": "優",
+            "max": 250.0
+          },
+          {
+            "level": "稍優",
+            "min": 250.0,
+            "max": 500.0
+          },
+          {
+            "level": "普通",
+            "min": 500.0,
+            "max": 1000.0
+          },
+          {
+            "level": "稍劣",
+            "min": 1000.0,
+            "max": 2000.0
+          },
+          {
+            "level": "劣",
+            "min": 2000.0
+          }
+        ]
+      },
+      "item_no": 19,
+      "parcel_field": "commercial_district",
+      "facility_types": [
+        "commercial_district"
+      ],
+      "note": "以宗地接近商圈之程度來衡量其優劣；原表細項名稱：接近商圈程度；來源：PDF p8 block1"
+    },
+    {
+      "id": "I20",
+      "group": 4,
+      "name": "嫌惡設施(類型)",
+      "levels": [
+        "優",
+        "稍優",
+        "普通",
+        "稍劣",
+        "劣"
+      ],
+      "max_pct": 8.0,
+      "criteria": {
+        "type": "distance",
+        "direction": "farther_is_better",
+        "aggregate": "worst",
+        "none_level": "優",
+        "bands": [
+          {
+            "level": "優",
+            "min": 2000.0
+          },
+          {
+            "level": "稍優",
+            "min": 1000.0,
+            "max": 2000.0
+          },
+          {
+            "level": "普通",
+            "min": 500.0,
+            "max": 1000.0
+          },
+          {
+            "level": "稍劣",
+            "min": 200.0,
+            "max": 500.0
+          },
+          {
+            "level": "劣",
+            "max": 200.0
+          }
+        ]
+      },
+      "item_no": 20,
+      "parcel_field": "nuisance",
+      "facility_types": [
+        "cemetery",
+        "funeral_home",
+        "crematorium",
+        "columbarium",
+        "substation",
+        "hv_tower",
+        "gas_station",
+        "gas_tank",
+        "incinerator",
+        "landfill",
+        "sewage_plant",
+        "pollution_source"
+      ],
+      "note": "以宗地周圍環境是否有嫌惡設施衡量其優劣；原表細項名稱：嫌惡設施之有無；來源：PDF p8 block2"
+    },
+    {
+      "id": "I21",
+      "group": 4,
+      "name": "停車方便性",
+      "levels": [
+        "優",
+        "普通",
+        "劣"
+      ],
+      "max_pct": 5.0,
+      "criteria": {
+        "type": "enum",
+        "map": {
+          "停車方便性優": "優",
+          "停車方便性普通": "普通",
+          "停車方便性劣": "劣"
+        }
+      },
+      "item_no": 21,
+      "parcel_field": "street_parking",
+      "note": "以宗地周圍環境停車方便性衡量其優劣；來源：PDF p8 block3"
+    },
+    {
+      "id": "I22",
+      "group": 5,
+      "name": "使用分區或編定用地",
+      "levels": [
+        "優",
+        "稍優",
+        "普通",
+        "稍劣",
+        "劣"
+      ],
+      "max_pct": 15.0,
+      "criteria": {
+        "type": "enum",
+        "map": {
+          "商業區": "優",
+          "捷運用地(聯開)": "優",
+          "商業區、捷運用地(聯開)": "優",
+          "住宅區": "稍優",
+          "市場用地甲建": "稍優",
+          "乙建": "稍優",
+          "特定專用區": "稍優",
+          "多目標使用之其他公共": "稍優",
+          "住宅區、市場用地甲建、乙建、特定專用區、多目標使用之其他公共": "稍優",
+          "設施用地": "普通",
+          "工業區": "稍劣",
+          "丙建": "稍劣",
+          "丁建": "稍劣",
+          "工業區、丙建、丁建": "稍劣"
+        },
+        "default": "劣",
+        "normalize": {
+          "第一種商業區": "商業區",
+          "第二種商業區": "商業區",
+          "第三種商業區": "商業區",
+          "第四種商業區": "商業區",
+          "第五種商業區": "商業區",
+          "第一種住宅區": "住宅區",
+          "第二種住宅區": "住宅區",
+          "第三種住宅區": "住宅區",
+          "第四種住宅區": "住宅區",
+          "第五種住宅區": "住宅區",
+          "第一種工業區": "工業區",
+          "第二種工業區": "工業區",
+          "第三種工業區": "工業區",
+          "第四種工業區": "工業區",
+          "第五種工業區": "工業區"
+        }
+      },
+      "item_no": 22,
+      "parcel_field": "zoning",
+      "note": "以使用分區或編定衡量其優劣；原表細項名稱：使用分區或編定；來源：PDF p8 block4"
+    },
+    {
+      "id": "I23",
+      "group": 5,
+      "name": "建蔽率(%)",
+      "levels": [
+        "優",
+        "稍優",
+        "普通",
+        "稍劣",
+        "劣"
+      ],
+      "max_pct": 10.0,
+      "criteria": {
+        "type": "bands",
+        "unit": "%",
+        "bands": [
+          {
+            "level": "優",
+            "min": 80.0
+          },
+          {
+            "level": "稍優",
+            "min": 70.0,
+            "max": 80.0
+          },
+          {
+            "level": "普通",
+            "min": 60.0,
+            "max": 70.0
+          },
+          {
+            "level": "稍劣",
+            "min": 50.0,
+            "max": 60.0
+          },
+          {
+            "level": "劣",
+            "max": 50.0
+          }
+        ]
+      },
+      "item_no": 23,
+      "parcel_field": "bcr_pct",
+      "note": "以建蔽率衡量其優劣；來源：PDF p8 block5"
+    },
+    {
+      "id": "I24",
+      "group": 5,
+      "name": "容積率(%)",
+      "levels": [],
+      "max_pct": 0.0,
+      "criteria": {
+        "type": "manual"
+      },
+      "item_no": 24,
+      "parcel_field": "far_pct",
+      "note": "來源：PDF p8 block6"
+    },
+    {
+      "id": "I25",
+      "group": 5,
+      "name": "有無禁限建",
+      "levels": [
+        "優",
+        "稍優",
+        "普通",
+        "稍劣",
+        "劣"
+      ],
+      "max_pct": 50.0,
+      "criteria": {
+        "type": "enum",
+        "map": {
+          "無": "優",
+          "限制建築高度": "稍優",
+          "限制建築高度及面積": "普通",
+          "限制整體開發": "稍劣",
+          "禁止建築": "劣"
+        }
+      },
+      "item_no": 25,
+      "parcel_field": "building_restricted",
+      "note": "以有無禁限建衡量其優劣；來源：PDF p9 block1"
+    }
+  ]
+}

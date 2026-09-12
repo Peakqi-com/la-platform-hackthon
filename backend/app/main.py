@@ -393,7 +393,7 @@ FIXTURES_DIR = Path(__file__).resolve().parents[2] / "fixtures"
 
 
 @app.get("/api/cases/demo")
-def demo_case_endpoint(variant: str = "template", save: bool = False):
+def demo_case_endpoint(request: Request, variant: str = "template", save: bool = False):
     """demo 變體：template | tampered | residential。save=true 存成案件並回 id。"""
     from app import cases as C
     if variant not in ("template", "tampered", "residential", "blank_survey", "shulin"):
@@ -402,6 +402,12 @@ def demo_case_endpoint(variant: str = "template", save: bool = False):
     if save:
         rec = C.save_case(d["data"], name=d["name"], origin=f"demo:{variant}", submitted_table5=d["submitted_table5"], submitted_table4=d["submitted_table4"])
         d["id"] = rec["id"]
+        if variant == "shulin":                                        # 決賽題目：存檔後直接依地號產生（界線、區段、勘查表、宗地屬性），不然表4 個別因素會是空的
+            try:
+                out = cases_from_lot(rec["id"], FromLotPayload(parcel_id=d["data"]["subject_parcel"].get("parcel_id") or "", overwrite=False, with_comparables=False), request)
+                d["steps"] = out.get("steps")
+            except Exception as e:  # noqa: BLE001 - 圖資或外部查詢失敗不擋範例載入
+                d["steps"] = [{"step": "依地號產生", "ok": False, "note": str(e)}]
     # 舊介面相容：頂層直接是 case 資料
     return {**d["data"], **{k: v for k, v in d.items() if k != "data"}}
 
