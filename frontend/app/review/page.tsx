@@ -50,6 +50,11 @@ export default function Review() {
   if (!rec) return <Empty />;
   const hasSubmitted = !!(rec.submitted_table4 || rec.submitted_table5);
   const accepted = (res || []).filter((f) => f.severity === "error" && decisions[keyOf(f)]?.decision === "accept").length;
+  /* 右上角主鍵：有未儲存修改 → 儲存裁決；否則依審查進度提示（待裁決的不符項、失效裁決），都沒有才是「裁決已儲存」。重新產生書表後會冒出新的待處理項或失效裁決，這裡看得到。 */
+  const nPending = hasSubmitted ? (res || []).filter((f) => f.severity === "error" && !["accept", "reject"].includes(decisions[keyOf(f)]?.decision || "")).length : 0;
+  const nStale = Object.values(decisions).filter((d) => d.stale).length;
+  const saveLabel = decDirty ? "儲存裁決" : nPending ? `尚有 ${nPending} 項待裁決` : nStale ? `${nStale} 筆裁決已失效` : "裁決已儲存";
+  const saveTitle = decDirty ? "把裁決與說明存到案件" : nPending ? "重新產生後仍有不符項未裁決；在右側「承辦裁決」逐項選擇後儲存" : nStale ? "這些裁決對應的不符項已不存在，請在下方確認移除後儲存" : "沒有未儲存的裁決，也沒有待處理項";
   return (
     <div className="print-landscape">
       <PageHeader print title="③ 審查" desc="將送審書表上估價單位填載的等級、修正百分比、小計、差異率、跨表抄填與價格，與系統依評價基準明細表核算的結果逐項比對；每一項結果均標示作業手冊審查重點條號與依據格位。"
@@ -63,7 +68,8 @@ export default function Review() {
         </Card>) : null; })()}
       <Card hint="本頁每一項「系統核算」值都由規則引擎依查估辦法與作業手冊確定性計算並可對回基準明細表格位，AI 不參與數字；AI（語言模型）只用於掃描件辨識與意見書文字潤飾。 「承辦裁決」：接受填載＝經審酌採估價單位之填載（請填說明），維持不符＝請估價單位補正；裁決與說明會寫入審查意見書。審查重點條號依《土地徵收補償市價查估作業手冊》p.11–13：iii 勘查表等級、v 買賣實例、vi 區域因素分析明細表、vii 比較法調查估價表、x 宗地條件與清冊。「需確認」多為作業手冊未明定而依範本推定之事項，不判定為錯誤。" title={<>審查結果：{rec.name} <span className={`ml-2 align-middle rounded px-1.5 py-0.5 text-xs ${rec.status === "done" ? "bg-emerald-100 text-emerald-800" : rec.status === "reviewing" ? "bg-sky-100 text-sky-800" : "bg-slate-100 text-slate-700"}`}>{STATUS_LABEL[rec.status || "draft"]}</span></>}
         right={<>
-          <Btn onClick={saveDecisions} busy={busy} disabled={busy || !decDirty} title={decDirty ? "把裁決與說明存到案件" : "沒有未儲存的裁決"}>{decDirty ? "儲存裁決" : "裁決已儲存"}</Btn></>}>
+          {!decDirty && (nPending || nStale) ? <span className={`inline-flex items-center h-8 px-3 rounded text-sm border ${nPending ? "bg-amber-50 border-amber-300 text-amber-900" : "bg-slate-50 border-slate-300 text-slate-700"}`} title={saveTitle}>{saveLabel}</span>
+            : <Btn onClick={saveDecisions} busy={busy} disabled={busy || !decDirty} title={saveTitle}>{saveLabel}</Btn>}</>}>
         {status.error && <div className="text-red-700 text-sm mb-2">{status.error}</div>}
         {decNotice && <div className="text-sm text-amber-900 bg-amber-50 border border-amber-300 rounded p-2 mb-2 flex items-center gap-2">{decNotice}<button className="underline text-xs" onClick={() => { setDecisions(rec?.decisions || {}); setDecDirty(false); setDecNotice(null); }}>放棄未儲存裁決</button></div>}
         {!hasSubmitted && <div className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded p-2 mb-2">本案為依地號產生的書表，沒有估價單位的送審書表可比對，因此沒有「不符」可裁決；下列「資料缺口」是產出前要補的資料（例如比較標的），「需確認」是系統推定值、基準表上限、蒐集期間等事項，請逐項確認後再輸出。</div>}
