@@ -40,9 +40,15 @@ def test_truncated_lvr_file_does_not_break(tmp_path, monkeypatch):
     bad = tmp_path / "f_land.json"
     bad.write_text('{"records": [{"district": "新北市樹林區", "lots": [{"section": "樹德段", "lot_raw": "0284', encoding="utf-8")
     monkeypatch.setenv("LVR_JSON", str(bad))
-    d = load_lvr()
-    assert d["records"] == [] and "損毀" in d["error"]
-    assert lvr_status()["n"] == 0 and lvr_status()["error"]
+    if hasattr(load_lvr, "cache_clear"):
+        load_lvr.cache_clear()
+    try:
+        d = load_lvr()
+        assert d["records"] == [] and "損毀" in d["error"]
+        assert lvr_status()["n"] == 0 and lvr_status()["error"]
+    finally:
+        if hasattr(load_lvr, "cache_clear"):
+            load_lvr.cache_clear()
 
 
 def test_removing_an_input_reruns_auto_from_lot(monkeypatch, tmp_path):
