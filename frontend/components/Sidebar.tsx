@@ -1,9 +1,9 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Suspense, useState } from "react";
+import { Fragment, Suspense, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Any, findingKey } from "@/lib/api";
+import { Any, findingKey, STATUS_LABEL } from "@/lib/api";
 import { useCase } from "./CaseContext";
 import { Help } from "./ui";
 import ActorBox from "./Actor";
@@ -49,12 +49,19 @@ function NavInner() {
     <nav className="flex-1 px-2 py-3 text-sm">
       {items.map((it) => {
         const active = it.match.includes(path);
-        return (
-          <Link key={it.href} href={it.href + (it.href === "/" ? "" : q)} className={`block px-3 py-2 rounded-lg mb-1 ${active ? "bg-[#ea580c] text-white" : "hover:bg-orange-100"}`}>
+        const caseHead = rec && it.href === "/input" ? (   // 案件總覽與 ①～④ 之間：目前案件標題，把「選案件」與「做這個案件」兩段隔開
+          <div className="mt-3 mb-1 pt-3 border-t border-orange-200 px-3">
+            <div className="text-[11px] opacity-60">目前案件</div>
+            <div className="font-semibold leading-snug break-words" title={rec.name}>{rec.name}</div>
+            <div className="text-[11px] opacity-70">{[rec.data?.case?.case_no, STATUS_LABEL[rec.status || "draft"]].filter(Boolean).join("・")}</div>
+          </div>
+        ) : null;
+        return (<Fragment key={it.href}>{caseHead}
+          <Link href={it.href + (it.href === "/" ? "" : q)} className={`block px-3 py-2 rounded-lg mb-1 ${active ? "bg-[#ea580c] text-white" : "hover:bg-orange-100"}`}>
             <div className="flex items-center gap-2"><span className="font-medium">{it.label}</span>{done[it.href] && <span className={`ml-auto text-xs ${active ? "text-white" : "text-emerald-700"}`} title="此段已完成">✓</span>}</div>
             {sub(it) && <div className={`text-[11px] ${active ? "opacity-90" : "opacity-70"}`}>{sub(it)}</div>}
           </Link>
-        );
+        </Fragment>);
       })}
       {!rec && <div className="px-3 py-2 text-[11px] opacity-60">開啟或建立案件後，這裡會出現 ①～④ 的步驟。</div>}
     </nav>

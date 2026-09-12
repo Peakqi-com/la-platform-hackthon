@@ -109,12 +109,27 @@ export default function Home() {
     stale: cases.filter((c) => c.stale).length,
   }), [cases]);
   const fmtT = (t?: string | null) => (t ? String(t).replace("T", " ").slice(5, 16) : "—");
-  const nextStep = (c: Any) => {
-    if (c.status === "done") return { href: `/export?case=${encodeURIComponent(c.id)}`, label: "下載全部" };
-    if (c.status === "reviewing") return { href: `/review?case=${encodeURIComponent(c.id)}`, label: "繼續審查" };
-    if (!c.has_submitted && c.n_comparables === 0) return { href: `/input?tab=case&case=${encodeURIComponent(c.id)}`, label: "補輸入資料" };
-    if (c.has_submitted) return { href: `/review?case=${encodeURIComponent(c.id)}`, label: "開始審查" };
-    return { href: `/input?tab=case&case=${encodeURIComponent(c.id)}`, label: "補送審書表或比較標的" };
+  /* 下一步：依案件現況逐層判斷 — 已完成 → 輸入不齊 → 產出未產生／已過期 → 審查結果與裁決進度 → 狀態。每個都附「為什麼」給 title。 */
+  const nextStep = (c: Any): { href: string; label: string; why: string } => {
+    const q = `case=${encodeURIComponent(c.id)}`;
+    const nErr = c.n_error ?? 0, nWarn = c.n_warn ?? 0, open = Math.max(0, nErr - (c.n_accepted ?? 0));
+    if (c.status === "done") return { href: `/export?${q}`, label: "下載全部", why: "案件已完成，輸出 Excel／PDF／意見書與圖說" };
+    if (!c.subject_parcel_id) return { href: `/input?tab=case&${q}`, label: "補基本資料", why: "還沒有比準地" };
+    if (c.n_comparables === 0 && !c.has_submitted) return { href: `/input?tab=parcels&${q}`, label: "補比較標的", why: "沒有買賣實例，無法算比較價格" };
+    if (c.n_error === null || c.n_error === undefined) return { href: `/sheets?${q}`, label: "產生書表", why: "尚未產生書表" };
+    if (c.stale) return { href: `/sheets?${q}`, label: "重新產生書表", why: "輸入改過，產出已過期" };
+    if (!c.has_submitted) {   // 依地號產生：沒有送審書表可比對，只看資料缺口
+      if (nErr > 0) return { href: `/input?tab=parcels&${q}`, label: `補資料缺口（${nErr}）`, why: "書表有欄位推不出來，需人工填載" };
+      if (nWarn > 0) return { href: `/review?${q}`, label: `確認需確認項（${nWarn}）`, why: "系統判定不足的項目要人工確認" };
+      return { href: `/export?${q}`, label: "輸出書表", why: "書表已產生且沒有缺口" };
+    }
+    if (c.status === "reviewing") {
+      if (open > 0) return { href: `/review?${q}`, label: `處理不符項（${open}）`, why: "還有不符項未裁決" };
+      return { href: `/review?${q}`, label: "完成審查", why: "不符項都裁決過了，可以把狀態改為已完成" };
+    }
+    if (nErr > 0) return { href: `/review?${q}`, label: `開始審查（${nErr} 不符）`, why: "送審書表與規則算出的結果有不一致" };
+    if (nWarn > 0) return { href: `/review?${q}`, label: `確認需確認項（${nWarn}）`, why: "填載值相符，但有系統判定不足的項目要人工確認" };
+    return { href: `/review?${q}`, label: "檢視審查結果", why: "送審書表與規則結果全部相符" };
   };
   const reviewCell = (c: Any) => {
     if (c.n_error === null || c.n_error === undefined) return <span className="text-slate-400">尚未產生</span>;
@@ -173,13 +188,13 @@ export default function Home() {
         {shown.length === 0 ? <div className="text-sm text-slate-500">{cases.length ? "沒有符合條件的案件" : "尚無案件。按「＋ 新增案件」上傳送審書表、依地號建案或載入範例。"}</div> : (
           <div className="overflow-x-auto"><table className="grid"><thead><tr><th className="min-w-[14rem]">案件</th><th className="whitespace-nowrap">狀態</th><th className="whitespace-nowrap">審查結果</th><th className="whitespace-nowrap">比較價格</th><th className="whitespace-nowrap">產出</th><th className="whitespace-nowrap">最後操作</th><th className="whitespace-nowrap w-1">下一步</th></tr></thead>
             <tbody>{shown.map((c) => { const ns = nextStep(c); return (<tr key={c.id} className={rec?.id === c.id ? "selected" : ""}>
-              <td><button className="font-medium text-left underline decoration-dotted hover:text-[#c2410c]" title="開啟案件（六頁書表預覽）" onClick={async () => { await loadCase(c.id); router.push(`/sheets?case=${encodeURIComponent(c.id)}`); }}>{c.name}</button><div className="text-xs text-slate-500">{c.case_no}・基準日 {c.valuation_date || "—"}・比準地 {c.subject_parcel_id || "—"}・比較標的 {c.n_comparables} 件{c.has_submitted ? "・有送審書表" : ""}</div></td>
+              <td><button className="font-medium text-left underline decoration-dotted hover:text-[#c2410c]" title="開啟案件（從 ① 輸入資料開始）" onClick={async () => { await loadCase(c.id); router.push(`/input?tab=case&case=${encodeURIComponent(c.id)}`); }}>{c.name}</button><div className="text-xs text-slate-500">{c.case_no}・基準日 {c.valuation_date || "—"}・比準地 {c.subject_parcel_id || "—"}・比較標的 {c.n_comparables} 件{c.has_submitted ? "・有送審書表" : ""}</div></td>
               <td className="whitespace-nowrap"><span className={`rounded px-1.5 py-0.5 text-xs ${c.status === "done" ? "bg-emerald-100 text-emerald-800" : c.status === "reviewing" ? "bg-sky-100 text-sky-800" : "bg-slate-100 text-slate-700"}`}>{STATUS_LABEL[c.status] || c.status}</span></td>
               <td className="text-xs whitespace-nowrap">{reviewCell(c)}</td>
               <td className="text-xs text-right font-mono whitespace-nowrap">{c.comparison_price ? `${fmtMoney(c.comparison_price)} 元/m²` : "—"}</td>
               <td className="text-xs whitespace-nowrap">{c.stale ? <span className="text-amber-800">已過期</span> : c.generated_at ? <span className="text-emerald-700">最新</span> : "—"}<div className="text-slate-500">{fmtT(c.generated_at)}</div></td>
               <td className="text-xs whitespace-nowrap">{c.last_action ? <>{c.last_action.actor}<div className="text-slate-500">{c.last_action.action}・{fmtT(c.last_action.at)}</div></> : "—"}</td>
-              <td className="text-xs"><div className="flex flex-wrap items-center gap-x-2 gap-y-1"><Link href={ns.href} onClick={() => loadCase(c.id)}><Btn>{ns.label}</Btn></Link>{c.archived ? <>
+              <td className="text-xs"><div className="flex flex-wrap items-center gap-x-2 gap-y-1"><Link href={ns.href} onClick={() => loadCase(c.id)} title={ns.why}><Btn title={ns.why}>{ns.label}</Btn></Link>{c.archived ? <>
                 <button className="text-orange-800 underline" onClick={async () => { try { await api.archiveCase(c.id, true); await refreshList(); } catch (e: Any) { setListMsg(`復原失敗：${String(e?.message || e)}`); } }}>復原</button>
                 {pendingDelete === c.id
                   ? <div className="mt-1 whitespace-normal max-w-[13rem] bg-red-50 border border-red-200 rounded px-2 py-1"><div className="text-red-800 mb-1">確定刪除？資料與匯入檔案會移除，操作紀錄保留，無法復原。</div>
