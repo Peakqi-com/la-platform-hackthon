@@ -41,29 +41,32 @@ export default function CaseBar() {
   }
   const st = rec.status || "draft";
   return (
-    <div className="no-print mb-4 bg-white border border-slate-200 rounded-lg px-4 py-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-      <div className="font-semibold truncate max-w-[28rem]" title={rec.name}>{rec.name}</div>
-      <select value={st} disabled={busy} onChange={async (e) => { setBusy(true); try { await patch({ status: e.target.value }); setMsg(`狀態已改為「${STATUS_LABEL[e.target.value]}」，已寫入操作紀錄。`); setTimeout(() => setMsg(null), 2500); } catch (err: Any) { setMsg(String(err.message || err)); } finally { setBusy(false); } }} title="案件狀態：草稿／審查中／已完成（會寫入操作紀錄）" className={`rounded px-1.5 py-0.5 text-xs border-0 ${st === "done" ? "bg-emerald-100 text-emerald-800" : st === "reviewing" ? "bg-sky-100 text-sky-800" : "bg-slate-100 text-slate-700"}`}>{Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
-      <div className="text-xs text-slate-600">輸入最後修改 <span className="font-mono">{fmt(rec.input_updated_at || rec.updated_at)}</span></div>
-      <Link href={`/input?tab=case&case=${encodeURIComponent(rec.id)}`} className="text-xs text-slate-600 hover:text-[#c2410c]" title={(rec.inputs || []).length ? `輸入檔：${(rec.inputs || []).map((i) => `${i.filename}（${i.kind_label}）`).join("、")}` : "這一案沒有輸入檔（範例或依地號產生）；到 ① 可加入"}>輸入檔 <span className="font-mono">{(rec.inputs || []).length}</span> 份{(rec.inputs || []).some((i) => (i.conflicts || []).length) ? <span className="ml-1 rounded px-1 bg-amber-100 text-amber-900 border border-amber-300">有不一致</span> : null}</Link>
-      <div className="text-xs text-slate-600">產出最後產生 <span className="font-mono">{fmt(rec.outputs?.generated_at)}</span></div>
-      {stale ? <span className="rounded px-1.5 py-0.5 text-xs bg-amber-100 text-amber-900 border border-amber-300">產出已過期</span> : rec.outputs ? <span className="rounded px-1.5 py-0.5 text-xs bg-emerald-50 text-emerald-800 border border-emerald-200">產出為最新</span> : null}
+    <div className="no-print mb-4 bg-white border border-slate-200 rounded-lg px-4 py-2.5 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
+      <div className="font-semibold truncate min-w-0 max-w-[32rem]" title={rec.name}>{rec.name}</div>
+      <select value={st} disabled={busy} onChange={async (e) => { setBusy(true); try { await patch({ status: e.target.value }); setMsg(`狀態已改為「${STATUS_LABEL[e.target.value]}」，已寫入操作紀錄。`); setTimeout(() => setMsg(null), 2500); } catch (err: Any) { setMsg(String(err.message || err)); } finally { setBusy(false); } }} title="案件狀態：草稿／審查中／已完成（會寫入操作紀錄）" className={`h-7 rounded-full px-2.5 text-xs border-0 ${st === "done" ? "bg-emerald-100 text-emerald-800" : st === "reviewing" ? "bg-sky-100 text-sky-800" : "bg-slate-100 text-slate-700"}`}>{Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
       <div className="ml-auto flex items-center gap-2">
-        <button onClick={() => generate().catch((e: Any) => setMsg(`重新產生書表失敗：${String(e?.message || e)}`))} disabled={generating || busy} className={`px-3 py-1.5 rounded text-sm whitespace-nowrap disabled:opacity-50 inline-flex items-center gap-1 ${stale ? "bg-[#ea580c] text-white hover:bg-[#c2410c]" : "bg-white border border-slate-300 hover:bg-slate-50"}`} title="依目前輸入重新核算三張書表與審查結果，並記錄產生時間">{generating && <span className="inline-block w-3 h-3 rounded-full border-2 border-current border-t-transparent animate-spin" aria-hidden />}{generating ? "產生中…" : "重新產生書表"}</button>
+        <button onClick={() => generate().catch((e: Any) => setMsg(`重新產生書表失敗：${String(e?.message || e)}`))} disabled={generating || busy} className={`h-8 px-3 rounded text-sm whitespace-nowrap disabled:opacity-50 inline-flex items-center gap-1 ${stale ? "bg-[#ea580c] text-white hover:bg-[#c2410c]" : "bg-white border border-slate-300 hover:bg-slate-50"}`} title="依目前輸入重新核算三張書表與審查結果，並記錄產生時間">{generating && <span className="inline-block w-3 h-3 rounded-full border-2 border-current border-t-transparent animate-spin" aria-hidden />}{generating ? "產生中…" : "重新產生書表"}</button>
         <details className="relative">
-          <summary className="list-none cursor-pointer px-3 py-1.5 rounded text-sm whitespace-nowrap bg-white border border-slate-300 hover:bg-slate-50">更多 ▾</summary>
+          <summary className="list-none cursor-pointer h-8 px-3 inline-flex items-center rounded text-sm whitespace-nowrap bg-white border border-slate-300 hover:bg-slate-50">更多 ▾</summary>
           <div className="absolute right-0 mt-1 z-[1500] bg-white border border-slate-200 rounded shadow-lg text-sm min-w-[10rem]">
             <button onClick={saveAs} disabled={busy} className="block w-full text-left px-3 py-2 hover:bg-slate-50 disabled:opacity-50" title="複製一份成新案件再改，原案件不動">另存為新案件</button>
             <button onClick={askReset} disabled={busy} className="block w-full text-left px-3 py-2 text-red-700 hover:bg-red-50 disabled:opacity-50" title="回到載入時的原始輸入或清空重填">重置案件…</button>
           </div>
         </details>
       </div>
-      {todo && (todo.items.length ? (
-        <div className="basis-full text-xs flex flex-wrap items-center gap-1.5">
-          <span className="text-slate-600">這一案還缺：</span>
-          {todo.items.map((it: Any) => <Link key={it.key} href={it.href} className={`rounded px-2 py-0.5 border hover:underline ${it.level === "error" ? "bg-rose-50 border-rose-200 text-rose-800" : it.level === "warn" ? "bg-amber-50 border-amber-200 text-amber-900" : "bg-slate-50 border-slate-200 text-slate-700"}`}>{it.label}{it.count != null ? ` ${it.count}` : ""}</Link>)}
-        </div>
-      ) : <div className="basis-full text-xs text-emerald-700">這一案沒有待辦：可到「④ 輸出」下載。</div>)}
+      <div className="basis-full text-xs text-slate-600 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-slate-100 pt-2">
+        <span>輸入最後修改 <span className="font-mono">{fmt(rec.input_updated_at || rec.updated_at)}</span></span>
+        <span className="text-slate-300">|</span>
+        <Link href={`/input?tab=case&case=${encodeURIComponent(rec.id)}`} className="hover:text-[#c2410c] underline decoration-dotted" title={(rec.inputs || []).length ? `輸入檔：${(rec.inputs || []).map((i) => `${i.filename}（${i.kind_label}）`).join("、")}` : "這一案沒有輸入檔（範例或依地號產生）；到 ① 可加入"}>輸入檔 <span className="font-mono">{(rec.inputs || []).length}</span> 份{(rec.inputs || []).some((i) => (i.conflicts || []).length) ? <span className="ml-1 rounded px-1 bg-amber-100 text-amber-900 border border-amber-300">有不一致</span> : null}</Link>
+        <span className="text-slate-300">|</span>
+        <span>產出最後產生 <span className="font-mono">{fmt(rec.outputs?.generated_at)}</span></span>
+        {stale ? <span className="rounded-full px-2 py-0.5 bg-amber-100 text-amber-900 border border-amber-300">產出已過期</span> : rec.outputs ? <span className="rounded-full px-2 py-0.5 bg-emerald-50 text-emerald-800 border border-emerald-200">產出為最新</span> : null}
+        {todo && (todo.items.length ? (<>
+          <span className="text-slate-300">|</span>
+          <span>這一案還缺：</span>
+          {todo.items.map((it: Any) => <Link key={it.key} href={it.href} className={`rounded-full px-2 py-0.5 border hover:underline ${it.level === "error" ? "bg-rose-50 border-rose-200 text-rose-800" : it.level === "warn" ? "bg-amber-50 border-amber-200 text-amber-900" : "bg-slate-50 border-slate-200 text-slate-700"}`}>{it.label}{it.count != null ? ` ${it.count}` : ""}</Link>)}
+        </>) : <><span className="text-slate-300">|</span><span className="text-emerald-700">沒有待辦，可到「④ 輸出」下載</span></>)}
+      </div>
       {noActor && <div className="basis-full text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1">尚未填操作身分：請在左下角填姓名並選角色，裁決、意見書落款與操作紀錄才會記到人。</div>}
       {msg && <div className="basis-full text-xs text-slate-700">{msg} <button className="underline ml-1" onClick={() => setMsg(null)}>關閉</button></div>}
       {confirm && (

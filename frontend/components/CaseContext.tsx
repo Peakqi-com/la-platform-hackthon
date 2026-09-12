@@ -1,5 +1,6 @@
 "use client";
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { api, CaseRecord, CaseData, Any, Finding } from "@/lib/api";
 
 /* 全站共用：目前案件、名稱對照（/api/meta）、核算與審查結果（各頁共用，不重算）。案件資料存後端。 */
@@ -17,6 +18,7 @@ interface Ctx {
   reset: () => Promise<CaseRecord | null>;
   clear: () => Promise<CaseRecord | null>;
   resetAll: () => Promise<number>;   // 重置所有案件：後端清空後，前端回到「沒有案件」狀態
+  deselect: () => void;              // 放掉目前案件（回案件總覽時用）
   refreshList: () => Promise<Any[]>;
   ruleName: (id?: string) => string;
   label: (kind: "facility_types" | "measure_labels" | "origin_labels" | "geometry_sources" | "checklist" | "tables", key?: string | null) => string;
@@ -76,6 +78,10 @@ export function CaseProvider({ children }: { children: React.ReactNode }) {
     try { r = await api.generate(rec.id); } catch { /* 清空後先產生一次；失敗就維持未產生 */ }
     setRec(r); await refreshList(); return r;
   }, [rec, refreshList]);
+  const clearUrl = () => { const u = new URL(window.location.href); u.searchParams.delete("case"); window.history.replaceState({}, "", u.toString()); };
+  const deselect = useCallback(() => { setRec(null); setStatus(EMPTY); setError(null); clearUrl(); }, []);
+  const path = usePathname();
+  useEffect(() => { if (path === "/") deselect(); }, [path, deselect]);   // 案件總覽＝未選案件；①～④ 才是針對某個案件
   const resetAll = useCallback(async () => {
     const r = await api.resetAllCases();
     setRec(null); setCases([]); setStatus(EMPTY); setError(null);
@@ -88,7 +94,7 @@ export function CaseProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     api.meta().then(setMeta).catch(() => setMeta(null));
     const id = new URL(window.location.href).searchParams.get("case");
-    (async () => { const list = await refreshList().catch(() => []); if (id) await loadCase(id); else if (list.length) await loadCase(list[0].id); })();
+    (async () => { await refreshList().catch(() => []); if (id && window.location.pathname !== "/") await loadCase(id); })();   // 只在網址帶 ?case= 時載入，不自動選第一件
   }, [loadCase, refreshList]);
 
   const runKey = rec ? JSON.stringify([rec.id, rec.data, rec.submitted_table5, rec.submitted_table4]) : "";
@@ -111,6 +117,6 @@ export function CaseProvider({ children }: { children: React.ReactNode }) {
 
   const ruleName = (id?: string) => (id && meta?.rulesets?.[id]?.source) || id || "—";
   const label: Ctx["label"] = (kind, key) => (key ? (meta?.[kind]?.[key] ?? key) : "—");
-  return <C.Provider value={{ rec, loading, error, cases, meta, status, loadCase, loadDemo, save, patch, duplicate, refreshList, ruleName, label, stale, generating, generate, reset, clear, resetAll, mode }}>{children}</C.Provider>;
+  return <C.Provider value={{ rec, loading, error, cases, meta, status, loadCase, loadDemo, save, patch, duplicate, refreshList, ruleName, label, stale, generating, generate, reset, clear, resetAll, deselect, mode }}>{children}</C.Provider>;
 }
 export const useCase = () => { const c = useContext(C); if (!c) throw new Error("CaseProvider missing"); return c; };

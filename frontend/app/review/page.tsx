@@ -61,25 +61,26 @@ export default function Review() {
             <tbody>{cs.slice(0, 60).map((c, i) => <tr key={i}><td>{pathLabel(c.path)}</td><td className="font-mono">{String(c.kept ?? "（空）")}</td><td className="font-mono">{String(c.incoming ?? "（空）")}</td><td className="text-slate-600">{c.file}</td></tr>)}</tbody></table></div>
           {cs.length > 60 && <div className="text-xs text-slate-500 mt-1">只列前 60 筆，完整明細在「① 輸入資料」的輸入檔卡片。</div>}
         </Card>) : null; })()}
-      <Legend kinds={["review"]} />
       <Card hint="本頁每一項「系統核算」值都由規則引擎依查估辦法與作業手冊確定性計算並可對回基準明細表格位，AI 不參與數字；AI（語言模型）只用於掃描件辨識與意見書文字潤飾。 「承辦裁決」：接受填載＝經審酌採估價單位之填載（請填說明），維持不符＝請估價單位補正；裁決與說明會寫入審查意見書。審查重點條號依《土地徵收補償市價查估作業手冊》p.11–13：iii 勘查表等級、v 買賣實例、vi 區域因素分析明細表、vii 比較法調查估價表、x 宗地條件與清冊。「需確認」多為作業手冊未明定而依範本推定之事項，不判定為錯誤。" title={<>審查結果：{rec.name} <span className={`ml-2 align-middle rounded px-1.5 py-0.5 text-xs ${rec.status === "done" ? "bg-emerald-100 text-emerald-800" : rec.status === "reviewing" ? "bg-sky-100 text-sky-800" : "bg-slate-100 text-slate-700"}`}>{STATUS_LABEL[rec.status || "draft"]}</span></>}
         right={<>
-          <Btn onClick={saveDecisions} busy={busy} disabled={busy || !decDirty} title={decDirty ? "把裁決與說明存到案件" : "沒有未儲存的裁決"}>{decDirty ? "儲存裁決" : "裁決已儲存"}</Btn><Link href={`/report?case=${rec.id}`}><Btn kind="ghost">審查意見書 →</Btn></Link></>}>
+          <Btn onClick={saveDecisions} busy={busy} disabled={busy || !decDirty} title={decDirty ? "把裁決與說明存到案件" : "沒有未儲存的裁決"}>{decDirty ? "儲存裁決" : "裁決已儲存"}</Btn></>}>
         {status.error && <div className="text-red-700 text-sm mb-2">{status.error}</div>}
         {decNotice && <div className="text-sm text-amber-900 bg-amber-50 border border-amber-300 rounded p-2 mb-2 flex items-center gap-2">{decNotice}<button className="underline text-xs" onClick={() => { setDecisions(rec?.decisions || {}); setDecDirty(false); setDecNotice(null); }}>放棄未儲存裁決</button></div>}
         {!hasSubmitted && <div className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded p-2 mb-2">本案為依地號產生的書表，沒有估價單位的送審書表可比對，因此沒有「不符」可裁決；下列「資料缺口」是產出前要補的資料（例如比較標的），「需確認」是系統推定值、基準表上限、蒐集期間等事項，請逐項確認後再輸出。</div>}
         {status.loading && <div className="text-sm">核算中…</div>}
         {res && (
-          <div className="flex items-center gap-3 text-sm mb-3">
+          <div className="toolbar text-sm mb-3">
             {!hasSubmitted ? <>{counts.error ? <Badge kind="error">{counts.error} 項資料缺口</Badge> : <Badge kind="info">無送審書表可比對</Badge>}</> : counts.error === 0 ? <Badge kind="ok">全部相符</Badge> : <Badge kind="error">{counts.error} 項不符{accepted ? `（${accepted} 項已裁決接受）` : ""}</Badge>}
             <Badge kind="warn">{counts.warn} 項需確認</Badge><Badge kind="info">{counts.info} 項備註</Badge>
-            {status.run?.table4.subject_comparison_price != null ? <span className="text-slate-500">系統核算比準地比較價格 {status.run.table4.subject_comparison_price.toLocaleString()} 元/m²；比準地地價 {status.run.table4.subject_land_price?.toLocaleString()} 元/m²</span> : <span className="text-slate-500">尚無比較標的，比較價格未計算</span>}
-            <select className="no-print ml-auto border rounded px-2 py-1" value={scope} onChange={(e) => setScope(e.target.value)} title="一次只看一個對象，或全部分組列出">
+            <span className="ml-auto" />
+            <select className="no-print ctl" value={scope} onChange={(e) => setScope(e.target.value)} title="一次只看一個對象，或全部分組列出">
               <option value="all">全部（分組列出）</option><option value="case">只看全案／比準地</option>{(rec.data.comparables || []).map((c: Any) => <option key={c.comp_no} value={String(c.comp_no)}>只看比較標的{c.comp_no}{c.parcel_id ? `（${c.parcel_id}）` : ""}</option>)}
             </select>
-            <select className="no-print border rounded px-2 py-1" value={filter} onChange={(e) => setFilter(e.target.value)}>
+            <select className="no-print ctl" value={filter} onChange={(e) => setFilter(e.target.value)}>
               <option value="all">全部結果</option><option value="error">僅不符</option><option value="warn">僅需確認</option><option value="info">僅備註</option>
             </select>
+            <Legend kinds={["review"]} inline />
+            <div className="basis-full text-xs text-slate-500">{status.run?.table4.subject_comparison_price != null ? <>系統核算比準地比較價格 {status.run.table4.subject_comparison_price.toLocaleString()} 元/m²；比準地地價 {status.run.table4.subject_land_price?.toLocaleString()} 元/m²</> : "尚無比較標的，比較價格未計算"}</div>
           </div>
         )}
         {res && rows.length === 0 && <div className="text-slate-600 text-sm">{hasSubmitted ? "沒有符合篩選條件的項目。" : "本案沒有送審書表，沒有可比對的項目；上傳送審書表後這裡會逐項列出不符處。"}</div>}
@@ -100,9 +101,9 @@ export default function Review() {
                 <td className="text-right font-mono">{f.submitted ?? "—"}</td><td className="text-right font-mono">{f.computed ?? "—"}</td><td>{f.message}</td><td className="text-slate-600">{f.basis || "—"}</td>
                 <td className="whitespace-nowrap print-hide">{findingHref(f, rec.id) ? <Link href={findingHref(f, rec.id)!} className="inline-block px-2 py-1 rounded border border-orange-400 bg-orange-50 text-orange-900 text-xs hover:bg-orange-100" title="到書表對照檢視，右側會標出該項在評價基準明細表的判定條件與修正矩陣格位">看基準表格位 →</Link> : null}</td>
                 <td className={`whitespace-nowrap ${i === 0 && f.severity === "error" && !decisions[keyOf(f)]?.decision ? "bg-amber-50 ring-2 ring-amber-300" : ""}`}>{!hasSubmitted ? <span className="text-xs text-slate-500">{f.kind === "gap" ? "待補資料" : "待確認"}</span> : f.severity !== "info" && (() => { const d = decisions[keyOf(f)]; return (<><span className="print-only text-xs">{d?.decision === "accept" ? "接受填載" : d?.decision === "reject" ? "維持不符" : "待處理"}{d?.note ? `：${d.note}` : ""}</span><div className="flex flex-col gap-1 no-print">
-                  <select className={`border rounded px-1 text-xs ${d?.decision === "accept" ? "bg-emerald-50" : d?.decision === "reject" ? "bg-red-50" : ""}`} value={d?.decision || "pending"} onChange={(e) => setDec(f, { decision: e.target.value as Decision["decision"] })}>
+                  <select className={`ctl-sm w-40 ${d?.decision === "accept" ? "bg-emerald-50" : d?.decision === "reject" ? "bg-red-50" : ""}`} value={d?.decision || "pending"} onChange={(e) => setDec(f, { decision: e.target.value as Decision["decision"] })}>
                     <option value="pending">待處理</option><option value="accept">接受填載</option><option value="reject">維持不符</option></select>
-                  <input className="border rounded px-1 text-xs w-36" placeholder="說明（寫入意見書）" value={d?.note || ""} onChange={(e) => setDec(f, { note: e.target.value })} /></div></>); })()}</td>
+                  <input className="ctl-sm w-40" placeholder="說明（寫入意見書）" value={d?.note || ""} onChange={(e) => setDec(f, { note: e.target.value })} /></div></>); })()}</td>
               </tr>); })]; }); })()}</tbody>
           </table></div>
         )}

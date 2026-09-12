@@ -151,10 +151,10 @@ export default function CasePage({ embedded = false }: { embedded?: boolean } = 
           <Card title="案件" right={<Btn kind={caseMode === "review" ? "primary" : "ghost"} onClick={doSave} disabled={busy} busy={busy}>儲存並重新產生書表</Btn>}>
             <div className="text-sm space-y-2">
               {[["case.case_no", "案號"], ["case.valuation_date", "估價基準日（年期，民國 7 碼）"], ["case.district", "鄉鎮市區"], ["case.appraiser", "不動產估價師（書表與圖說簽章欄）"], ["case.fill_date", "填寫日期（如 114 年 09 月 18 日）"]].map(([k, l]) => (
-                <label key={k} className="block"><span className="text-xs text-slate-500">{l}</span><input className="border rounded px-2 py-1 w-full" value={k.split(".").reduce((a: Any, x) => a?.[x], draft) ?? ""} onChange={(e) => upd(k, e.target.value)} />
+                <label key={k} className="block"><span className="text-xs text-slate-500">{l}</span><input className="ctl w-full" value={k.split(".").reduce((a: Any, x) => a?.[x], draft) ?? ""} onChange={(e) => upd(k, e.target.value)} />
                   {k === "case.valuation_date" && vdateHint(draft.case.valuation_date)}</label>))}
               {caseMode === "generate" && <div className="border border-orange-200 bg-orange-50/60 rounded p-2 space-y-1">
-                <label className="block"><span className="text-xs text-slate-700 font-medium">比準地地號</span><input className="border rounded px-2 py-1 w-full" placeholder="例：金美段489地號" value={draft.subject_parcel.parcel_id ?? ""} onChange={(e) => upd("subject_parcel.parcel_id", e.target.value)} /></label>
+                <label className="block"><span className="text-xs text-slate-700 font-medium">比準地地號</span><input className="ctl w-full" placeholder="例：金美段489地號" value={draft.subject_parcel.parcel_id ?? ""} onChange={(e) => upd("subject_parcel.parcel_id", e.target.value)} /></label>
                 <div className="flex flex-wrap items-center gap-2">
                   <Btn onClick={() => runFromLot()} disabled={busy} busy={busy} title="依地號找地籍界線，推定宗地屬性、區段範圍草稿、勘查表與設施距離，並重新產生書表">依地號產生</Btn>
                   <label className="text-xs text-slate-600 inline-flex items-center gap-1"><input type="checkbox" checked={overwriteLot} onChange={(e) => setOverwriteLot(e.target.checked)} />覆寫已填值</label>
@@ -164,8 +164,8 @@ export default function CasePage({ embedded = false }: { embedded?: boolean } = 
                 {steps && <ul className="text-[11px] space-y-0.5">{steps.map((st) => <li key={st.step} className={st.ok ? "text-emerald-800" : "text-rose-700"}>{st.ok ? "✓" : "✗"} {st.step}：{st.note}</li>)}</ul>}
                 <button className="text-xs underline text-slate-700" onClick={() => { setShowReport(!showReport); setReportKey((k) => k + 1); }}>{showReport ? "收起填寫結果清單" : "看填寫結果清單（每欄的值、狀態、來源）"}</button>
               </div>}
-              {caseMode === "review" && <label className="block"><span className="text-xs text-slate-500">比準地地號（送審書表）</span><input className="border rounded px-2 py-1 w-full" value={draft.subject_parcel.parcel_id ?? ""} onChange={(e) => upd("subject_parcel.parcel_id", e.target.value)} /></label>}
-              <label className="block"><span className="text-xs text-slate-500">用地別</span><select className="border rounded px-2 py-1 w-full" value={draft.case.land_use || ""} onChange={(e) => upd("case.land_use", e.target.value)}>{["商業用地", "住宅用地", "工業用地", "農業用地", "其他用地"].map((x) => <option key={x}>{x}</option>)}</select></label>
+              {caseMode === "review" && <label className="block"><span className="text-xs text-slate-500">比準地地號（送審書表）</span><input className="ctl w-full" value={draft.subject_parcel.parcel_id ?? ""} onChange={(e) => upd("subject_parcel.parcel_id", e.target.value)} /></label>}
+              <label className="block"><span className="text-xs text-slate-500">用地別</span><select className="ctl w-full" value={draft.case.land_use || ""} onChange={(e) => upd("case.land_use", e.target.value)}>{["商業用地", "住宅用地", "工業用地", "農業用地", "其他用地"].map((x) => <option key={x}>{x}</option>)}</select></label>
               <details className="text-xs text-slate-500"><summary className="cursor-pointer hover:text-slate-800">適用基準表</summary>
                 <div className="mt-1">{ruleName(rs.regional)}／{ruleName(rs.individual)}（到「評價基準明細表」頁更換）</div></details>
             </div>
@@ -173,9 +173,9 @@ export default function CasePage({ embedded = false }: { embedded?: boolean } = 
           <InputsCard />
           <Card title={`地價區段 ${section.section_id}`}>
             <div className="text-sm space-y-2">
-              <label className="block"><span className="text-xs text-slate-500">區段編號</span><input className="border rounded px-2 py-1 w-full" value={section.section_id || ""} onChange={(e) => { const d = JSON.parse(JSON.stringify(draft)); const s = d.sections[section.section_id]; delete d.sections[section.section_id]; s.section_id = e.target.value; d.sections[e.target.value] = s; d.subject_parcel.section_id = e.target.value; d.comparables.forEach((c: Any) => { if (c.section_id === section.section_id) c.section_id = e.target.value; }); setDraft(d); }} /></label>
-              <label className="block"><span className="text-xs text-slate-500">區段範圍（文字描述）</span><textarea className="border rounded px-2 py-1 w-full h-20" value={section.range_desc || ""} onChange={(e) => upd(`sections.${section.section_id}.range_desc`, e.target.value)} /></label>
-              <label className="block"><span className="text-xs text-slate-500">勘查日期</span><input className="border rounded px-2 py-1 w-full" value={section.survey_date || ""} onChange={(e) => upd(`sections.${section.section_id}.survey_date`, e.target.value)} /></label>
+              <label className="block"><span className="text-xs text-slate-500">區段編號</span><input className="ctl w-full" value={section.section_id || ""} onChange={(e) => { const d = JSON.parse(JSON.stringify(draft)); const s = d.sections[section.section_id]; delete d.sections[section.section_id]; s.section_id = e.target.value; d.sections[e.target.value] = s; d.subject_parcel.section_id = e.target.value; d.comparables.forEach((c: Any) => { if (c.section_id === section.section_id) c.section_id = e.target.value; }); setDraft(d); }} /></label>
+              <label className="block"><span className="text-xs text-slate-500">區段範圍（文字描述）</span><textarea className="ctl w-full h-20" value={section.range_desc || ""} onChange={(e) => upd(`sections.${section.section_id}.range_desc`, e.target.value)} /></label>
+              <label className="block"><span className="text-xs text-slate-500">勘查日期</span><input className="ctl w-full" value={section.survey_date || ""} onChange={(e) => upd(`sections.${section.section_id}.survey_date`, e.target.value)} /></label>
               <div className="text-xs">範圍多邊形：{section.geometry ? <span className="text-emerald-700">已有（{label("geometry_sources", section.geometry_source) || "勘查表／區段圖"}）</span> : <span className="text-rose-700">尚無 — 請在右側圖上推估或提供區段圖</span>}</div>
               <div className="text-xs">比準地位置：{draft.subject_parcel.geometry ? <span className="text-emerald-700">已有（{label("geometry_sources", draft.subject_parcel.geometry_source) || "地籍圖"}）</span> : <span className="text-rose-700">尚無 — 請在右側圖上點選</span>}</div>
             </div>
@@ -183,35 +183,38 @@ export default function CasePage({ embedded = false }: { embedded?: boolean } = 
         </div>
         <div className="lg:col-span-2">
           <Card title="位置與設施距離" hint="區段範圍與宗地界線以地價區段圖、地籍圖為準；設施距離由比準地位置自動量測。">
-            <div className="flex flex-wrap gap-2 mb-2 items-center">
+            <div className="toolbar mb-1">
               <input ref={secRef} type="file" accept=".geojson,.json,.kml,.gml,.xml,.zip" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) importSectionMap(f); }} />
               <input ref={cadRef} type="file" accept=".geojson,.json,.kml,.gml,.xml,.zip" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) importCadastre(f); }} />
-              <button className="px-3 py-1.5 rounded text-sm btn-io-import disabled:opacity-50" disabled={busy} onClick={() => secRef.current?.click()} title="GeoJSON／KML／GML／Shapefile zip（TWD97）；依區段編號對到本案區段">⬆ 匯入地價區段圖</button>
-              <button className="px-3 py-1.5 rounded text-sm btn-io-import disabled:opacity-50" disabled={busy} onClick={() => cadRef.current?.click()} title="GeoJSON／KML／GML／Shapefile zip（TWD97）；依段名地號對到本案宗地">⬆ 匯入地籍圖</button>
-              {!(rec.submitted_table4 || rec.submitted_table5) && <><button className="px-3 py-1.5 rounded text-sm btn-io-import disabled:opacity-50" disabled={busy} onClick={() => pdfRef.current?.click()} title="既有案件補上估價單位送來的六頁書表 PDF：只掛送審表與抽取資訊，不動本案輸入資料；掛上後即可到「審查」逐格比對">⬆ 補上送審書表 PDF</button><input ref={pdfRef} type="file" accept=".pdf" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) attachPdf(f); e.target.value = ""; }} /></>}
+              <button className="btn-io-import disabled:opacity-50" disabled={busy} onClick={() => secRef.current?.click()} title="GeoJSON／KML／GML／Shapefile zip（TWD97）；依區段編號對到本案區段">⬆ 匯入地價區段圖</button>
+              <button className="btn-io-import disabled:opacity-50" disabled={busy} onClick={() => cadRef.current?.click()} title="GeoJSON／KML／GML／Shapefile zip（TWD97）；依段名地號對到本案宗地">⬆ 匯入地籍圖</button>
+              {!(rec.submitted_table4 || rec.submitted_table5) && <><button className="btn-io-import disabled:opacity-50" disabled={busy} onClick={() => pdfRef.current?.click()} title="既有案件補上估價單位送來的六頁書表 PDF：只掛送審表與抽取資訊，不動本案輸入資料；掛上後即可到「審查」逐格比對">⬆ 補上送審書表 PDF</button><input ref={pdfRef} type="file" accept=".pdf" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) attachPdf(f); e.target.value = ""; }} /></>}
+              <span className="toolbar-sep" />
               <Btn kind="ghost" onClick={refill} disabled={busy || !draft.subject_parcel.geometry} title={draft.subject_parcel.geometry ? "依設施資料庫重新量測比準地、比較標的與區段之設施距離（覆寫現有距離）" : "先有比準地位置"}>重新量測設施距離</Btn>
-              <span className="text-xs text-slate-500">
+            </div>
+            <div className="text-xs text-slate-500 mb-2">
+              <span>
                 區段圖：{draft.case.section_map ? <span className="text-emerald-700">已匯入 {draft.case.section_map.n} 區段（{draft.case.section_map.filename}）</span> : "未匯入"}；
                 地籍圖：{draft.case.cadastre ? <span className="text-emerald-700">已匯入 {draft.case.cadastre.n} 筆（{draft.case.cadastre.filename}）</span> : preloaded ? <span className="text-slate-700">未匯入，使用預載地籍圖（{preloaded.n} 筆{preloaded.districts?.length ? `，${preloaded.districts.join("、")}` : ""}）</span> : "未匯入"}
               </span>
             </div>
             <details className="mb-2 text-sm" open={!section.geometry || !draft.subject_parcel.geometry}>
               <summary className="text-xs text-slate-600 cursor-pointer">無地籍圖／區段圖時的替代方式（結果標示為草稿）</summary>
-              <div className="flex flex-wrap gap-2 mt-2 items-center">
+              <div className="toolbar mt-2">
                 {!preview && <Btn kind={mode === "section" ? "danger" : "ghost"} onClick={() => { setMode(mode === "section" ? "" : "section"); setHints([]); setPreview(null); }} disabled={busy}>{mode === "section" ? "請在圖上點區段內的位置…（按此取消）" : "在圖上推估區段範圍"}</Btn>}
                 {preview && <><Btn onClick={acceptPreview}>採用此範圍</Btn><Btn kind={mode === "section" ? "danger" : "ghost"} onClick={() => setMode(mode === "section" ? "" : "section")} disabled={busy}>{mode === "section" ? "請再點一處…（按此取消）" : "再點一處擴大"}</Btn><Btn kind="ghost" onClick={() => { setPreview(null); setHints([]); setMode(""); if (rec) api.mapLayers(rec.data).then(setLayers).catch(() => null); setMsg("已放棄推估的範圍。"); }}>放棄</Btn></>}
                 <Btn kind={mode === "subject" ? "danger" : "ghost"} onClick={() => setMode(mode === "subject" ? "" : "subject")} disabled={busy}>{mode === "subject" ? "請在圖上點比準地的位置…（按此取消）" : "在圖上設定比準地位置"}</Btn>
                 {(draft.comparables || []).filter((c: Any) => c.parcel_id).length > 0 && <span className="flex items-center gap-1">
-                  <select className="border rounded px-2 py-1 text-sm" value={compTarget} onChange={(e) => setCompTarget(Number(e.target.value))}>{(draft.comparables || []).filter((c: Any) => c.parcel_id).map((c: Any) => <option key={c.comp_no} value={c.comp_no}>比較標的{c.comp_no} {c.parcel_id}{c.geometry ? "" : "（無位置）"}</option>)}</select>
+                  <select className="ctl" value={compTarget} onChange={(e) => setCompTarget(Number(e.target.value))}>{(draft.comparables || []).filter((c: Any) => c.parcel_id).map((c: Any) => <option key={c.comp_no} value={c.comp_no}>比較標的{c.comp_no} {c.parcel_id}{c.geometry ? "" : "（無位置）"}</option>)}</select>
                   <Btn kind={mode === "comp" ? "danger" : "ghost"} onClick={() => setMode(mode === "comp" ? "" : "comp")} disabled={busy}>{mode === "comp" ? `請在圖上點比較標的${compTarget}的位置…（按此取消）` : "在圖上設定比較標的位置"}</Btn></span>}
                 <Help className="w-full">區段：依路網圍出街廓；比準地：點選位置若落在已匯入地籍圖的某筆宗地內採其界線，否則依清冊面積合成示意範圍，並接著依地號產生其餘內容；比較標的：不在地籍圖的實例會先依實價登錄門牌定位，不準時在圖上點一下重設。</Help>
               </div>
-              <div className="flex flex-wrap gap-2 items-center mt-2">
-                <span className="text-xs text-slate-600">人工標定設施：</span>
-                <select className="border rounded px-2 py-1 text-sm" value={poi.type} onChange={(e) => setPoi({ ...poi, type: e.target.value })}>{Object.entries(meta?.facility_types || {}).map(([t, l]) => <option key={t} value={t}>{String(l)}</option>)}</select>
-                <input className="border rounded px-2 py-1 text-sm" placeholder="設施名稱" value={poi.name} onChange={(e) => setPoi({ ...poi, name: e.target.value })} />
+              <div className="toolbar mt-2">
+                <span className="toolbar-label">人工標定設施</span>
+                <select className="ctl" value={poi.type} onChange={(e) => setPoi({ ...poi, type: e.target.value })}>{Object.entries(meta?.facility_types || {}).map(([t, l]) => <option key={t} value={t}>{String(l)}</option>)}</select>
+                <input className="ctl w-40" placeholder="設施名稱" value={poi.name} onChange={(e) => setPoi({ ...poi, name: e.target.value })} />
                 <Btn kind={mode === "poi" ? "danger" : "ghost"} onClick={() => setMode(mode === "poi" ? "" : "poi")} disabled={busy || !poi.name}>{mode === "poi" ? "請在圖上點選…（取消）" : "於圖上標定"}</Btn>
-                <span className="text-xs text-slate-500">標定後請重新量測。</span>
+                <span className="toolbar-note">標定後請重新量測。</span>
               </div>
             </details>
             {layers?.n_far > 0 && <div className="no-print text-xs mb-1 flex items-center gap-2"><span className="text-slate-500">有 {layers.n_far} 筆幾何離比準地超過 2.5 km（其他鄉鎮的比較標的），預設不納入取景。</span><button className="underline" onClick={() => setShowAll(!showAll)}>{showAll ? "只看比準地周邊" : "顯示全部"}</button></div>}

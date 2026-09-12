@@ -28,14 +28,14 @@ export function Card({ title, children, right, hint, className, lead }: { title?
   const [showHint, setShowHint] = useState(false);
   return (
     <section className={`bg-white rounded-lg border border-slate-200 p-4 ${className || "mb-4"}`}>
-      {(title || right) && <div className="flex items-start gap-3 mb-3 flex-wrap"><div className="min-w-[14rem] flex-1"><h2 className="font-semibold text-base">{title}{hint && <button type="button" className={`ml-2 inline-block w-5 h-5 rounded-full border text-xs leading-4 text-center font-normal align-middle no-print hover:bg-slate-100 ${showHint ? "border-[#ea580c] text-[#ea580c]" : "border-slate-400 text-slate-500"}`} title={showHint ? "收起說明" : "說明"} aria-expanded={showHint} onClick={() => setShowHint(!showHint)}>?</button>}</h2>{lead && <p className="text-xs text-slate-600 mt-1">{lead}</p>}{hint && showHint && <p className="text-xs text-slate-600 mt-1 no-print">{hint}</p>}</div><div className="ml-auto flex flex-wrap justify-end gap-2 items-center">{right}</div></div>}
+      {(title || right) && <div className="flex items-center gap-3 mb-3 flex-wrap"><div className="min-w-0 flex-1"><h2 className="font-semibold text-base">{title}{hint && <button type="button" className={`ml-2 inline-block w-5 h-5 rounded-full border text-xs leading-4 text-center font-normal align-middle no-print hover:bg-slate-100 ${showHint ? "border-[#ea580c] text-[#ea580c]" : "border-slate-400 text-slate-500"}`} title={showHint ? "收起說明" : "說明"} aria-expanded={showHint} onClick={() => setShowHint(!showHint)}>?</button>}</h2>{lead && <p className="text-xs text-slate-600 mt-1">{lead}</p>}{hint && showHint && <p className="text-xs text-slate-600 mt-1 no-print">{hint}</p>}</div><div className="ml-auto flex flex-wrap justify-end gap-2 items-center shrink-0">{right}</div></div>}
       {children}
     </section>
   );
 }
 export function Btn({ children, onClick, kind = "primary", disabled, title, busy }: { children: React.ReactNode; onClick?: () => void; kind?: "primary" | "ghost" | "danger"; disabled?: boolean; title?: string; busy?: boolean }) {
   const cls = kind === "primary" ? "bg-[#ea580c] text-white hover:bg-[#c2410c]" : kind === "danger" ? "bg-red-600 text-white" : "bg-white border border-slate-300 hover:bg-slate-50";
-  return <button type="button" title={title} disabled={disabled} onClick={onClick} aria-busy={busy || undefined} className={`px-3 py-1.5 rounded text-sm whitespace-nowrap disabled:opacity-50 inline-flex items-center gap-1 ${cls}`}>{busy && <span className="inline-block w-3 h-3 rounded-full border-2 border-current border-t-transparent animate-spin" aria-hidden />}{children}</button>;
+  return <button type="button" title={title} disabled={disabled} onClick={onClick} aria-busy={busy || undefined} className={`h-8 px-3 rounded text-sm whitespace-nowrap disabled:opacity-50 inline-flex items-center gap-1 ${cls}`}>{busy && <span className="inline-block w-3 h-3 rounded-full border-2 border-current border-t-transparent animate-spin" aria-hidden />}{children}</button>;
 }
 export function Empty({ text = "尚未載入案件。請到「案件總覽」載入範例或上傳送審書表。" }: { text?: string }) {
   return <div className="text-slate-600 text-sm bg-white border border-dashed border-slate-300 rounded-lg p-8 text-center">{text}</div>;

@@ -40,7 +40,7 @@ export function useStepStatus(): Record<string, boolean> {
 function NavInner() {
   const path = usePathname();
   useSearchParams();
-  const { rec, mode } = useCase();
+  const { rec, mode, deselect } = useCase();
   const q = rec ? `?case=${encodeURIComponent(rec.id)}` : "";
   const done = useStepStatus();
   const sub = (it: { href: string; sub?: string }) => (mode === "review" && it.href === "/input" ? "基準表・核對送審書表填載值" : mode === "review" && it.href === "/sheets" ? "重算的書表・地圖" : it.sub);
@@ -57,7 +57,7 @@ function NavInner() {
           </div>
         ) : null;
         return (<Fragment key={it.href}>{caseHead}
-          <Link href={it.href + (it.href === "/" ? "" : q)} className={`block px-3 py-2 rounded-lg mb-1 ${active ? "bg-[#ea580c] text-white" : "hover:bg-orange-100"}`}>
+          <Link href={it.href + (it.href === "/" ? "" : q)} onClick={it.href === "/" ? deselect : undefined} className={`block px-3 py-2 rounded-lg mb-1 ${active ? "bg-[#ea580c] text-white" : "hover:bg-orange-100"}`}>
             <div className="flex items-center gap-2"><span className="font-medium">{it.label}</span>{done[it.href] && <span className={`ml-auto text-xs ${active ? "text-white" : "text-emerald-700"}`} title="此段已完成">✓</span>}</div>
             {sub(it) && <div className={`text-[11px] ${active ? "opacity-90" : "opacity-70"}`}>{sub(it)}</div>}
           </Link>

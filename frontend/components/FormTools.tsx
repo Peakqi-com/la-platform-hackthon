@@ -36,14 +36,18 @@ export function keyNav(e: React.KeyboardEvent<HTMLElement>) {
 }
 
 export function FormToolbar({ tools, groups, dirty }: { tools: ReturnType<typeof useFormTools>; groups: string[]; dirty: boolean }) {
+  const mini = "h-8 px-2.5 rounded border border-slate-300 bg-white text-xs text-slate-700 hover:bg-slate-50";
   return (
-    <div className="no-print flex flex-wrap items-center gap-2 text-xs mb-2">
-      <span className="text-slate-500">顯示：</span>
-      {(Object.keys(FILTER_LABEL) as Filter[]).map((f) => <button key={f} onClick={() => tools.setFilter(f)} className={`px-2 py-0.5 rounded border ${tools.filter === f ? "bg-[#ea580c] text-white border-[#ea580c]" : "bg-white"}`}>{FILTER_LABEL[f]}</button>)}
-      <span className="mx-1 text-slate-300">|</span>
-      <button className="underline" onClick={tools.allOpen}>全部展開</button><button className="underline" onClick={() => tools.allClosed(groups)}>全部收合</button>
-      <span className="text-slate-400">｜↑↓ 或 Enter 在欄位間移動</span>
-      {dirty && <span className="ml-auto rounded px-2 py-0.5 bg-amber-100 text-amber-800">有未儲存的修改</span>}
+    <div className="no-print toolbar mb-2">
+      <span className="toolbar-label">顯示</span>
+      <div className="seg" role="group" aria-label="篩選">
+        {(Object.keys(FILTER_LABEL) as Filter[]).map((f) => <button key={f} type="button" aria-pressed={tools.filter === f} onClick={() => tools.setFilter(f)}>{FILTER_LABEL[f]}</button>)}
+      </div>
+      <span className="toolbar-sep" />
+      <button type="button" className={mini} onClick={tools.allOpen}>全部展開</button>
+      <button type="button" className={mini} onClick={() => tools.allClosed(groups)}>全部收合</button>
+      <span className="toolbar-note">↑↓ 或 Enter 在欄位間移動</span>
+      {dirty && <span className="ml-auto rounded-full px-2.5 py-0.5 text-xs bg-amber-100 text-amber-800">有未儲存的修改</span>}
     </div>
   );
 }

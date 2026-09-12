@@ -43,10 +43,10 @@ export default function Export() {
   }
   return (
     <div>
-      <PageHeader title="④ 輸出" desc="每個檔案可個別下載，或一次打包成 zip。" next={{ href: "/", label: "案件總覽", plain: true }} />
+      <PageHeader title="④ 輸出" desc="每個檔案可個別下載，或一次打包成 zip。" />
       <StaleBanner what="輸出" />
-      <Card title="全部打包" hint="查估書表 Excel 與 PDF、審查意見書 Word 與 PDF、三張圖說 PNG，一個 zip。" right={<Btn onClick={() => dl("zip", `/api/cases/${encodeURIComponent(rec.id)}/bundle.zip?reviewer=${encodeURIComponent(getActor().name)}&reviewer_role=${encodeURIComponent(getActor().role)}`, `${no}_全部輸出.zip`)} disabled={stale || !!busy} busy={busy === "zip"} title={stale ? "產出已過期，請先重新產生書表" : undefined}>⬇ 下載全部（zip）</Btn>}>
-        {msg.zip && <div className="text-xs text-slate-600">{msg.zip}</div>}
+      <Card title="全部打包" lead="查估書表 Excel 與 PDF、審查意見書 Word 與 PDF、三張圖說 PNG，一個 zip。" right={<Btn onClick={() => dl("zip", `/api/cases/${encodeURIComponent(rec.id)}/bundle.zip?reviewer=${encodeURIComponent(getActor().name)}&reviewer_role=${encodeURIComponent(getActor().role)}`, `${no}_全部輸出.zip`)} disabled={stale || !!busy} busy={busy === "zip"} title={stale ? "產出已過期，請先重新產生書表" : undefined}>⬇ 下載全部（zip）</Btn>}>
+        {msg.zip && <div className="text-xs text-slate-600 mb-1">{msg.zip}</div>}
         <div className="text-xs text-slate-500">簽章欄：{rec.data.case.appraiser || "（未填）"}；填寫日期：{rec.data.case.fill_date || "（未填）"}；意見書落款：{getActor().name || "（未填操作身分）"}。</div>
       </Card>
       <Card title="個別檔案">
@@ -55,7 +55,7 @@ export default function Export() {
             <tr key={it.key}>
               <td className="whitespace-nowrap font-medium">{it.name}</td>
               <td className="text-sm">{it.desc}{it.formats.map((f) => msg[f.key] && <div key={f.key} className="text-xs text-slate-600 mt-1">{msg[f.key]}</div>)}</td>
-              <td className="whitespace-nowrap"><div className="flex gap-2">{it.formats.map((f) => <Btn key={f.key} kind="ghost" onClick={() => dl(f.key, f.url(encodeURIComponent(rec.id)), f.file(no))} disabled={(it.needOutputs && stale) || !!busy} busy={busy === f.key} title={it.needOutputs && stale ? "產出已過期，請先重新產生書表" : `下載 ${f.file(no)}`}>⬇ {f.fmt}</Btn>)}</div></td>
+              <td className="whitespace-nowrap"><div className="flex gap-2">{it.formats.map((f) => <span key={f.key} className="inline-flex [&>button]:min-w-[6.5rem] [&>button]:justify-center"><Btn kind="ghost" onClick={() => dl(f.key, f.url(encodeURIComponent(rec.id)), f.file(no))} disabled={(it.needOutputs && stale) || !!busy} busy={busy === f.key} title={it.needOutputs && stale ? "產出已過期，請先重新產生書表" : `下載 ${f.file(no)}`}>⬇ {f.fmt}</Btn></span>)}</div></td>
             </tr>))}</tbody></table></div>
         <div className="text-xs text-slate-500 mt-2">意見書也可到 <Link className="underline" href={`/report?case=${encodeURIComponent(rec.id)}`}>審查意見書</Link> 頁預覽後下載；地圖可在 <Link className="underline" href={`/map?case=${encodeURIComponent(rec.id)}`}>地圖（互動檢視）</Link> 檢視。</div>
       </Card>
