@@ -10,16 +10,19 @@ FastAPI 入口。
 from __future__ import annotations
 
 import copy
+import hashlib
 import io
 import json
 import re
+import time
 import urllib.parse
+import uuid
 from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel
 
 from app import audit as AUD
@@ -168,12 +171,18 @@ class RulesImportPayload(BaseModel):
 @app.post("/api/rules/import")
 def rules_import(payload: RulesImportPayload):
     """匿存 /api/adapt(rules_table) 轉出或使用者上傳的基準表 JSON → rules/uploaded_<id>.json，之後 case.rulesets 可直接引用。"""
-    import tempfile
     d = payload.ruleset
     for k in ("scope", "rules", "land_use"):
         if k not in d:
             raise HTTPException(422, f"基準表 JSON 缺 {k}")
-    rid = re.sub(r"[^A-Za-z0-9_]", "_", payload.id or d.get("id") or "uploaded")
+    rid = _store_ruleset(d, payload.id)
+    return {"id": rid, "summary": _ruleset_summary(RULES_DIR / f"{rid}.json")}
+
+
+def _store_ruleset(d: dict[str, Any], rid: str | None = None) -> str:
+    """基準表 JSON → rules/uploaded_<id>_<scope>.json（先試載入，載不進就不存）。回傳 id。"""
+    import tempfile
+    rid = re.sub(r"[^A-Za-z0-9_]", "_", rid or d.get("id") or "uploaded")
     if not rid.endswith(f"_{d['scope']}"):
         rid = f"{rid}_{d['scope']}"
     if not rid.startswith("uploaded_"):
@@ -187,7 +196,7 @@ def rules_import(payload: RulesImportPayload):
     except Exception as e:
         raise HTTPException(422, f"基準表 JSON 無法載入：{e}") from e
     (RULES_DIR / f"{rid}.json").write_text(json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
-    return {"id": rid, "summary": _ruleset_summary(RULES_DIR / f"{rid}.json")}
+    return rid
 
 
 @app.post("/api/run")
@@ -261,13 +270,31 @@ async def adapt(file: UploadFile = File(...), kind: str = Form("auto"), land_use
             from app.adapters.rules_table import read_rules_table
             res = read_rules_table(content, filename=file.filename, land_use=land_use, id_prefix=id_prefix)
         else:
-            from app.adapters.pdf_forms import read_pdf_forms
-            res = read_pdf_forms(content, filename=file.filename, use_vision=use_vision)
+            res = _read_pdf_forms_cached(content, file.filename, use_vision)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(422, f"檔案解析失敗（{k}）：{e}") from e
     out = res.to_dict()
     out["filename"] = file.filename
     return out
+
+
+_ADAPT_CACHE: dict[str, tuple[float, Any]] = {}     # sha1|use_vision → (time, AdapterResult)；首頁先預覽再建案，同一份 PDF 不重跑影像辨識
+_ADAPT_TTL = 1800
+
+
+def _read_pdf_forms_cached(content: bytes, filename: str | None, use_vision: str):
+    from app.adapters.pdf_forms import read_pdf_forms
+    key = f"{hashlib.sha1(content).hexdigest()}|{use_vision}"
+    hit = _ADAPT_CACHE.get(key)
+    if hit and time.time() - hit[0] < _ADAPT_TTL:
+        return copy.deepcopy(hit[1])
+    res = read_pdf_forms(content, filename=filename, use_vision=use_vision)
+    if len(_ADAPT_CACHE) >= 32:
+        _ADAPT_CACHE.pop(min(_ADAPT_CACHE, key=lambda k: _ADAPT_CACHE[k][0]))
+    _ADAPT_CACHE[key] = (time.time(), copy.deepcopy(res))
+    return res
 
 
 class ExportPayload(CasePayload):
@@ -404,7 +431,7 @@ def cases_list():
 
 
 _ORIGIN_LABELS = {"manual": "送審書表或手動建立", "demo:template": "範例", "demo:tampered": "範例（含填載錯誤）", "demo:residential": "範例（住宅用地）", "demo:shulin": "決賽題目（樹林區）",
-                  "demo:blank_survey": "範例（僅勘查表）", "from_lot": "依地號產生", "import": "檔案匯入"}
+                  "demo:blank_survey": "範例（僅勘查表）", "from_lot": "依地號產生", "import": "檔案匯入", "inputs": "輸入檔建立"}
 
 
 def _origin_label(origin: str | None) -> str:
@@ -435,6 +462,16 @@ def _attach_geometry(data: dict[str, Any]) -> list[str]:
                 notes.append(f"比較標的{c.get('comp_no')} 位置未推定：{e}")
     sid = subject.get("section_id") or next(iter(data.get("sections") or {}), None)
     sec = (data.get("sections") or {}).get(sid) if sid else None
+    try:                                                                   # 有四至文字的區段先由路名圍面（比準地與比較標的所在區段都做）
+        from app.maps.zoning import get_zoning_store
+        from app.spatial.lot import section_from_range_text
+        roads_ = get_roads(data=data)
+        for osid, osec in (data.get("sections") or {}).items():
+            if osec.get("geometry") is None and (osec.get("range_desc") or "").strip():
+                r_ = section_from_range_text(osec, roads_, get_zoning_store())
+                notes.append(f"區段 {osid}：{'依四至圍出' if r_['ok'] else '四至圍不出'}")
+    except Exception as e:  # noqa: BLE001
+        notes.append(f"四至圍面：{e}")
     if sec is not None and sec.get("geometry") is None and subject.get("geometry") is not None:
         try:
             roads = get_roads(data=data)
@@ -978,82 +1015,321 @@ def cases_comparables_xlsx(cid: str, request: Request):
                              headers={"Content-Disposition": f"attachment; filename*=UTF-8''{urllib.parse.quote(fname)}"})
 
 
-def _merge_fields(dst: dict, src: dict, skip: tuple[str, ...] = ("provenance",)) -> list[str]:
-    changed = []
-    for k, v in src.items():
-        if k in skip or v is None:
+# ------------------------------------------------------------------ 輸入檔（一個案件、多份檔）
+
+
+def _geo_kind(feats: list[dict]) -> str:
+    props = (feats[0].get("properties") or {}) if feats else {}
+    if _pick_field(props, _LOT_KEYS):
+        return "cadastre"
+    if _pick_field(props, _SECID_KEYS):
+        return "section_map"
+    raise HTTPException(422, "圖檔屬性裡找不到地號欄位（地籍圖）或區段編號欄位（地價區段圖）")
+
+
+def _detect_input_kind(filename: str, content: bytes) -> str:
+    """輸入檔種類：書表 PDF／清冊／實例／基準表（PDF、CSV、xlsx、JSON）／地籍圖／地價區段圖（GeoJSON、KML、GML、SHP zip）。"""
+    name = (filename or "").lower()
+    if name.endswith(".json"):
+        try:
+            d = json.loads(content.decode("utf-8"))
+        except Exception as e:
+            raise HTTPException(422, f"JSON 無法解析：{e}") from e
+        if isinstance(d, dict) and d.get("type") == "FeatureCollection":
+            return _geo_kind(d.get("features") or [])
+        if isinstance(d, dict) and "scope" in d and "rules" in d:
+            return "rules_json"
+        raise HTTPException(422, "JSON 不是地籍圖／區段圖（GeoJSON），也不是基準表 JSON")
+    if name.endswith((".geojson", ".kml", ".gml", ".xml", ".zip")):
+        try:
+            feats = _read_cadastre_upload(content, name, 3826)
+        except Exception as e:
+            raise HTTPException(422, f"圖檔解析失敗：{e}") from e
+        return _geo_kind(feats)
+    try:
+        return detect_kind(filename, content)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(422, f"無法讀取檔案：{e}") from e
+
+
+_INPUT_ORDER = {"pdf_forms": 0, "rules_table": 1, "rules_json": 1, "parcels": 2, "comparables": 3, "cadastre": 4, "section_map": 5}
+
+
+def _apply_one_input(cid: str, content: bytes, filename: str, *, kind: str = "auto", use_vision: str = "auto",
+                     actor: dict | None = None, log: bool = True) -> dict:
+    """一份輸入檔併入案件：辨識種類 → 依 app/inputs.py 規則合併 → 原檔存到 data/cases/<id>/inputs/ → 記在 rec["inputs"] 與操作紀錄。回傳輸入檔紀錄。"""
+    from app import cases as C
+    from app.inputs import (
+        KIND_LABELS,
+        aggregate_extraction,
+        list_summary,
+        merge_parcel_list,
+        merge_pdf_forms,
+        pdf_summary,
+    )
+    rec = C.get_case(cid)
+    if not rec:
+        raise HTTPException(404, "沒有這個案件")
+    if not content:
+        raise HTTPException(400, f"空檔案：{filename}")
+    sha = hashlib.sha1(content).hexdigest()
+    dup = next((i for i in rec.get("inputs") or [] if i.get("sha1") == sha), None)
+    if dup:
+        return {"skipped": True, "filename": filename, "kind": dup.get("kind"), "kind_label": dup.get("kind_label"),
+                "summary": f"同一份檔已加入（{dup.get('filename')}，{str(dup.get('at') or '')[:16]}），未重複併入"}
+    k = _detect_input_kind(filename, content) if kind == "auto" else kind
+    if not rec.get("inputs") and not rec.get("inputs_base"):          # 第一份輸入檔併入前的快照：移除輸入檔時從這裡重新併入其餘檔案
+        rec["inputs_base"] = {"data": copy.deepcopy(rec["data"]), "submitted_table5": copy.deepcopy(rec.get("submitted_table5")),
+                              "submitted_table4": copy.deepcopy(rec.get("submitted_table4")), "at": C._now()}
+    iid = uuid.uuid4().hex[:8]
+    kind_out = "rules_table" if k == "rules_json" else k
+    entry: dict[str, Any] = {"id": iid, "filename": filename, "kind": kind_out, "kind_label": KIND_LABELS.get(kind_out, kind_out), "size": len(content), "sha1": sha,
+                             "at": C._now(), "actor": AUD.actor_label(actor), "pages": [], "summary": "", "missing": [], "warnings": [],
+                             "conflicts": [], "overrides": [], "filled": [], "matched": [], "unmatched": [], "notes": []}
+    status_patch: str | None = None
+    try:
+        if k == "pdf_forms":
+            res = _read_pdf_forms_cached(content, filename, use_vision)
+            data, t5, t4, rep = merge_pdf_forms(rec["data"], rec.get("submitted_table5"), rec.get("submitted_table4"), res.data)
+            subj = data.get("subject_parcel") or {}
+            if subj.get("geometry") is None and subj.get("parcel_id"):
+                rep.notes.extend(_attach_geometry(data))                       # 補界線與區段範圍，圖說才畫得出來
+            rec = C.save_case(data, cid=cid, submitted_table5=t5, submitted_table4=t4)
+            entry.update(pages=res.data.get("pages") or [], missing=list(res.missing_fields), warnings=list(res.warnings), confidence=dict(res.confidence), **rep.to_dict())
+            entry["summary"] = pdf_summary(entry["pages"], rep, len(res.data.get("comparables") or []))
+            if (t5 or t4) and rec.get("status") == "draft":
+                status_patch = "reviewing"
+        elif k in ("parcels", "comparables"):
+            if k == "parcels":
+                from app.adapters.excel_parcels import read_parcels
+                res = read_parcels(content)
+                items = res.data.get("parcels")
+            else:
+                from app.adapters.excel_comparables import read_comparables
+                res = read_comparables(content)
+                items = res.data.get("comparables")
+            data = copy.deepcopy(rec["data"])
+            rep = merge_parcel_list(data, items or [], k)
+            rec = C.save_case(data, cid=cid, submitted_table5=rec.get("submitted_table5"), submitted_table4=rec.get("submitted_table4"))
+            entry.update(missing=list(res.missing_fields), warnings=list(res.warnings), **rep.to_dict())
+            entry["summary"] = list_summary(rep)
+        elif k in ("rules_table", "rules_json"):
+            if k == "rules_json":
+                d = json.loads(content.decode("utf-8"))
+                rulesets = {d["scope"]: d}
+                warnings: list[str] = []
+            else:
+                from app.adapters.rules_table import read_rules_table
+                res = read_rules_table(content, filename=filename)
+                rulesets = res.data.get("rulesets") or {}
+                warnings = list(res.warnings)
+            if not rulesets:
+                raise HTTPException(422, "檔案裡沒有可匯入的基準表")
+            data = copy.deepcopy(rec["data"])
+            ids = []
+            for scope, rs in rulesets.items():
+                rid = _store_ruleset(copy.deepcopy(rs))
+                data["case"].setdefault("rulesets", {})[scope] = rid
+                if rs.get("land_use"):
+                    data["case"]["land_use"] = rs["land_use"]
+                ids.append(rid)
+            rec = C.save_case(data, cid=cid, submitted_table5=rec.get("submitted_table5"), submitted_table4=rec.get("submitted_table4"))
+            entry.update(warnings=warnings, rulesets=ids)
+            entry["summary"] = f"已匯入並套用至本案：{'、'.join(ids)}"
+        elif k == "cadastre":
+            r = _apply_cadastre(rec, content, filename)
+            rec = r["record"]
+            entry.update(matched=r["matched"], unmatched=r["unmatched"])
+            entry["summary"] = f"地籍圖 {r['n']} 筆；對到真實界線 {len(r['matched'])} 筆宗地" + (f"；對不到 {'、'.join(r['unmatched'])}" if r["unmatched"] else "")
+        elif k == "section_map":
+            r = _apply_section_map(rec, content, filename)
+            rec = r["record"]
+            entry.update(matched=r["matched"], unmatched=r["unmatched"])
+            entry["summary"] = f"地價區段圖 {r['n']} 區段；對到本案區段 {'、'.join(r['matched']) or '無'}" + (f"；對不到 {'、'.join(r['unmatched'])}" if r["unmatched"] else "")
+        else:
+            raise HTTPException(422, f"不支援的輸入檔種類：{k}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(422, f"檔案解析失敗（{KIND_LABELS.get(kind_out, k)}）：{e}") from e
+    d = C.inputs_dir(cid)
+    d.mkdir(parents=True, exist_ok=True)
+    safe = re.sub(r'[\\/:*?"<>|]', "_", filename or "file")
+    (d / f"{iid}_{safe}").write_bytes(content)
+    entry["path"] = f"{iid}_{safe}"
+    inputs = [*(rec.get("inputs") or []), entry]
+    C.patch_case(cid, inputs=inputs, extraction=aggregate_extraction(inputs), status=status_patch)
+    if log:
+        AUD.log(cid, actor, "input", f"{filename}（{entry['kind_label']}）：{entry['summary']}")
+    return entry
+
+
+def _remove_input(cid: str, iid: str, actor: dict | None) -> dict:
+    """移除一份輸入檔：回到第一份輸入檔併入前的快照，再依序重新併入其餘檔案（結果確定，不做反向刪欄位）。"""
+    from app import cases as C
+    from app.inputs import aggregate_extraction
+    rec = C.get_case(cid)
+    if not rec:
+        raise HTTPException(404, "沒有這個案件")
+    inputs = list(rec.get("inputs") or [])
+    entry = next((i for i in inputs if i.get("id") == iid), None)
+    if not entry:
+        raise HTTPException(404, "沒有這份輸入檔")
+    if entry.get("legacy"):
+        raise HTTPException(422, "這筆是舊版建案留下的紀錄，沒有原檔可重新併入；要拿掉送審書表請用「清空重填」後重新加入檔案")
+    base = rec.get("inputs_base")
+    if not base:
+        raise HTTPException(422, "找不到輸入檔併入前的快照，無法移除重併")
+    remaining = []
+    for i in inputs:
+        if i.get("id") == iid or i.get("legacy"):
             continue
-        if dst.get(k) != v:
-            dst[k] = v
-            changed.append(k)
-            (dst.get("derived") or {}).pop(k, None)          # 匯入清冊／實例的值取代推定值，之後「依地號產生」不再覆寫
-    return changed
+        p = C.inputs_dir(cid) / (i.get("path") or "")
+        if not i.get("path") or not p.exists():
+            continue
+        remaining.append((i, p.read_bytes()))
+    rec = C.save_case(copy.deepcopy(base["data"]), cid=cid, submitted_table5=copy.deepcopy(base.get("submitted_table5")), submitted_table4=copy.deepcopy(base.get("submitted_table4")))
+    import shutil
+    shutil.rmtree(C.inputs_dir(cid), ignore_errors=True)
+    C.patch_case(cid, inputs=[], extraction=aggregate_extraction([]) or {})
+    C.get_case(cid)["extraction"] = None
+    replayed, failed = [], []
+    for i, content in remaining:
+        try:
+            replayed.append(_apply_one_input(cid, content, i.get("filename") or "", kind=i.get("kind") or "auto", use_vision="auto", actor=actor, log=False))
+        except HTTPException as e:
+            failed.append(f"{i.get('filename')}：{e.detail}")
+    AUD.log(cid, actor, "input_remove", f"{entry.get('filename')}（{entry.get('kind_label')}）；已重新併入其餘 {len(replayed)} 份" + (f"；失敗：{'；'.join(failed)}" if failed else ""))
+    return {"record": C.get_case(cid), "removed": entry, "replayed": replayed, "failed": failed}
 
 
-@app.post("/api/cases/{cid}/import")
-async def cases_import(cid: str, request: Request, file: UploadFile = File(...), kind: str = Form("auto")):   # noqa: B008
-    """把宗地個別因素清冊 xlsx／買賣實例 xlsx 併入本案：依地號（或實例編號）對到比準地與比較標的，只覆蓋檔案裡有值的欄位；對不到的列回報。"""
+@app.post("/api/cases/{cid}/inputs")
+async def cases_inputs_add(cid: str, request: Request, files: list[UploadFile] = File(...), kind: str = Form("auto"), use_vision: str = Form("auto")):   # noqa: B008
+    """一次加入多份輸入檔到同一案件（書表 PDF、清冊、實例、基準表、地籍圖、區段圖）；依種類順序併入：書表 → 基準表 → 清冊 → 實例 → 地籍圖 → 區段圖。每份各回一筆結果，失敗的不影響其他份。"""
+    from app import cases as C
+    if not C.get_case(cid):
+        raise HTTPException(404, "沒有這個案件")
+    actor = AUD.actor_from_headers(request.headers)
+    items = []
+    for f in files:
+        content = await f.read()
+        try:
+            k = _detect_input_kind(f.filename or "", content) if kind == "auto" else kind
+        except HTTPException as e:
+            items.append((99, f.filename or "", content, None, e.detail))
+            continue
+        items.append((_INPUT_ORDER.get(k, 50), f.filename or "", content, k, None))
+    results = []
+    for _o, fn, content, k, err in sorted(items, key=lambda x: x[0]):
+        if err:
+            results.append({"filename": fn, "error": err})
+            continue
+        try:
+            results.append(_apply_one_input(cid, content, fn, kind=k or "auto", use_vision=use_vision, actor=actor))
+        except HTTPException as e:
+            results.append({"filename": fn, "kind": k, "error": e.detail})
+    rec = C.get_case(cid)
+    return {"record": rec, "results": results, "inputs_summary": C.inputs_status(rec)}
+
+
+@app.post("/api/cases/from_inputs")
+async def cases_from_inputs(request: Request, files: list[UploadFile] = File(...), name: str | None = Form(None), case_no: str = Form(""),   # noqa: B008
+                            valuation_date: str = Form(""), district: str = Form("新北市金山區"), land_use: str = Form(""), section_id: str = Form(""),
+                            use_vision: str = Form("auto")):
+    """從多份輸入檔建立一個案件：先建空案（案號等以表單值起頭，書表 PDF 會補上），再依種類順序把每份檔併入。沒有書表 PDF 時必須給案號與估價基準日。"""
+    from app import cases as C
+    actor = AUD.actor_from_headers(request.headers)
+    items = []
+    for f in files:
+        content = await f.read()
+        try:
+            k = _detect_input_kind(f.filename or "", content)
+        except HTTPException as e:
+            items.append((99, f.filename or "", content, None, e.detail))
+            continue
+        items.append((_INPUT_ORDER.get(k, 50), f.filename or "", content, k, None))
+    items.sort(key=lambda x: x[0])
+    has_pdf = any(k == "pdf_forms" for _o, _fn, _c, k, _e in items)
+    if not has_pdf and not (case_no.strip() and valuation_date.strip()):
+        raise HTTPException(422, "沒有送審書表 PDF 時，請填案號與估價基準日再建立")
+    sid = section_id.strip() or "P001-00"
+    if not case_no.strip() and has_pdf:                                   # 案件 id 由案號衍生：先從第一份書表讀案號（結果有快取，併入時不重跑）
+        for _o, fn, content, k, _e in items:
+            if k == "pdf_forms":
+                try:
+                    pc = _read_pdf_forms_cached(content, fn, use_vision).data.get("case") or {}
+                    case_no = pc.get("case_no") or ""
+                    valuation_date = valuation_date or pc.get("valuation_date") or ""
+                except Exception:  # noqa: BLE001, S110 - 讀不到就用空案號，併入時再報錯
+                    pass
+                break
+    data = {"case": {"case_no": case_no.strip(), "valuation_date": valuation_date.strip(), "district": district.strip(), "land_use": land_use.strip() or None},
+            "sections": {sid: {"section_id": sid, "range_desc": "", "survey": C.blank_survey()}},
+            "subject_parcel": {"parcel_id": "", "section_id": sid, "nuisance": None}, "comparables": []}
+    rec = C.save_case(data, name=name or (case_no.strip() or "新案件"), origin="inputs")
+    cid = rec["id"]
+    AUD.log(cid, actor, "create", f"{rec.get('name')}（來源 檔案匯入，{len(items)} 份輸入檔）")
+    results = []
+    for _o, fn, content, k, err in items:
+        if err:
+            results.append({"filename": fn, "error": err})
+            continue
+        try:
+            results.append(_apply_one_input(cid, content, fn, kind=k or "auto", use_vision=use_vision, actor=actor))
+        except HTTPException as e:
+            results.append({"filename": fn, "kind": k, "error": e.detail})
+    rec = C.get_case(cid)
+    c = rec["data"]["case"]
+    if not c.get("land_use"):
+        c["land_use"] = "商業用地"
+    if not c.get("rulesets"):
+        c["rulesets"] = C.pick_rulesets(c.get("land_use"))
+    rec = C.save_case(rec["data"], cid=cid, submitted_table5=rec.get("submitted_table5"), submitted_table4=rec.get("submitted_table4"))
+    if not name:
+        cn = c.get("case_no") or (rec["inputs"][0]["filename"] if rec.get("inputs") else cid)
+        C.patch_case(cid, name=f"{cn}（送審書表）" if has_pdf else f"{cn} {c.get('district') or ''} {next(iter(rec['data'].get('sections') or {}), '')}".strip())
+    rec = C.get_case(cid)
+    return {"case": rec, "results": results, "inputs_summary": C.inputs_status(rec)}
+
+
+@app.delete("/api/cases/{cid}/inputs/{iid}")
+def cases_inputs_remove(cid: str, iid: str, request: Request):
+    return _remove_input(cid, iid, AUD.actor_from_headers(request.headers))
+
+
+@app.get("/api/cases/{cid}/inputs/{iid}/file")
+def cases_inputs_file(cid: str, iid: str):
+    """下載原始輸入檔。"""
     from app import cases as C
     rec = C.get_case(cid)
     if not rec:
         raise HTTPException(404, "沒有這個案件")
+    entry = next((i for i in rec.get("inputs") or [] if i.get("id") == iid), None)
+    if not entry or not entry.get("path"):
+        raise HTTPException(404, "沒有這份輸入檔的原檔")
+    p = C.inputs_dir(cid) / entry["path"]
+    if not p.exists():
+        raise HTTPException(404, "原檔已不存在")
+    return Response(content=p.read_bytes(), media_type="application/octet-stream",
+                    headers={"Content-Disposition": f"attachment; filename*=UTF-8''{urllib.parse.quote(entry.get('filename') or p.name)}"})
+
+
+@app.post("/api/cases/{cid}/import")
+async def cases_import(cid: str, request: Request, file: UploadFile = File(...), kind: str = Form("auto")):   # noqa: B008
+    """單檔匯入（宗地與實例分頁、補上送審書表用）：走同一套輸入檔流程，回傳格式相容舊版（matched／unmatched／changes）。"""
+    from app import cases as C
+    if not C.get_case(cid):
+        raise HTTPException(404, "沒有這個案件")
     content = await file.read()
-    if not content:
-        raise HTTPException(400, "空檔案")
-    try:
-        k = detect_kind(file.filename, content) if kind == "auto" else kind
-    except Exception as e:
-        raise HTTPException(422, f"無法辨識檔案：{e}") from e
-    if k == "pdf_forms":                                   # 既有案件補上估價單位的送審書表：只掛送審表與抽取資訊，不動本案輸入資料
-        try:
-            from app.adapters.pdf_forms import read_pdf_forms
-            res = read_pdf_forms(content, filename=file.filename, use_vision=False)
-        except Exception as e:
-            raise HTTPException(422, f"送審書表解析失敗：{e}") from e
-        sub = res.data.get("submitted") or {}
-        if not (sub.get("table5") or sub.get("table4")):
-            raise HTTPException(422, "這份 PDF 沒有抽到影響地價區域因素分析明細表或比較法調查估價表的填載值")
-        extraction = {"confidence": res.confidence or {}, "missing_fields": res.missing_fields or [], "warnings": res.warnings or [],
-                      "pages": res.data.get("pages") or [], "filename": file.filename}
-        rec = C.save_case(rec["data"], cid=cid, submitted_table5=sub.get("table5"), submitted_table4=sub.get("table4"))
-        rec = C.patch_case(cid, extraction=extraction, status="reviewing" if rec.get("status") == "draft" else None) or rec
-        AUD.log(cid, AUD.actor_from_headers(request.headers), "import", f"補上送審書表 {file.filename}（抽取缺漏 {len(extraction['missing_fields'])} 欄）")
-        return {"kind": k, "case": rec, "matched": [], "unmatched": [], "changes": 0, "missing_fields": extraction["missing_fields"], "warnings": extraction["warnings"]}
-    if k not in ("parcels", "comparables"):
-        raise HTTPException(422, f"這個檔案是「{k}」，請改在案件總覽頁上傳（基準表請到評價基準明細表分頁匯入）")
-    try:
-        if k == "parcels":
-            from app.adapters.excel_parcels import read_parcels
-            res = read_parcels(content)
-        else:
-            from app.adapters.excel_comparables import read_comparables
-            res = read_comparables(content)
-    except Exception as e:
-        raise HTTPException(422, f"檔案解析失敗（{k}）：{e}") from e
-    data = copy.deepcopy(rec["data"])
-    subj, comps = data["subject_parcel"], data.setdefault("comparables", [])
-    by_pid = {str(c.get("parcel_id") or ""): c for c in comps}
-    by_no = {str(c.get("comp_no") or ""): c for c in comps}
-    matched, unmatched, changes = [], [], 0
-    items = res.data.get("parcels") if k == "parcels" else res.data.get("comparables")
-    for it in items or []:
-        pid = str(it.get("parcel_id") or "")
-        target = None
-        if pid and pid == str(subj.get("parcel_id") or ""):
-            target, label = subj, f"比準地 {pid}"
-        elif pid and pid in by_pid:
-            target, label = by_pid[pid], f"比較標的 {pid}"
-        elif k == "comparables" and str(it.get("comp_no") or "") in by_no:
-            target, label = by_no[str(it.get("comp_no"))], f"比較標的{it.get('comp_no')}"
-        if target is None:
-            unmatched.append(pid or f"實例編號 {it.get('comp_no')}")
-            continue
-        ch = _merge_fields(target, it)
-        changes += len(ch)
-        matched.append(f"{label}（{len(ch)} 欄）")
-    out = C.save_case(data, cid=cid, submitted_table5=rec.get("submitted_table5"), submitted_table4=rec.get("submitted_table4"))
-    AUD.log(cid, AUD.actor_from_headers(request.headers), "import", f"{file.filename}（{'宗地個別因素清冊' if k == 'parcels' else '買賣實例'}）：對到 {len(matched)} 筆、更新 {changes} 欄" + (f"；對不到 {len(unmatched)} 筆" if unmatched else ""))
-    return {"record": out, "kind": k, "matched": matched, "unmatched": unmatched, "changes": changes, "warnings": res.warnings, "missing_fields": res.missing_fields}
+    entry = _apply_one_input(cid, content, file.filename or "", kind=kind, use_vision="auto", actor=AUD.actor_from_headers(request.headers))
+    rec = C.get_case(cid)
+    if entry.get("skipped"):
+        return {"record": rec, "case": rec, "kind": entry.get("kind"), "matched": [], "unmatched": [], "changes": 0, "warnings": [entry["summary"]], "missing_fields": [], "input": entry}
+    return {"record": rec, "case": rec, "kind": entry.get("kind"), "matched": entry.get("matched") or [], "unmatched": entry.get("unmatched") or [],
+            "changes": len(entry.get("filled") or []) + len(entry.get("overrides") or []), "warnings": entry.get("warnings") or [],
+            "missing_fields": entry.get("missing") or [], "input": entry}
 
 
 class NewCasePayload(BaseModel):
@@ -1150,18 +1426,13 @@ def _read_cadastre_upload(content: bytes, name: str, src_epsg: int) -> list[dict
     return feats
 
 
-@app.post("/api/cases/{cid}/cadastre")
-async def cases_cadastre(cid: str, request: Request, file: UploadFile = File(...), section_field: str = Form(""), lot_field: str = Form(""),   # noqa: B008
-                         src_epsg: int = Form(3826)):
-    """匯入地籍圖檔（GeoJSON、KML／GML（國土測繪中心地籍圖 API MAP_001／MAP_002 回傳格式）、或含 .shp/.dbf/.shx 的 zip，預設 TWD97 EPSG:3826）：存成本案地籍圖層（三張圖畫出每筆界線與地號），並用它補比準地與比較標的的真實幾何。"""
+def _apply_cadastre(rec: dict, content: bytes, filename: str, section_field: str = "", lot_field: str = "", src_epsg: int = 3826) -> dict:
+    """地籍圖檔併入案件：存成本案地籍圖層，並用它補比準地與比較標的的真實幾何。回傳 {record, n, section_field, lot_field, matched, unmatched}。"""
     from app import cases as C
     from app.spatial.cadastre import FileCadastreProvider, _lot_from_props, resolve_parcel_geometry
-    rec = C.get_case(cid)
-    if not rec:
-        raise HTTPException(404, "沒有這個案件")
-    content = await file.read()
+    cid = rec["id"]
     try:
-        feats = _read_cadastre_upload(content, (file.filename or "").lower(), src_epsg)
+        feats = _read_cadastre_upload(content, (filename or "").lower(), src_epsg)
     except Exception as e:
         raise HTTPException(422, f"地籍圖檔解析失敗：{e}") from e
     if not feats:
@@ -1187,12 +1458,27 @@ async def cases_cadastre(cid: str, request: Request, file: UploadFile = File(...
     fp = FileCadastreProvider(norm, section_field="section", lot_field="lot_key", source="需用土地人地籍圖")
     matched, unmatched = [], []
     for p in [data["subject_parcel"], *data.get("comparables", [])]:
+        if not p.get("parcel_id"):
+            continue
         r = resolve_parcel_geometry(p, file_provider=fp, overwrite=True)
         (matched if r.get("source") == "cadastre_file" else unmatched).append(p.get("parcel_id") or "")
-    data["case"]["cadastre"] = {"file": str(out), "n": len(norm), "section_field": sf_, "lot_field": lf_, "filename": file.filename, "at": C._now()}
+    data["case"]["cadastre"] = {"file": str(out), "n": len(norm), "section_field": sf_, "lot_field": lf_, "filename": filename, "at": C._now()}
     rec2 = C.save_case(data, cid=cid, submitted_table5=rec.get("submitted_table5"), submitted_table4=rec.get("submitted_table4"))
-    AUD.log(cid, AUD.actor_from_headers(request.headers), "import", f"{file.filename}（地籍圖 {len(norm)} 筆）：對到 {len(matched)} 筆宗地" + (f"；對不到 {'、'.join(unmatched)}" if unmatched else ""))
     return {"record": rec2, "n": len(norm), "section_field": sf_, "lot_field": lf_, "matched": matched, "unmatched": unmatched}
+
+
+@app.post("/api/cases/{cid}/cadastre")
+async def cases_cadastre(cid: str, request: Request, file: UploadFile = File(...), section_field: str = Form(""), lot_field: str = Form(""),   # noqa: B008
+                         src_epsg: int = Form(3826)):
+    """匯入地籍圖檔（GeoJSON、KML／GML（國土測繪中心地籍圖 API MAP_001／MAP_002 回傳格式）、或含 .shp/.dbf/.shx 的 zip，預設 TWD97 EPSG:3826）：存成本案地籍圖層（三張圖畫出每筆界線與地號），並用它補比準地與比較標的的真實幾何。"""
+    from app import cases as C
+    rec = C.get_case(cid)
+    if not rec:
+        raise HTTPException(404, "沒有這個案件")
+    content = await file.read()
+    r = _apply_cadastre(rec, content, file.filename or "", section_field, lot_field, src_epsg)
+    AUD.log(cid, AUD.actor_from_headers(request.headers), "import", f"{file.filename}（地籍圖 {r['n']} 筆）：對到 {len(r['matched'])} 筆宗地" + (f"；對不到 {'、'.join(r['unmatched'])}" if r["unmatched"] else ""))
+    return r
 
 
 _SECID_KEYS = ("區段編號", "區段", "地價區段", "區段代碼", "SECTION_NO", "SECT_NO", "SECTNO", "section_id", "ZONE", "ZONE_NO", "編號", "NAME", "name")
@@ -1202,16 +1488,12 @@ def _norm_secid(v: Any) -> str:
     return str(v or "").strip().upper().replace(" ", "").replace("－", "-").replace("—", "-")
 
 
-@app.post("/api/cases/{cid}/sections_map")
-async def cases_sections_map(cid: str, request: Request, file: UploadFile = File(...), id_field: str = Form(""), src_epsg: int = Form(3826)):   # noqa: B008
-    """匯入地價區段圖（GeoJSON／KML／GML／Shapefile zip）：依區段編號對到本案區段，寫入正式範圍多邊形（來源「地價區段圖」）；整份圖存為圖層，鄰近區段也畫在圖上。"""
+def _apply_section_map(rec: dict, content: bytes, filename: str, id_field: str = "", src_epsg: int = 3826) -> dict:
+    """地價區段圖併入案件：依區段編號對到本案區段寫入正式範圍；整份圖存為圖層。回傳 {record, n, id_field, matched, unmatched, ids}。"""
     from app import cases as C
-    rec = C.get_case(cid)
-    if not rec:
-        raise HTTPException(404, "沒有這個案件")
-    content = await file.read()
+    cid = rec["id"]
     try:
-        feats = _read_cadastre_upload(content, (file.filename or "").lower(), src_epsg)
+        feats = _read_cadastre_upload(content, (filename or "").lower(), src_epsg)
     except Exception as e:
         raise HTTPException(422, f"區段圖解析失敗：{e}") from e
     if not feats:
@@ -1239,13 +1521,25 @@ async def cases_sections_map(cid: str, request: Request, file: UploadFile = File
         sec["geometry"] = hit["geometry"]
         sec["geometry_source"] = "section_map"
         sec["status"] = "confirmed"
-        sec["geometry_note"] = f"地價區段圖：{file.filename}（區段編號欄「{fld or '—'}」）"
+        sec["geometry_note"] = f"地價區段圖：{filename}（區段編號欄「{fld or '—'}」）"
         matched.append(sid)
-    data["case"]["section_map"] = {"file": str(out), "n": len(norm), "id_field": fld, "filename": file.filename, "at": C._now(),
+    data["case"]["section_map"] = {"file": str(out), "n": len(norm), "id_field": fld, "filename": filename, "at": C._now(),
                                    "ids": sorted(by_id)[:50]}
     rec2 = C.save_case(data, cid=cid, submitted_table5=rec.get("submitted_table5"), submitted_table4=rec.get("submitted_table4"))
-    AUD.log(cid, AUD.actor_from_headers(request.headers), "import", f"{file.filename}（地價區段圖 {len(norm)} 區段）：對到 {'、'.join(matched) or '無'}" + (f"；對不到 {'、'.join(unmatched)}" if unmatched else ""))
     return {"record": rec2, "n": len(norm), "id_field": fld, "matched": matched, "unmatched": unmatched, "ids": sorted(by_id)[:50]}
+
+
+@app.post("/api/cases/{cid}/sections_map")
+async def cases_sections_map(cid: str, request: Request, file: UploadFile = File(...), id_field: str = Form(""), src_epsg: int = Form(3826)):   # noqa: B008
+    """匯入地價區段圖（GeoJSON／KML／GML／Shapefile zip）：依區段編號對到本案區段，寫入正式範圍多邊形（來源「地價區段圖」）；整份圖存為圖層，鄰近區段也畫在圖上。"""
+    from app import cases as C
+    rec = C.get_case(cid)
+    if not rec:
+        raise HTTPException(404, "沒有這個案件")
+    content = await file.read()
+    r = _apply_section_map(rec, content, file.filename or "", id_field, src_epsg)
+    AUD.log(cid, AUD.actor_from_headers(request.headers), "import", f"{file.filename}（地價區段圖 {r['n']} 區段）：對到 {'、'.join(r['matched']) or '無'}" + (f"；對不到 {'、'.join(r['unmatched'])}" if r["unmatched"] else ""))
+    return r
 
 
 @app.get("/api/cases/{cid}/audit")
@@ -1353,9 +1647,10 @@ def _resolve_case_geometries(data: dict[str, Any], manual_points: dict[str, list
     import os
 
     from app.maps.layers import load_cadastre_features
-    from app.spatial.cadastre import NLSCCadastreProvider, resolve_parcel_geometry
+    from app.spatial.cadastre import NLSCCadastreProvider, TwlandCadastreProvider, resolve_parcel_geometry
     fp = _cadastre_provider_for(data)
     nlsc = NLSCCadastreProvider() if os.environ.get("NLSC_API_KEY") else None
+    twland = None if os.environ.get("TWLAND_OFFLINE") == "1" else TwlandCadastreProvider()      # 免金鑰的開放地籍查詢，排在地籍圖檔之後
     case_feats = load_cadastre_features(data)       # 點圖時若點在本案地籍圖某筆宗地內，直接用那筆的真實界線
     report: dict[str, Any] = {}
     pts = manual_points or {}
@@ -1374,8 +1669,8 @@ def _resolve_case_geometries(data: dict[str, Any], manual_points: dict[str, list
                 report[pid] = {"ok": True, "source": "cadastre_file", "note": p["geometry_note"]}
                 continue
         report[pid] = resolve_parcel_geometry(p, file_provider=fp, nlsc=nlsc, manual_point=pt, district=data["case"].get("district"),
-                                              overwrite=overwrite)
-    report["_providers"] = {"cadastre_file": bool(fp), "nlsc_api": bool(nlsc)}
+                                              overwrite=overwrite, twland=twland)
+    report["_providers"] = {"cadastre_file": bool(fp), "nlsc_api": bool(nlsc), "twland": bool(twland)}
     return report
 
 

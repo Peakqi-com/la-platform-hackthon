@@ -201,8 +201,8 @@ def test_parcels_roundtrip_import_export():
     assert r3.status_code == 200, r3.text
     j = r3.json()
     assert j["kind"] == "parcels" and j["record"]["data"]["subject_parcel"]["width_m"] == 9 and any("不存在段999地號" in u for u in j["unmatched"])
-    assert client.get(f"/api/cases/{cid}/audit").json()["entries"][0]["action"] == "import"
-    # PDF 丟進 import 會被擋
+    assert client.get(f"/api/cases/{cid}/audit").json()["entries"][0]["action"] == "input"     # 單檔匯入走輸入檔流程
+    # 壞掉的 PDF 丟進 import 會被擋
     r4 = client.post(f"/api/cases/{cid}/import", files={"file": ("x.pdf", b"%PDF-1.4 fake", "application/pdf")})
     assert r4.status_code == 422
 

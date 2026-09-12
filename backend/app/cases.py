@@ -10,6 +10,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -48,6 +49,20 @@ def _migrate(d: dict) -> None:
                          "submitted_table4": copy.deepcopy(d.get("submitted_table4")), "at": d.get("created_at") or d.get("updated_at") or _now()}
     d.setdefault("input_updated_at", d.get("updated_at"))
     d.setdefault("outputs", None)
+    if d.get("inputs") is None:                                      # 舊案件：把送審書表的抽取資訊補成一筆輸入檔（無原檔，不能移除重併）
+        d["inputs"] = []
+        ex = d.get("extraction") or {}
+        if ex.get("filename") and (d.get("submitted_table5") or d.get("submitted_table4")):
+            d["inputs"].append({"id": "legacy", "filename": ex.get("filename"), "kind": "pdf_forms", "kind_label": "送審書表 PDF", "legacy": True,
+                                "at": d.get("created_at"), "actor": "", "pages": ex.get("pages") or [], "missing": ex.get("missing_fields") or [],
+                                "warnings": ex.get("warnings") or [], "confidence": ex.get("confidence") or {}, "conflicts": [], "overrides": [],
+                                "summary": "建案時上傳的送審書表（舊版紀錄，無原檔）"})
+    d.setdefault("inputs_base", None)
+
+
+def inputs_dir(cid: str) -> Path:
+    """原始輸入檔存放處：data/cases/<id>/inputs/。"""
+    return CASES_DIR / cid / "inputs"
 
 
 STATUSES = ("draft", "reviewing", "done")     # 草稿／審查中／已完成
@@ -74,8 +89,14 @@ def list_cases() -> list[dict]:
                     "valuation_date": c.get("valuation_date"),
                     "n_comparables": len(d.get("data", {}).get("comparables") or []),
                     "archived": bool(d.get("archived")),
+                    "inputs_summary": inputs_status(d),
                     "last_action": _last_action(d["id"])})
     return sorted(out, key=lambda x: x["opened_at"] or x["updated_at"] or "", reverse=True)
+
+
+def inputs_status(d: dict) -> dict:
+    from app.inputs import inputs_status as _st
+    return _st(d)
 
 
 def _last_action(cid: str) -> dict | None:
@@ -147,9 +168,16 @@ def duplicate_case(cid: str, name: str | None = None) -> dict | None:
     src = _mem.get(cid)
     if not src:
         return None
-    return save_case(copy.deepcopy(src["data"]), name=name or f"{src.get('name')}（複本）", origin=f"copy:{cid}",
-                     submitted_table5=copy.deepcopy(src.get("submitted_table5")), submitted_table4=copy.deepcopy(src.get("submitted_table4")),
-                     extraction=copy.deepcopy(src.get("extraction")), decisions=copy.deepcopy(src.get("decisions") or {}))
+    rec = save_case(copy.deepcopy(src["data"]), name=name or f"{src.get('name')}（複本）", origin=f"copy:{cid}",
+                    submitted_table5=copy.deepcopy(src.get("submitted_table5")), submitted_table4=copy.deepcopy(src.get("submitted_table4")),
+                    extraction=copy.deepcopy(src.get("extraction")), decisions=copy.deepcopy(src.get("decisions") or {}))
+    if src.get("inputs"):                                              # 輸入檔清單與原檔一併帶過去
+        rec["inputs"] = copy.deepcopy(src["inputs"])
+        rec["inputs_base"] = copy.deepcopy(src.get("inputs_base"))
+        if inputs_dir(cid).exists():
+            shutil.copytree(inputs_dir(cid), inputs_dir(rec["id"]), dirs_exist_ok=True)
+        (CASES_DIR / f"{rec['id']}.json").write_text(json.dumps(rec, ensure_ascii=False, indent=1), encoding="utf-8")
+    return rec
 
 
 def get_case(cid: str) -> dict | None:
@@ -182,7 +210,9 @@ def save_case(data: dict, *, name: str | None = None, cid: str | None = None, or
                                                           "submitted_table4": copy.deepcopy(submitted_table4), "at": _now()},
            "input_hash": h,
            "input_updated_at": _now() if changed else (prev or {}).get("input_updated_at") or (prev or {}).get("updated_at") or _now(),
-           "outputs": (prev or {}).get("outputs")}      # {generated_at, input_hash, summary, findings_keys}
+           "outputs": (prev or {}).get("outputs"),      # {generated_at, input_hash, summary, findings_keys}
+           "inputs": (prev or {}).get("inputs") or [],  # 輸入檔清單（app/inputs.py）
+           "inputs_base": (prev or {}).get("inputs_base")}   # 第一份輸入檔併入前的快照，移除輸入檔時從這裡重新併入其餘檔案
     _mem[cid] = rec
     CASES_DIR.mkdir(parents=True, exist_ok=True)
     (CASES_DIR / f"{cid}.json").write_text(json.dumps(rec, ensure_ascii=False, indent=1), encoding="utf-8")
@@ -209,6 +239,7 @@ def delete_case(cid: str) -> bool:
     p = CASES_DIR / f"{cid}.json"
     if p.exists():
         p.unlink()
+    shutil.rmtree(CASES_DIR / cid, ignore_errors=True)               # 原始輸入檔
     return True
 
 
@@ -225,6 +256,9 @@ def delete_all_cases() -> dict:
                 n_files += 1
             except OSError:
                 pass
+        for d in CASES_DIR.iterdir():
+            if d.is_dir():
+                shutil.rmtree(d, ignore_errors=True)                  # 各案的原始輸入檔
     n_aux = 0
     for d in (CASES_DIR.parent / "audit", CASES_DIR.parent / "cadastre" / "cases"):
         if not d.exists():
@@ -366,6 +400,9 @@ def clear_case(cid: str) -> dict | None:
     rec["decisions"] = {}
     rec["outputs"] = None
     rec["status"] = "draft"
+    rec["inputs"] = []
+    rec["inputs_base"] = None
+    shutil.rmtree(CASES_DIR / cid, ignore_errors=True)
     rec["original"] = {"data": copy.deepcopy(new_data), "submitted_table5": None, "submitted_table4": None, "at": _now()}
     rec["input_hash"] = input_hash(new_data, None, None)
     rec["input_updated_at"] = _now()

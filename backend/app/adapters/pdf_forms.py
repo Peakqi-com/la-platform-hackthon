@@ -762,6 +762,7 @@ def _assemble(ctx: dict, result: AdapterResult, individual: RuleSet) -> None:
         if t4_data.get("valuation_date"):
             case.setdefault("valuation_date", t4_data["valuation_date"])
         if t4_data.get("fill_date"):
+            case.setdefault("fill_date", t4_data["fill_date"])          # 案件層也留一份：書表拆檔時勘查表頁與表4頁分開讀，合併時才補得回 survey_date
             for sec in result.data["sections"].values():
                 sec.setdefault("survey_date", t4_data["fill_date"])
         subj = _parcel_from_t4(t4_data["subject"], individual, result, "subject_parcel", SOURCE_T4)

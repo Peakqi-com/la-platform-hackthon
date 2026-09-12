@@ -12,7 +12,7 @@ from urllib.parse import unquote
 ROLES = {"officer": "承辦", "reviewer": "審查人", "appraiser": "估價師"}
 ACTIONS = {
     "create": "建立案件", "save": "儲存案件資料", "patch": "更新案件", "status": "變更狀態", "decisions": "儲存承辦裁決",
-    "duplicate": "複製案件", "delete": "刪除案件", "generate": "重新產生書表", "reset": "重置案件", "clear": "清空輸入重填", "from_lot": "依地號產生", "comparables": "採用實價登錄實例", "polish": "語言模型潤飾文字", "import": "匯入檔案", "archive": "封存案件", "unarchive": "復原案件", "report": "產生審查意見書", "export": "匯出 Excel 書表", "figure": "匯出圖說",
+    "duplicate": "複製案件", "delete": "刪除案件", "generate": "重新產生書表", "reset": "重置案件", "clear": "清空輸入重填", "from_lot": "依地號產生", "comparables": "採用實價登錄實例", "polish": "語言模型潤飾文字", "import": "匯入檔案", "input": "加入輸入檔", "input_remove": "移除輸入檔", "archive": "封存案件", "unarchive": "復原案件", "report": "產生審查意見書", "export": "匯出 Excel 書表", "figure": "匯出圖說",
 }
 STATUS_ZH = {"draft": "草稿", "reviewing": "審查中", "done": "已完成"}
 MAX_CHANGES = 40

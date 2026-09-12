@@ -5,10 +5,21 @@ export interface CaseData { case: Any; sections: Record<string, Any>; subject_pa
 export type Decision = { decision: "accept" | "reject" | "pending"; note?: string; by?: string; at?: string; stale?: boolean };
 export interface Outputs { generated_at: string; input_hash: string; summary?: Any; findings_keys?: string[] }
 export interface Extraction { confidence?: Record<string, number>; missing_fields?: string[]; warnings?: string[]; pages?: Any[]; filename?: string }
+/* 輸入檔（一個案件可由多份檔組成；app/inputs.py）：每份的種類、併入摘要、缺漏、衝突（書表不一致，先來者留）、覆蓋（清冊蓋掉既有值） */
+export type InputKind = "pdf_forms" | "parcels" | "comparables" | "rules_table" | "cadastre" | "section_map";
+export interface InputEntry {
+  id: string; filename: string; kind: InputKind; kind_label: string; size?: number; at?: string; actor?: string; legacy?: boolean; path?: string;
+  pages?: { page: number; kind: string; method: string }[]; summary: string; missing?: string[]; warnings?: string[]; notes?: string[];
+  conflicts?: { path: string; kept: Any; incoming: Any }[]; overrides?: { path: string; old: Any; new: Any }[]; filled?: string[]; matched?: string[]; unmatched?: string[];
+}
+export interface InputsSummary { n: number; kinds: Record<string, number>; n_conflicts: number; items: { key: string; label: string; full?: string; present: boolean; source?: string | null }[] }
+export interface InputResult extends Partial<InputEntry> { filename: string; error?: string; skipped?: boolean }
+export const INPUT_KIND_LABEL: Record<string, string> = { pdf_forms: "送審書表 PDF", parcels: "宗地個別因素清冊", comparables: "買賣實例", rules_table: "評價基準明細表", cadastre: "地籍圖", section_map: "地價區段圖" };
 export interface CaseRecord {
   id: string; name: string; origin: string; updated_at: string; created_at?: string; opened_at?: string; status?: "draft" | "reviewing" | "done"; data: CaseData;
   submitted_table5: Record<string, Any> | null; submitted_table4: Any | null; extraction?: Extraction | null; decisions?: Record<string, Decision>;
   original?: { data: CaseData; submitted_table5: Any; submitted_table4: Any; at: string } | null; input_hash?: string; input_updated_at?: string; outputs?: Outputs | null;
+  inputs?: InputEntry[]; inputs_base?: Any;
 }
 export const STATUS_LABEL: Record<string, string> = { draft: "草稿", reviewing: "審查中", done: "已完成" };
 /* 操作身分（無登入的過渡做法）：存這台瀏覽器，隨每次請求以 header 送後端寫操作紀錄；不是案件資料。 */
@@ -39,6 +50,15 @@ async function j<T = Any>(url: string, init?: RequestInit): Promise<T> {
   return r.json();
 }
 const post = <T = Any>(url: string, body: Any) => j<T>(url, { method: "POST", body: JSON.stringify(body) });
+async function postFiles<T = Any>(url: string, files: File[], fields: Record<string, string | undefined> = {}): Promise<T> {
+  const fd = new FormData();
+  files.forEach((f) => fd.append("files", f));
+  Object.entries(fields).forEach(([k, v]) => { if (v !== undefined && v !== null) fd.append(k, v); });
+  let r: Response;
+  try { r = await fetch(url, { method: "POST", body: fd, headers: actorHeaders() }); } catch { throw new Error("無法連線到後端服務，請確認系統已啟動"); }
+  if (!r.ok) { let body: Any = null; try { body = await r.json(); } catch { /* ignore */ } throw new Error(zhError(r.status, body)); }
+  return r.json();
+}
 
 export const api = {
   health: () => j("/api/health"),
@@ -77,6 +97,13 @@ export const api = {
   rules: () => j<Record<string, Any>>("/api/rules"),
   rule: (id: string) => j(`/api/rules/${encodeURIComponent(id)}`),
   importRules: (ruleset: Any, id?: string) => post("/api/rules/import", { ruleset, id }),
+  /* 輸入檔：多份一起加到既有案件／從多份建一個案件／移除一份（其餘重新併入）。multipart，欄位名 files。 */
+  addInputs: (id: string, files: File[], opts: { use_vision?: string } = {}) =>
+    postFiles<{ record: CaseRecord; results: InputResult[]; inputs_summary: InputsSummary }>(`/api/cases/${encodeURIComponent(id)}/inputs`, files, opts),
+  casesFromInputs: (files: File[], opts: { name?: string; case_no?: string; valuation_date?: string; district?: string; land_use?: string; section_id?: string; use_vision?: string } = {}) =>
+    postFiles<{ case: CaseRecord; results: InputResult[]; inputs_summary: InputsSummary }>("/api/cases/from_inputs", files, opts),
+  removeInput: (id: string, iid: string) => j<{ record: CaseRecord; removed: InputEntry; replayed: InputResult[]; failed: string[] }>(`/api/cases/${encodeURIComponent(id)}/inputs/${encodeURIComponent(iid)}`, { method: "DELETE" }),
+  inputFileUrl: (id: string, iid: string) => `/api/cases/${encodeURIComponent(id)}/inputs/${encodeURIComponent(iid)}/file`,
   adapt: async (file: File, kind = "auto", extra: Record<string, string> = {}) => {
     const fd = new FormData(); fd.append("file", file); fd.append("kind", kind);
     Object.entries(extra).forEach(([k, v]) => fd.append(k, v));

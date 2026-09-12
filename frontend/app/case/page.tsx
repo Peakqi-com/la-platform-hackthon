@@ -8,6 +8,7 @@ import { vdateHint } from "@/components/vdate";
 import { Btn, Card, Empty, Help } from "@/components/ui";
 import { actorHeaders, api, Any, zhError } from "@/lib/api";
 import FillReport from "@/components/FillReport";
+import { InputsCard } from "@/components/Inputs";
 const LeafletMap = dynamic(() => import("@/components/LeafletMap"), { ssr: false });
 
 /* 案件與地價區段基本資料：通常僅有年期、區段編號、區段範圍文字。區段範圍多邊形與比準地位置在圖上設定，之後勘查表、設施距離、圖說都靠它。 */
@@ -37,12 +38,11 @@ export default function CasePage({ embedded = false }: { embedded?: boolean } = 
   async function attachPdf(file: File) {
     if (!rec) return; setBusy(true); setMsg(null);
     try {
-      const fd = new FormData(); fd.append("file", file); fd.append("kind", "pdf_forms");
-      const r = await fetch(`/api/cases/${encodeURIComponent(rec.id)}/import`, { method: "POST", body: fd, headers: actorHeaders() });
-      if (!r.ok) throw new Error(zhError(r.status, await r.json().catch(() => null)));
-      const j = await r.json();
+      const r = await api.addInputs(rec.id, [file]);
+      const e = r.results[0];
+      if (e?.error) throw new Error(e.error);
       await loadCase(rec.id);
-      setMsg(`已補上送審書表 ${file.name}${j.missing_fields?.length ? `（抽取缺漏 ${j.missing_fields.length} 欄）` : ""}；到「③ 審查」逐格比對。`);
+      setMsg(e?.skipped ? String(e.summary) : `已補上送審書表 ${file.name}${e?.missing?.length ? `（抽取缺漏 ${e.missing.length} 欄）` : ""}${e?.conflicts?.length ? `；與既有資料不一致 ${e.conflicts.length} 處（保留既有值，見「輸入檔」卡片）` : ""}；到「③ 審查」逐格比對。`);
     } catch (e: Any) { setMsg(String(e.message || e)); } finally { setBusy(false); }
   }
   const recKey = rec ? `${rec.id}:${rec.updated_at}` : "";
@@ -170,6 +170,7 @@ export default function CasePage({ embedded = false }: { embedded?: boolean } = 
                 <div className="mt-1">{ruleName(rs.regional)}／{ruleName(rs.individual)}（到「評價基準明細表」頁更換）</div></details>
             </div>
           </Card>
+          <InputsCard />
           <Card title={`地價區段 ${section.section_id}`}>
             <div className="text-sm space-y-2">
               <label className="block"><span className="text-xs text-slate-500">區段編號</span><input className="border rounded px-2 py-1 w-full" value={section.section_id || ""} onChange={(e) => { const d = JSON.parse(JSON.stringify(draft)); const s = d.sections[section.section_id]; delete d.sections[section.section_id]; s.section_id = e.target.value; d.sections[e.target.value] = s; d.subject_parcel.section_id = e.target.value; d.comparables.forEach((c: Any) => { if (c.section_id === section.section_id) c.section_id = e.target.value; }); setDraft(d); }} /></label>

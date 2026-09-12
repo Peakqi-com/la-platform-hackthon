@@ -112,6 +112,24 @@
 
 見 `backend/app/engine/verify.py` docstring。抽取器（Excel/PDF）的目標就是產出這個結構。
 
+## Inputs（一個案件的多份輸入檔）＝ `rec.inputs[]`（`app/inputs.py`）
+
+案件可由多份檔組成，每份併入後記一筆：
+
+- `id`、`filename`、`kind`（`pdf_forms`｜`parcels`｜`comparables`｜`rules_table`｜`cadastre`｜`section_map`）、`kind_label`、`size`、`sha1`、`at`、`actor`、`path`（原檔在 `data/cases/<id>/inputs/`）
+- `pages[]`：書表 PDF 每頁 `{page, kind: t1|t5|t4|map|other, method: text|vision|none}`
+- `summary`：併入摘要（人讀）；`filled[]`：從空白填入的欄位路徑；`missing[]`／`warnings[]`／`confidence{}`：該檔的抽取品質
+- `conflicts[{path, kept, incoming}]`：與先前檔案不一致（保留先來者，審查頁列「輸入檔不一致」）
+- `overrides[{path, old, new}]`：清冊／實例覆蓋既有值；`matched[]`／`unmatched[]`：依地號對到／對不到
+- `legacy: true`：舊案件由 `extraction` 補建的紀錄，沒有原檔，不能移除重併
+
+`rec.inputs_base`：第一份輸入檔併入前的快照 `{data, submitted_table5, submitted_table4, at}`；移除一份輸入檔＝回到這裡再依序重新併入其餘檔案。
+`rec.extraction` 由所有書表 PDF 輸入檔彙總（信心值取最小、缺漏扣掉後來檔案已填的欄位）。
+
+合併規則：書表 PDF 依區段編號、實例編號聯集、只補空白、同格不同值記 `conflicts`；案件層欄位（案號、基準日、用地別、鄉鎮市區、簽章）以第一份為準；
+清冊／實例覆蓋有值欄位並記 `overrides`；基準表匯入 `rules/uploaded_*.json` 並套用至 `case.rulesets`；地籍圖／區段圖走原本的匯入流程。
+`list_cases()` 每案帶 `inputs_summary{n, kinds, n_conflicts, items[{key, label, full, present, source}]}`（勘查表／表5／表4／清冊／實例／基準表／地籍圖／區段圖 有無），送審表、地籍圖、區段圖、上傳基準表等舊流程留下的標記也算「有」。
+
 ## 規則 JSON（`rules/*_regional.json`, `*_individual.json`）
 
 ```jsonc

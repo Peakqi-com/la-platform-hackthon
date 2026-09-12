@@ -9,6 +9,7 @@ import { decisionKeyLabel } from "@/lib/labels";
 import Legend from "@/components/Legend";
 import AuditLog from "@/components/AuditLog";
 import { StaleBanner } from "@/components/Stale";
+import { pathLabel } from "@/lib/labels";
 import { getActor } from "@/lib/api";
 
 export default function Review() {
@@ -54,6 +55,12 @@ export default function Review() {
       <PageHeader print title="③ 審查" desc="將送審書表上估價單位填載的等級、修正百分比、小計、差異率、跨表抄填與價格，與系統依評價基準明細表核算的結果逐項比對；每一項結果均標示作業手冊審查重點條號與依據格位。"
         input="送審書表填載值（影響地價區域因素分析明細表、比較法調查估價表）＋系統核算結果" output="不符／需確認／備註清單 → 審查意見書" next={{ href: "/report", label: "審查意見書" }} />
       <StaleBanner what="審查結果" />
+      {(() => { const cs = (rec.inputs || []).flatMap((i) => (i.conflicts || []).map((c) => ({ ...c, file: i.filename }))); return cs.length ? (
+        <Card title={`輸入檔不一致（${cs.length}）`} hint="同一格在兩份輸入檔裡的值不同：系統保留先併入的值、不自動裁決。請核對原檔後到「① 輸入資料」改成正確值，或移除有誤的檔案。">
+          <div className="overflow-x-auto"><table className="grid"><thead><tr><th>欄位</th><th>保留的值</th><th>後來的檔案給的值</th><th>來自檔案</th></tr></thead>
+            <tbody>{cs.slice(0, 60).map((c, i) => <tr key={i}><td>{pathLabel(c.path)}</td><td className="font-mono">{String(c.kept ?? "（空）")}</td><td className="font-mono">{String(c.incoming ?? "（空）")}</td><td className="text-slate-600">{c.file}</td></tr>)}</tbody></table></div>
+          {cs.length > 60 && <div className="text-xs text-slate-500 mt-1">只列前 60 筆，完整明細在「① 輸入資料」的輸入檔卡片。</div>}
+        </Card>) : null; })()}
       <Legend kinds={["review"]} />
       <Card hint="本頁每一項「系統核算」值都由規則引擎依查估辦法與作業手冊確定性計算並可對回基準明細表格位，AI 不參與數字；AI（語言模型）只用於掃描件辨識與意見書文字潤飾。 「承辦裁決」：接受填載＝經審酌採估價單位之填載（請填說明），維持不符＝請估價單位補正；裁決與說明會寫入審查意見書。審查重點條號依《土地徵收補償市價查估作業手冊》p.11–13：iii 勘查表等級、v 買賣實例、vi 區域因素分析明細表、vii 比較法調查估價表、x 宗地條件與清冊。「需確認」多為作業手冊未明定而依範本推定之事項，不判定為錯誤。" title={<>審查結果：{rec.name} <span className={`ml-2 align-middle rounded px-1.5 py-0.5 text-xs ${rec.status === "done" ? "bg-emerald-100 text-emerald-800" : rec.status === "reviewing" ? "bg-sky-100 text-sky-800" : "bg-slate-100 text-slate-700"}`}>{STATUS_LABEL[rec.status || "draft"]}</span></>}
         right={<>
