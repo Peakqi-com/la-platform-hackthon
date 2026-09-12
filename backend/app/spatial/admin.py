@@ -147,7 +147,11 @@ def _lvr_zone_index() -> dict[tuple[str, str], str]:
     except Exception:  # noqa: BLE001
         return {}
     out: dict[tuple[str, str], str] = {}
-    for rec in sorted(load_lvr().get("records", []), key=lambda r: r.get("date") or ""):
+    try:
+        records = load_lvr().get("records", [])
+    except Exception:  # noqa: BLE001 - 實價登錄檔壞掉不影響行政條件推定
+        return {}
+    for rec in sorted(records, key=lambda r: r.get("date") or ""):
         for lot in rec.get("lots", []):
             z = (lot.get("zone") or "").strip()
             if z and "都市" in z and "道路" not in z:

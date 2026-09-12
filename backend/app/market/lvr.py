@@ -62,7 +62,10 @@ def load_lvr(path: str | None = None) -> dict[str, Any]:
     p = Path(path or os.environ.get("LVR_JSON") or DATA_DIR / "f_land.json")
     if not p.exists():
         return {"records": [], "seasons": [], "source": None, "path": str(p)}
-    d = json.loads(p.read_text(encoding="utf-8"))
+    try:
+        d = json.loads(p.read_text(encoding="utf-8"))
+    except (ValueError, UnicodeDecodeError) as e:                      # 檔案上傳到一半被截斷 → 當成沒有資料，其他功能照常
+        return {"records": [], "seasons": [], "source": None, "path": str(p), "error": f"實價登錄資料檔損毀（{type(e).__name__}: {str(e)[:80]}），請重新上傳 data/lvr/f_land.json"}
     d["path"] = str(p)
     return d
 
@@ -70,7 +73,7 @@ def load_lvr(path: str | None = None) -> dict[str, Any]:
 def lvr_status() -> dict[str, Any]:
     d = load_lvr()
     recs = d.get("records", [])
-    return {"path": d.get("path"), "n": len(recs), "seasons": d.get("seasons", []), "source": d.get("source"),
+    return {"path": d.get("path"), "n": len(recs), "seasons": d.get("seasons", []), "source": d.get("source"), "error": d.get("error"),
             "districts": sorted({r["district"] for r in recs})[:40], "coverage": dataset_coverage(d)}
 
 
