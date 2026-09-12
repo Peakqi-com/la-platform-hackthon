@@ -1,6 +1,7 @@
 import * as THREE from './three.module.min.js';
 import {buildCity,buildSurvey,buildWind} from './city.js';
 import {buildDocument,buildAppraiser,buildMagnifier} from './props.js';
+import {FireworkSystem} from './systems/fireworks.js';
 import {MaterialLibrary} from './systems/materials.js';
 import {ScrollController,SceneStateMachine,CameraDirector,smooth} from './systems/state.js';
 import {QualityManager} from './systems/quality.js';
@@ -36,6 +37,7 @@ try{
  const scene=new THREE.Scene();scene.fog=new THREE.FogExp2(0x30484b,.002);const camera=new THREE.PerspectiveCamera(37,innerWidth/innerHeight,.1,650);
  const materials=new MaterialLibrary(),city=buildCity(materials);scene.add(city.root);city.parcels.forEach((parcel,i)=>parcel.id=parcel.selected?'0128':String(201+i).padStart(4,'0'));
  const survey=buildSurvey(city.parcels);city.root.add(survey.root);const cadastral=new CadastralLayer(survey),targetParcel=city.parcels.find(parcel=>parcel.selected),parcelOverlay=new ParcelOverlay(targetParcel);city.root.add(parcelOverlay.root);
+ const fireworks=new FireworkSystem(scene,quality);
  const wind=buildWind();scene.add(wind.root);const paper=buildDocument(materials);scene.add(paper.root);paper.root.visible=false;const appraiser=buildAppraiser(materials);scene.add(appraiser);appraiser.visible=false;
  const desk=new THREE.Group(),tabletop=new THREE.Mesh(new THREE.BoxGeometry(34,.6,25),materials.materials.roof);tabletop.position.set(23,-.3,3);tabletop.receiveShadow=true;desk.add(tabletop);for(const x of [8,38])for(const z of [-7,13]){const leg=new THREE.Mesh(new THREE.CylinderGeometry(.2,.2,7,12),materials.materials.trim);leg.position.set(x,-4,z);desk.add(leg);}scene.add(desk);
  // Existing labels remain attached to the cadastral plane and fade with it.
@@ -57,10 +59,17 @@ try{
   city.root.scale.setScalar(shrink);city.root.position.set(18.5*(1-shrink),lerp(0,.1,documentPhase),2.5*(1-shrink));city.buildings.scale.y=lerp(1,.09,flatten);city.greenery.scale.y=lerp(1,.06,flatten);city.buildingDetails.scale.y=lerp(.72,1,state.buildingLOD);city.buildingDetails.position.y=lerp(-.3,0,state.buildingLOD);city.buildingDetails.visible=quality.level!=='LOW'||state.buildingLOD>.34;scene.updateMatrixWorld();
   const time=timeOfDay.update(sceneProgress),lightingState=lighting.update(elapsed,time,state,camera),{day,night}=lightingState;
   cadastral.update(state,smooth(.72,1.55,sceneProgress));parcelOverlay.update(state,elapsed);
-  paper.root.visible=documentPhase>.002&&returnPhase<.995;paper.root.position.set(18.5,lerp(.7,10,documentPhase)-valuePhase*1.6,2.5);paper.root.rotation.x=lerp(-Math.PI/2,-.48,documentPhase)-valuePhase*.35;paper.root.rotation.z=-.035*documentPhase;paper.root.scale.setScalar(lerp(.7,1,documentPhase)*(1-returnPhase));paper.draw(smooth(2.08,2.76,sceneProgress));
-  const write=smooth(2.16,2.69,sceneProgress);paper.pencil.position.set(3+Math.sin(write*15)*2.8,7-write*11,.5);paper.pencil.rotation.z=-.6+Math.sin(write*20)*.025;appraiser.visible=valuePhase>.01&&returnPhase<.99;appraiser.scale.setScalar(1.35*valuePhase*(1-returnPhase));desk.visible=documentPhase>.4&&returnPhase<.8;desk.scale.setScalar(documentPhase*(1-returnPhase));
-  wind.root.visible=documentPhase<.9||returnPhase>.1;wind.root.children.forEach(object=>{if(object.material?.transparent)object.material.opacity=(object.geometry.type==='TubeGeometry'?.2:1)*(1-documentPhase+returnPhase)*state.worldOpacity;});for(let i=0;i<wind.dots.length;i++)wind.dots[i].position.copy(wind.curves[i].getPointAt(reduced?.45:(elapsed*.042+i*.18)%1));
-  const animationTime=reduced?sceneProgress*.7:elapsed;city.animate(animationTime,night);crowd.update(animationTime,dt,camera,state,reduced);birds.update(animationTime,time,state,environment.windDirection,reduced);aircraft.update(animationTime,time,state,reduced);environment.update(animationTime,state,reduced);city.waterMaterial.uniforms.uSunX.value=.5+Math.sin(day*Math.PI*1.35-.5)*.3;post.update(animationTime,state,night);
+  paper.root.visible=documentPhase>.002&&returnPhase<.995;paper.root.position.set(18.5,lerp(.7,8.5,documentPhase)-valuePhase*1.5,2.5);paper.root.rotation.x=lerp(-Math.PI/2,-.48,documentPhase)-valuePhase*.35;paper.root.rotation.z=-.035*documentPhase;paper.root.scale.setScalar(lerp(.7,.87,documentPhase)*(1-returnPhase));paper.draw(smooth(2.08,2.76,sceneProgress));
+  const write=smooth(2.16,2.69,sceneProgress);paper.pencil.position.set(3+Math.sin(write*15)*2.8,7-write*11,.5);paper.pencil.rotation.z=-.6+Math.sin(write*20)*.025;appraiser.visible=valuePhase>.01&&returnPhase<.99;appraiser.scale.setScalar(1.35*valuePhase*(1-returnPhase));appraiser.userData.update?.(elapsed,appraiser.visible&&!reduced);desk.visible=documentPhase>.4&&returnPhase<.8;desk.scale.setScalar(documentPhase*(1-returnPhase));
+  wind.root.visible=documentPhase<.9||returnPhase>.1;wind.root.children.forEach(object=>{if(object.material?.transparent)object.material.opacity=(object.geometry.type==='TubeGeometry'?.2:1)*(1-documentPhase+returnPhase)*state.worldOpacity;});wind.update(elapsed,reduced);
+  const animationTime=reduced?sceneProgress*.7:elapsed;city.animate(animationTime,night);crowd.update(animationTime,dt,camera,state,reduced);birds.update(animationTime,time,state,environment.windDirection,reduced);aircraft.update(animationTime,time,state,reduced);environment.update(animationTime,state,reduced);city.waterMaterial.uniforms.uSunX.value=.5+Math.sin(day*Math.PI*1.35-.5)*.3;
+  // 河邊煙火，夜晚才放；水面的倒影顏色跟著當下那朵走。
+  fireworks.update(dt,night,state.worldOpacity);
+  const wu=city.waterMaterial.uniforms;
+  wu.uFire.value.set(fireworks.glow.r,fireworks.glow.g,fireworks.glow.b);
+  wu.uFireK.value=fireworks.glow.strength*.85;
+  // 水面平面：x 為 -31±9.5 對應 uv.x、z 為 -44..44 對應 uv.y
+  wu.uFireAt.value.set(THREE.MathUtils.clamp((fireworks.glow.x+31)/19+.5,-.2,1.2),THREE.MathUtils.clamp((fireworks.glow.z+44)/88,-.2,1.2));post.update(animationTime,state,night);
 
   const lensIn=smooth(1.02,1.28,sceneProgress),lensOut=smooth(1.8,2.08,sceneProgress),lensAmount=lensIn*(1-lensOut),lensVisible=lensAmount>.015&&!reduced;projectedParcel.set(targetParcel.x,.7,targetParcel.z);city.root.localToWorld(projectedParcel);projectedParcel.project(camera);const px=projectedParcel.x*width/2,py=projectedParcel.y*height/2;
   if(lensVisible){const radius=mobile?clamp(width*.24,75,107):clamp(width*.092,104,149),scale=radius/100,exitX=lensOut*width*.72,exitY=lensOut*height*.22;magnifier.root.scale.setScalar(scale*lensIn*(1-lensOut*.18));magnifier.root.rotation.z=lerp(-.18,.025,lensIn)+lensOut*.32;magnifier.root.position.set(px+exitX,py+exitY,0);magnifier.lensMat.uniforms.center.value.set(.5+(px+(lensOut>.35?exitX:0))/width,.5+(py+(lensOut>.35?exitY:0))/height);renderer.setRenderTarget(source);renderer.clear();renderer.render(scene,camera);renderer.setRenderTarget(null);}

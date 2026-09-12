@@ -55,10 +55,24 @@ export class CrowdSystem{
    // the previous +X assumption made every figure appear to slide sideways.
    w.g.rotation.y=Math.atan2(tan.x,tan.z);
    const pace=w.behavior==='cycling'?7.4:4.25*w.mps,amplitude=moving?(w.behavior==='cycling'?.12:THREE.MathUtils.lerp(.31,.46,clamp((w.mps-.8),0,1))):0,step=Math.sin(elapsed*pace+w.phase)*amplitude;
-   w.legs?.forEach((leg,j)=>leg.rotation.x=j? -step:step);w.arms?.forEach((arm,j)=>arm.rotation.x=j?step*.65:-step*.65);w.g.position.y=p.y+(moving?Math.abs(Math.sin(elapsed*pace+w.phase))*.023:0);
+   // 站定的人不能是雕像。standing / talking / waiting / sitting 佔了行為清單的五分之二，
+   // 原本沒位移就 amplitude=0，四肢與身體完全凍住，看起來像畫面當掉。
+   // 沒走路時改給重心轉移、呼吸起伏與緩慢環顧，位置仍然固定，但看得出還活著。
+   const idleT=elapsed*.9+w.phase,
+         idleSway=moving?0:Math.sin(idleT*.57)*.075+Math.sin(idleT*.21)*.042,
+         idleBreath=moving?0:Math.sin(idleT*1.22)*.013+Math.abs(Math.sin(idleT*.57))*.008;
+   w.legs?.forEach((leg,j)=>leg.rotation.x=moving?(j?-step:step):(j?-idleSway*.55:idleSway*.55));
+   w.arms?.forEach((arm,j)=>{if(moving){arm.rotation.x=j?step*.65:-step*.65;}else{arm.rotation.x=(j?1:-1)*idleSway*.45;arm.rotation.z=(j?-1:1)*(.07+Math.abs(idleSway)*.85);}});
+   w.g.position.y=p.y+(moving?Math.abs(Math.sin(elapsed*pace+w.phase))*.023:idleBreath);
+   if(!moving)w.g.rotation.y+=Math.sin(idleT*.26+w.fixed*6.3)*.22;
    if(w.behavior==='checkingPhone'&&w.arms){w.arms[0].rotation.x=-1.05;w.arms[1].rotation.x=-.82;}
-   if(w.behavior==='talking'){w.g.rotation.y+=(i%2?1:-1)*1.18;if(w.arms){w.arms[0].rotation.z=.38+Math.sin(elapsed*.9+w.phase)*.12;w.arms[1].rotation.x=-.12;}}
-   if(w.behavior==='waiting'&&w.arms)w.arms[0].rotation.z=.22;
+   if(w.behavior==='talking'){
+    w.g.rotation.y+=(i%2?1:-1)*1.18;
+    const gesture=Math.sin(elapsed*1.55+w.phase),beat=Math.sin(elapsed*2.4+w.phase*1.7);
+    if(w.arms){w.arms[0].rotation.z=.42+gesture*.32;w.arms[0].rotation.x=-.16+beat*.24;w.arms[1].rotation.x=-.12+gesture*.16;}
+    w.g.position.y+=Math.abs(Math.sin(elapsed*1.15+w.phase))*.011;   // 說話時的輕微點頭
+   }
+   if(w.behavior==='waiting'&&w.arms){const check=Math.max(0,Math.sin(elapsed*.34+w.phase*2.1)-.74)*3.6;w.arms[0].rotation.z=.22;w.arms[0].rotation.x=-check*1.2;}
    if(w.behavior==='sitting'){w.g.position.y-=.48;w.legs?.forEach(leg=>leg.rotation.x=-1.25);}
    if(w.behavior==='cycling'){w.g.position.y+=.34;w.legs?.forEach((leg,j)=>leg.rotation.x=Math.sin(elapsed*pace+w.phase+j*Math.PI)*.7);}
    if(w.dog)w.dog.position.y=.02+Math.abs(Math.sin(elapsed*pace*1.25+w.phase))*.025;

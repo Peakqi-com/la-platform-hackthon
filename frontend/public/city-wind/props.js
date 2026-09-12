@@ -39,18 +39,60 @@ export function buildDocument(materialLibrary){
 export function buildAppraiser(materialLibrary){
  const root=new THREE.Group();root.position.set(30,1,8);root.rotation.y=-.5;
  const mat=(c,metalness=0,cloth=false)=>new THREE.MeshPhysicalMaterial({color:c,roughness:cloth?.7:.55,metalness,sheen:cloth?.2:0,sheenRoughness:.78,envMapIntensity:metalness?.9:.48});const coat=mat(0x997a5c,0,true),shirt=mat(0xe9e4ce,0,true),pants=mat(0x344749,0,true),skin=mat(0xceaf8c),hair=mat(0x35403a),shoe=mat(0x223330),gold=mat(0xa6a188,.6);
- function m(g,ma,x,y,z){const o=new THREE.Mesh(g,ma);o.position.set(x,y,z);o.castShadow=true;root.add(o);return o;}
- function limb(a,b,r,ma){const p=new THREE.Vector3(...a),q=new THREE.Vector3(...b),d=q.clone().sub(p);const o=m(new THREE.CapsuleGeometry(r,Math.max(.05,d.length()-2*r),6,12),ma,...p.clone().add(q).multiplyScalar(.5).toArray());o.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());return o;}
+ function m(g,ma,x,y,z,parent){const o=new THREE.Mesh(g,ma);o.position.set(x,y,z);o.castShadow=true;(parent||root).add(o);return o;}
+ function limb(a,b,r,ma,parent){const p=new THREE.Vector3(...a),q=new THREE.Vector3(...b),d=q.clone().sub(p);const o=m(new THREE.CapsuleGeometry(r,Math.max(.05,d.length()-2*r),6,12),ma,...p.clone().add(q).multiplyScalar(.5).toArray(),parent);o.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());return o;}
  for(const side of [-1,1]){limb([side*.44,.7,0],[side*.42,3.15,0],.32,pants);m(new THREE.BoxGeometry(.65,.36,1.1),shoe,side*.44,.3,.24);}
  m(new THREE.CylinderGeometry(.8,.68,2.2,18),coat,0,4,0);m(new THREE.BoxGeometry(.37,1.7,.12),shirt,0,4.12,.7);
  const lapel1=m(new THREE.BoxGeometry(.25,1.35,.09),coat,-.24,4.35,.81);lapel1.rotation.z=.17;const lapel2=m(new THREE.BoxGeometry(.25,1.35,.09),coat,.24,4.35,.81);lapel2.rotation.z=-.17;
  m(new THREE.CylinderGeometry(.24,.27,.5,12),skin,0,5.2,0);const head=m(new THREE.SphereGeometry(.63,24,18),skin,0,5.98,.04);head.scale.set(.85,1.15,.86);
  const cap=m(new THREE.SphereGeometry(.65,20,12,0,Math.PI*2,0,Math.PI*.58),hair,0,6.12,-.06);cap.scale.set(.86,1,.86);
  for(const side of [-1,1]){m(new THREE.TorusGeometry(.16,.022,6,16),gold,side*.23,6.05,.52);m(new THREE.SphereGeometry(.035,8,6),hair,side*.23,6.05,.55);}m(new THREE.BoxGeometry(.13,.035,.035),gold,0,6.05,.55);
- limb([-.72,4.7,0],[-1.1,3.7,.55],.24,coat);limb([-1.1,3.7,.55],[-.65,3.8,1.2],.21,coat);limb([.72,4.7,0],[1.05,3.85,.55],.24,coat);limb([1.05,3.85,.55],[.58,4.05,1.2],.2,coat);
- m(new THREE.SphereGeometry(.22,12,8),skin,-.62,3.86,1.2);m(new THREE.SphereGeometry(.22,12,8),skin,.52,4.08,1.25);
+ limb([-.72,4.7,0],[-1.1,3.7,.55],.24,coat);limb([-1.1,3.7,.55],[-.65,3.8,1.2],.21,coat);
+ m(new THREE.SphereGeometry(.22,12,8),skin,-.62,3.86,1.2);
+ // 右臂掛在肩膀的樞紐群組底下，座標改成相對肩膀，這樣整條手臂才能一起舉起來
+ const rightArm=new THREE.Group();rightArm.position.set(.72,4.7,0);root.add(rightArm);
+ limb([0,0,0],[.33,-.85,.55],.24,coat,rightArm);limb([.33,-.85,.55],[-.14,-.65,1.2],.2,coat,rightArm);
+ const rightHand=m(new THREE.SphereGeometry(.22,12,8),skin,-.2,-.62,1.25,rightArm);
+ // 大拇指：平時收起，比讚時立起來
+ const thumb=m(new THREE.CapsuleGeometry(.075,.2,5,8),skin,-.2,-.38,1.34,rightArm);thumb.rotation.z=.35;thumb.visible=false;
  const tablet=m(new THREE.BoxGeometry(1.75,1.22,.1),pants,0,4.12,1.23);tablet.rotation.x=-.4;
  const screen=m(new THREE.PlaneGeometry(1.52,1.02),mat(0x85aaa2),0,4.13,1.3);screen.rotation.x=-.4;
+
+ // 靈光一閃：燈泡亮起並照到臉 → 比大拇指 → 輕微搖晃。
+ // 整段由 update(t) 依時間循環，數值都是平滑函式算出來的，不會抖。
+ const bulbPivot=new THREE.Group();bulbPivot.position.set(-2.05,7.55,.25);root.add(bulbPivot);
+ const bulbMat=new THREE.MeshBasicMaterial({color:0xffeec0,transparent:true,opacity:0,toneMapped:false});
+ const bulb=m(new THREE.SphereGeometry(.36,16,12),bulbMat,0,0,0,bulbPivot);bulb.castShadow=false;
+ const haloMat=new THREE.MeshBasicMaterial({color:0xffd98a,transparent:true,opacity:0,toneMapped:false,depthWrite:false,blending:THREE.AdditiveBlending});
+ const halo=m(new THREE.SphereGeometry(.86,16,12),haloMat,0,0,0,bulbPivot);halo.castShadow=false;
+ const capM=m(new THREE.CylinderGeometry(.15,.17,.22,10),gold,0,-.4,0,bulbPivot);capM.castShadow=false;
+ // 打在臉上的光源
+ const faceLight=new THREE.PointLight(0xffd79a,0,5.2,2);faceLight.position.set(-1.5,7.0,.6);root.add(faceLight);
+
+ const sstep=(a,b,v)=>{const t=Math.min(1,Math.max(0,(v-a)/(b-a)));return t*t*(3-2*t);};
+ const CYCLE=8.2;
+ root.userData.update=(t,visible)=>{
+  if(!visible){faceLight.intensity=0;return;}
+  const c=((t%CYCLE)+CYCLE)%CYCLE;
+  // 燈泡：0.6 秒快速亮起，停留到 3.4 秒後淡出
+  const on=sstep(.55,1.05,c)*(1-sstep(3.6,4.5,c));
+  // 亮起瞬間多一個短暫的過亮，做出「一閃」
+  const spark=Math.max(0,1-Math.abs(c-1.05)/.42);
+  const glow=Math.min(1,on+spark*.55);
+  bulbMat.opacity=glow*.96;haloMat.opacity=glow*.42;
+  bulbPivot.scale.setScalar(.82+glow*.26+spark*.1);
+  bulbPivot.position.y=7.55+Math.sin(t*1.7)*.06*on;
+  faceLight.intensity=glow*7.5;
+  // 比大拇指：1.5 秒舉起，停到 3.6 秒放下
+  const up=sstep(1.5,2.15,c)*(1-sstep(3.5,4.2,c));
+  rightArm.rotation.x=-up*1.42;rightArm.rotation.z=up*.3;
+  thumb.visible=up>.12;thumb.rotation.z=.35-up*.3;
+  // 舉起後的輕微搖晃
+  const sway=up*Math.sin(t*3.1)*.055;
+  root.rotation.z=sway;root.rotation.y=-.5+sway*.6+Math.sin(t*.8)*.02;
+  root.position.y=1+Math.sin(t*1.25)*.035;
+ };
+
  root.scale.setScalar(1.35);return root;
 }
 

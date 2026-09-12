@@ -7,11 +7,22 @@ export class PostProcessingSystem{
   const material=new THREE.ShaderMaterial({uniforms:this.uniforms,depthTest:false,depthWrite:false,toneMapped:false,vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}`,fragmentShader:`
    uniform sampler2D tScene;uniform vec2 resolution;uniform float intensity;uniform float bloom;uniform float dof;uniform float time;varying vec2 vUv;
    float lum(vec3 c){return dot(c,vec3(.2126,.7152,.0722));}
+   vec3 ring(vec2 uv,vec2 unit,float r){
+    vec2 o1=vec2( 1.000, 0.000)*unit*r,o2=vec2( 0.500, 0.866)*unit*r,o3=vec2(-0.500, 0.866)*unit*r;
+    vec3 s=texture2D(tScene,clamp(uv+o1,vec2(0.),vec2(1.))).rgb+texture2D(tScene,clamp(uv-o1,vec2(0.),vec2(1.))).rgb
+          +texture2D(tScene,clamp(uv+o2,vec2(0.),vec2(1.))).rgb+texture2D(tScene,clamp(uv-o2,vec2(0.),vec2(1.))).rgb
+          +texture2D(tScene,clamp(uv+o3,vec2(0.),vec2(1.))).rgb+texture2D(tScene,clamp(uv-o3,vec2(0.),vec2(1.))).rgb;
+    return s*(1./6.);
+   }
    void main(){
-    vec2 px=1./resolution;vec3 base=texture2D(tScene,vUv).rgb;
-    vec3 blur=(texture2D(tScene,clamp(vUv+vec2(px.x,0.)*1.25,vec2(0.),vec2(1.))).rgb+texture2D(tScene,clamp(vUv-vec2(px.x,0.)*1.25,vec2(0.),vec2(1.))).rgb+texture2D(tScene,clamp(vUv+vec2(0.,px.y)*1.25,vec2(0.),vec2(1.))).rgb+texture2D(tScene,clamp(vUv-vec2(0.,px.y)*1.25,vec2(0.),vec2(1.))).rgb)*.25;
-    float highlight=smoothstep(.9,1.35,lum(blur));vec3 color=base+blur*highlight*bloom*intensity;
-    if(dof>.001){vec2 radial=(vUv-.5)*px*5.;vec3 cinematic=texture2D(tScene,clamp(vUv+radial,vec2(0.),vec2(1.))).rgb+texture2D(tScene,clamp(vUv-radial,vec2(0.),vec2(1.))).rgb;float edge=smoothstep(.32,.72,length(vUv-.5));color=mix(color,cinematic*.5,dof*edge*.55);}
+    vec3 base=texture2D(tScene,vUv).rgb;
+    float px=resolution.y*0.0042;
+    vec2 unit=vec2(px/resolution.x,px/resolution.y);
+    vec3 g1=ring(vUv,unit,1.0),g2=ring(vUv,unit,2.7);
+    vec3 glow=g1*.58+g2*.42;
+    float knee=smoothstep(.30,1.00,lum(glow));
+    vec3 color=base+glow*knee*bloom*intensity*3.2;
+    if(dof>.001){vec2 radial=(vUv-.5)*unit*4.;vec3 cinematic=texture2D(tScene,clamp(vUv+radial,vec2(0.),vec2(1.))).rgb+texture2D(tScene,clamp(vUv-radial,vec2(0.),vec2(1.))).rgb;float edge=smoothstep(.32,.72,length(vUv-.5));color=mix(color,cinematic*.5,dof*edge*.55);}
     float vignette=smoothstep(.92,.28,length((vUv-.5)*vec2(1.,.84)));color*=mix(.955,1.,vignette);gl_FragColor=vec4(color,1.);
     #include <colorspace_fragment>
    }`});

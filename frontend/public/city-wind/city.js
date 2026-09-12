@@ -13,7 +13,44 @@ export function buildCity(materialLibrary) {
  function beam(parent,a,b,r,mat){const p=new THREE.Vector3(...a),q=new THREE.Vector3(...b),v=q.clone().sub(p);const m=mesh(parent,new THREE.CylinderGeometry(r,r,v.length(),8),mat,...p.clone().add(q).multiplyScalar(.5).toArray());m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),v.normalize());return m;}
  box(terrain,0,-1.4,0,110,2.6,88,'black');box(terrain,0,-.05,0,110,.3,88,'stone');
  for(const z of [-44,44])box(terrain,0,-.7,z,110,.11,.09,'gold');for(const x of [-55,55])box(terrain,x,-.7,0,.09,.11,88,'gold');
- const waterMaterial=new THREE.ShaderMaterial({uniforms:{uTime:{value:0},uDay:{value:0},uSunX:{value:.25}},vertexShader:`varying vec2 vUv;varying float vWave;uniform float uTime;void main(){vUv=uv;vec3 p=position;float a=sin((uv.y*23.0)+(uTime*.62))*0.075;float b=sin((uv.y*41.0)-(uTime*.9)+(uv.x*6.0))*0.038;p.z=a+b;vWave=a+b;gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.0);}`,fragmentShader:`varying vec2 vUv;varying float vWave;uniform float uTime;uniform float uDay;uniform float uSunX;void main(){float night=smoothstep(.68,1.,uDay);vec3 deep=mix(vec3(.055,.28,.34),vec3(.018,.075,.12),night);vec3 shallow=mix(vec3(.16,.48,.52),vec3(.04,.18,.25),night);float phase=vUv.y*48.-uTime*1.25+sin(vUv.x*14.)*1.35;float flow=.5+.5*sin(phase);float aa=max(fwidth(flow)*1.5,.012);float bands=smoothstep(.66-aa,.94+aa,flow)*(.17+vWave*1.05);float path=exp(-pow((vUv.x-uSunX)*8.,2.))*smoothstep(.03,.34,vUv.y)*(1.-smoothstep(.72,.98,vUv.y));float glitter=.5+.5*sin(vUv.y*96.-uTime*2.2+vUv.x*23.);float gaa=max(fwidth(glitter)*2.,.018);float sparkle=smoothstep(.94-gaa,1.,glitter)*path;vec3 sun=mix(vec3(1.,.63,.30),vec3(.62,.77,1.),night);vec3 c=mix(deep,shallow,.42+vWave*1.1)+bands*vec3(.07,.15,.15)+sun*(path*.23+sparkle*.72);gl_FragColor=vec4(c,.98);}`,transparent:false,side:THREE.DoubleSide});
+ const waterMaterial=new THREE.ShaderMaterial({uniforms:{uTime:{value:0},uDay:{value:0},uSunX:{value:.25},uFire:{value:new THREE.Vector3(0,0,0)},uFireAt:{value:new THREE.Vector2(-99,-99)},uFireK:{value:0}},vertexShader:`varying vec2 vUv;varying float vWave;uniform float uTime;void main(){vUv=uv;vec3 p=position;float a=sin((uv.y*23.0)+(uTime*.62))*0.075;float b=sin((uv.y*41.0)-(uTime*.9)+(uv.x*6.0))*0.038;p.z=a+b;vWave=a+b;gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.0);}`,fragmentShader:`varying vec2 vUv;varying float vWave;uniform float uTime;uniform float uDay;uniform float uSunX;uniform vec3 uFire;uniform vec2 uFireAt;uniform float uFireK;
+   void main(){
+    float night=smoothstep(.68,1.,uDay);
+    vec3 deep=mix(vec3(.055,.28,.34),vec3(.018,.075,.12),night);
+    vec3 shallow=mix(vec3(.16,.48,.52),vec3(.04,.18,.25),night);
+    float phase=vUv.y*48.-uTime*1.25+sin(vUv.x*14.)*1.35;
+    float phw=fwidth(phase);
+    float bandFade=1.-smoothstep(1.1,2.8,phw);
+    float flow=.5+.5*sin(phase);
+    float aa=max(phw*.5,.012);
+    float bands=smoothstep(.66-aa,.94+aa,flow)*(.17+vWave*1.05)*bandFade;
+    float path=exp(-pow((vUv.x-uSunX)*8.,2.))*smoothstep(.03,.34,vUv.y)*(1.-smoothstep(.72,.98,vUv.y));
+    float gphase=vUv.y*96.-uTime*2.2+vUv.x*23.;
+    float gphw=fwidth(gphase);
+    float gFade=1.-smoothstep(1.1,2.8,gphw);
+    float glitter=.5+.5*sin(gphase);
+    float gaa=max(gphw*.5,.018);
+    float sparkle=smoothstep(.94-gaa,1.,glitter)*path*gFade;
+    vec3 sun=mix(vec3(1.,.63,.30),vec3(.62,.77,1.),night);
+    vec3 c=mix(deep,shallow,.42+vWave*1.1)+bands*vec3(.07,.15,.15)+sun*(path*.23+sparkle*.72);
+    float fish=0.;
+    for(int i=0;i<6;i++){
+     float fi=float(i);
+     float lane=fract(sin(fi*12.9898)*43758.5453);
+     float t=uTime*(.055+fi*.011)+fi*1.7;
+     vec2 fp=vec2(.18+.64*lane+sin(t*1.6+fi*2.1)*.045, fract(t*.085+fi*.17));
+     vec2 d=(vUv-fp)*vec2(96.,132.);
+     fish+=exp(-dot(d,d)*1.35);
+    }
+    c=mix(c,c*vec3(.34,.46,.50),clamp(fish,0.,1.)*(.5-night*.24));
+    if(uFireK>.001){
+     vec2 fd=vUv-uFireAt;
+     float ripple=.5+.5*sin(vUv.y*36.-uTime*2.4);
+     float spread=exp(-dot(fd*vec2(2.6,1.15),fd*vec2(2.6,1.15))*7.0);
+     c+=uFire*uFireK*spread*(.55+.45*ripple);
+    }
+    gl_FragColor=vec4(c,.98);
+   }`,transparent:false,side:THREE.DoubleSide});
  const water=mesh(terrain,new THREE.PlaneGeometry(19,88,28,120),waterMaterial,-31,.18,0);water.rotation.x=-Math.PI/2;water.castShadow=false;
  for(const x of [-41.3,-20.7]){box(terrain,x,.4,0,1.4,.7,88,'curb');box(terrain,x+(x<-30?-1.3:1.3),.15,0,1.1,.12,88,'gold');}
  // River promenades and benches.
@@ -23,11 +60,27 @@ export function buildCity(materialLibrary) {
  for(const z of zs){box(terrain,19,.17,z,68,.1,4.8,'road');for(let x=-12;x<53;x+=3.4)box(terrain,x,.235,z,1.8,.01,.1,'roadMark');for(const dz of [-2.48,2.48])box(terrain,19,.25,z+dz,68,.3,.25,'curb');}
  for(const x of xs)for(const z of zs){for(let i=0;i<6;i++){box(terrain,x-2+i*.8,.25,z+3.25,.43,.025,1.15,'roadMark');box(terrain,x+3.25,.25,z-2+i*.8,1.15,.025,.43,'roadMark');}}
  // Two bridges: a cable bridge and a fine-railed promenade.
+ // 夜間發光的燈具收進 nightGlow，統一由 animate() 依 night 調亮度，
+ // 亮度值每幀是同一個算式算出來的，不會閃。
+ const nightGlow=[];
+ const glowLamp=(x,y,zz,size,color,gain)=>{
+  const m=new THREE.MeshBasicMaterial({color,transparent:true,opacity:0,toneMapped:false,depthWrite:false});
+  mesh(terrain,new THREE.SphereGeometry(size,8,6),m,x,y,zz);
+  nightGlow.push({mat:m,base:0,gain});
+  return m;
+ };
  for(const [z,cable]of [[-19,true],[24,false]]){
   box(terrain,-31,1,z,35,.75,5,'concrete');box(terrain,-31,1.42,z,35,.1,4.4,'road');
   for(const dz of [-2.4,2.4]){box(terrain,-31,2,z+dz,35,.12,.12,'light');for(let x=-48;x<-13;x+=1.8)box(terrain,x,1.7,z+dz,.12,.8,.12,'trim');}
   for(let x=-45;x<-15;x+=3)box(terrain,x,1.5,z,1.6,.04,.12,'roadMark');
   for(const x of [-39,-23]){box(terrain,x,-.2,z,.9,3.5,3,'concrete');if(cable){for(const dz of [-2.7,2.7]){box(terrain,x,6.2,z+dz,.65,12,.6,'light');for(const dx of [-8,-5,-2,2,5,8])beam(terrain,[x,11.4,z+dz],[x+dx,1.6,z+dz],.045,'gold');}box(terrain,x,10.5,z,1,.65,6,'light');}}
+  // 橋面兩側的欄杆燈
+  for(let x=-46.5;x<-14;x+=2.4)for(const dz of [-2.4,2.4])glowLamp(x,2.16,z+dz,.09,0xffcf95,.92);
+  // 斜張橋：塔頂航空燈與沿索的光點
+  if(cable)for(const x of [-39,-23]){
+   glowLamp(x,11.9,z,.16,0xff8a6a,.95);
+   for(const dz of [-2.7,2.7])for(const dx of [-8,-5,-2,2,5,8])glowLamp(x+dx*.62,6.6-Math.abs(dx)*.42,z+dz,.062,0xbfe6ff,.8);
+  }
  }
  function tree(x,z,size=1){box(greenery,x,1.05*size,z,.23*size,1.8*size,.23*size,'trunk');const crown=mesh(greenery,new THREE.SphereGeometry(1,10,7),random()>.5?'leaf':'leaf2',x,2.8*size,z);crown.scale.set(1.05*size,1.25*size,.95*size);}
  for(const x of [-47,-18])for(let z=-40;z<=40;z+=4.1){if(Math.abs(z+19)>4&&Math.abs(z-24)>4)tree(x,z,.85+random()*.2);}
@@ -103,9 +156,20 @@ export function buildCity(materialLibrary) {
   if(type===4){mesh(g,new THREE.BoxGeometry(.85,.23,.3),body,0,.46,0);mesh(g,new THREE.BoxGeometry(.13,.75,.13),'black',-.15,.86,0);mesh(g,new THREE.SphereGeometry(.16,8,6),'gold',-.15,1.25,0);}
   const len=[1.7,2.55,2.15,3.25,.85][type],wheelXs=type===4?[-.27,.27]:[-len*.32,len*.32];
   for(const xx of wheelXs)for(const zz of [-.43,.43]){if(type===4&&zz<0)continue;const wheel=mesh(g,new THREE.CylinderGeometry(type===4?.15:.2,type===4?.15:.2,.12,10),'black',xx,type===4?.27:.18,zz*(type===4?.55:1));wheel.rotation.x=Math.PI/2;}
-  const headMat=new THREE.MeshBasicMaterial({color:0xffe3ae,transparent:true,opacity:.1,toneMapped:false}),tailMat=new THREE.MeshBasicMaterial({color:0xef5b48,transparent:true,opacity:.12,toneMapped:false});
-  for(const z of [-.27,.27]){mesh(g,new THREE.SphereGeometry(.055,7,5),headMat,len*.5+.015,.47,z);mesh(g,new THREE.SphereGeometry(.05,7,5),tailMat,-len*.5-.015,.44,z);}carLights.push({mat:headMat,base:.1,gain:.85},{mat:tailMat,base:.12,gain:.74});
-  if(type!==4){const lightGeo=new THREE.BufferGeometry();lightGeo.setAttribute('position',new THREE.Float32BufferAttribute([len*.45,-.275,-.28,len*.45,-.275,.28,len*.45+4.2,-.275,1.05,len*.45+4.2,-.275,-1.05],3));lightGeo.setIndex([0,1,2,0,2,3]);const footprintMat=new THREE.MeshBasicMaterial({color:0xffd49a,transparent:true,opacity:0,depthWrite:false,blending:THREE.AdditiveBlending,toneMapped:false,side:THREE.DoubleSide});g.add(new THREE.Mesh(lightGeo,footprintMat));carLights.push({mat:footprintMat,base:0,gain:.095});}
+  // 每台車的燈亮度不同（0.78～1.18 倍），像真的車隊而不是複製貼上。
+  // 倍率在建立時就固定，不隨時間變動，所以不會閃。
+  const bulb=.78+random()*.4;
+  const headMat=new THREE.MeshBasicMaterial({color:0xffe8c2,transparent:true,opacity:.1,toneMapped:false}),tailMat=new THREE.MeshBasicMaterial({color:0xef5b48,transparent:true,opacity:.12,toneMapped:false});
+  // 燈泡球半徑從 .055 放大到 .085，並外加一顆半透明光暈球。
+  // 原本的燈在遠處不到一個像素，是造成車燈閃爍的主因之一。
+  const haloMat=new THREE.MeshBasicMaterial({color:0xffdca8,transparent:true,opacity:0,toneMapped:false,depthWrite:false,blending:THREE.AdditiveBlending});
+  for(const z of [-.27,.27]){
+   mesh(g,new THREE.SphereGeometry(.085,8,6),headMat,len*.5+.015,.47,z);
+   mesh(g,new THREE.SphereGeometry(.22,8,6),haloMat,len*.5+.02,.47,z);
+   mesh(g,new THREE.SphereGeometry(.07,8,6),tailMat,-len*.5-.015,.44,z);
+  }
+  carLights.push({mat:headMat,base:.1,gain:1.05*bulb},{mat:tailMat,base:.12,gain:.86*bulb},{mat:haloMat,base:0,gain:.3*bulb});
+  if(type!==4){const lightGeo=new THREE.BufferGeometry();lightGeo.setAttribute('position',new THREE.Float32BufferAttribute([len*.45,-.275,-.28,len*.45,-.275,.28,len*.45+4.2,-.275,1.05,len*.45+4.2,-.275,-1.05],3));lightGeo.setIndex([0,1,2,0,2,3]);const footprintMat=new THREE.MeshBasicMaterial({color:0xffd49a,transparent:true,opacity:0,depthWrite:false,blending:THREE.AdditiveBlending,toneMapped:false,side:THREE.DoubleSide});g.add(new THREE.Mesh(lightGeo,footprintMat));carLights.push({mat:footprintMat,base:0,gain:.16*bulb});}
   return g;
  }
  for(let i=0;i<27;i++){
@@ -161,6 +225,7 @@ export function buildCity(materialLibrary) {
   waterMaterial.uniforms.uTime.value=time;waterMaterial.uniforms.uDay.value=night;
   for(const car of cars){const u=((car.offset+time*car.speed)%1+1)%1,p=car.route.getPointAt(u),tan=car.route.getTangentAt(u).normalize(),side=new THREE.Vector3(-tan.z,0,tan.x);car.g.position.copy(p).addScaledVector(side,car.lane);car.g.rotation.y=-Math.atan2(tan.z,tan.x);}
   for(const light of carLights)light.mat.opacity=light.base+night*light.gain;
+  for(const light of nightGlow)light.mat.opacity=light.base+night*light.gain;
  }
  return {root,buildings,buildingShells,buildingDetails,terrain,greenery,peopleGroup,parcels,cars,workers,professions,materials,materialLibrary:library,streetLamps,waterMaterial,animate};
 }
@@ -180,11 +245,50 @@ export function buildSurvey(parcels){
 
 export function buildWind(){
  const root=new THREE.Group(),curves=[],dots=[];
- for(let i=0;i<5;i++){
-  const points=[];for(let j=0;j<=12;j++){const t=j/12;points.push(new THREE.Vector3(-58+t*117,6+Math.sin(t*Math.PI*2+i*.45)*3+i*1.2,-15+Math.sin(t*Math.PI*2-i*.25)*17+i*2));}
-  const curve=new THREE.CatmullRomCurve3(points),geo=new THREE.TubeGeometry(curve,160,.018+(i===2?.022:0),3,false);
-  const line=new THREE.Mesh(geo,new THREE.MeshBasicMaterial({color:i===2?0xf3c191:0xa9d4d0,transparent:true,opacity:i===2?.42:.16,depthWrite:false}));root.add(line);curves.push(curve);
-  const dot=new THREE.Mesh(new THREE.SphereGeometry(i===2?.1:.065,8,6),new THREE.MeshBasicMaterial({color:0xffdcb0}));root.add(dot);dots.push(dot);
+ // 原本 5 條流線都在城外偏高處。加到 9 條，後 4 條壓低到屋頂高度並橫越市區，
+ // 風才看得出是「穿過城市」而不是從旁邊飄過。
+ for(let i=0;i<9;i++){
+  const inner=i>=5,k=i-5;
+  const points=[];
+  for(let j=0;j<=12;j++){
+   const t=j/12;
+   points.push(inner
+    ? new THREE.Vector3(-62+t*126, 3.2+Math.sin(t*Math.PI*2.4+k*.7)*1.9+k*.9, 6+Math.sin(t*Math.PI*1.7-k*.6)*21-k*9)
+    : new THREE.Vector3(-58+t*117, 6+Math.sin(t*Math.PI*2+i*.45)*3+i*1.2, -15+Math.sin(t*Math.PI*2-i*.25)*17+i*2));
+  }
+  const curve=new THREE.CatmullRomCurve3(points),geo=new THREE.TubeGeometry(curve,160,inner?.014:.018+(i===2?.022:0),3,false);
+  const line=new THREE.Mesh(geo,new THREE.MeshBasicMaterial({color:i===2?0xf3c191:inner?0xcfe4dd:0xa9d4d0,transparent:true,opacity:i===2?.42:inner?.11:.16,depthWrite:false}));root.add(line);curves.push(curve);
+  const dot=new THREE.Mesh(new THREE.SphereGeometry(i===2?.1:inner?.05:.065,8,6),new THREE.MeshBasicMaterial({color:0xffdcb0}));root.add(dot);dots.push(dot);
  }
- return {root,curves,dots};
+
+ // 順風飄過的樹葉：沿流線前進，一邊翻滾。純位移與旋轉，沒有高頻閃爍。
+ // buildWind 在 buildCity 的作用域外，用不到那邊的 random，這裡自備一個種子亂數
+ let seed=90210;const rnd=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296;};
+ const leafGeo=new THREE.PlaneGeometry(.26,.17);
+ const leafColors=[0x7f9a63,0x9aa96f,0xc2a055,0xb8794a,0x6f8f70];
+ const leaves=[];
+ for(let i=0;i<34;i++){
+  const m=new THREE.MeshBasicMaterial({color:leafColors[i%leafColors.length],transparent:true,opacity:.85,side:THREE.DoubleSide,depthWrite:false});
+  const leaf=new THREE.Mesh(leafGeo,m);root.add(leaf);
+  leaves.push({o:leaf,curve:curves[i%curves.length],offset:rnd(),speed:.02+rnd()*.028,
+               spin:new THREE.Vector3(.7+rnd()*1.6,1.1+rnd()*1.9,.5+rnd()*1.3),
+               drift:1.2+rnd()*2.4,phase:rnd()*6.28,scale:.7+rnd()*.8});
+  leaf.scale.setScalar(leaves[i].scale);
+ }
+
+ const tmp=new THREE.Vector3();
+ function update(elapsed,reduced=false){
+  for(let i=0;i<dots.length;i++)dots[i].position.copy(curves[i].getPointAt(reduced?.45:(elapsed*.042+i*.18)%1));
+  for(const l of leaves){
+   const u=reduced?(l.offset%1):((l.offset+elapsed*l.speed)%1+1)%1;
+   l.curve.getPointAt(u,tmp);
+   // 橫向與上下的擺盪，讓葉子不是沿著線走，而是被風帶著飄
+   tmp.x+=Math.sin(elapsed*.9+l.phase)*l.drift;
+   tmp.y+=Math.sin(elapsed*1.35+l.phase*1.7)*l.drift*.35-u*1.4;
+   tmp.z+=Math.cos(elapsed*.75+l.phase*1.3)*l.drift;
+   l.o.position.copy(tmp);
+   if(!reduced){l.o.rotation.x=elapsed*l.spin.x+l.phase;l.o.rotation.y=elapsed*l.spin.y;l.o.rotation.z=elapsed*l.spin.z;}
+  }
+ }
+ return {root,curves,dots,leaves,update};
 }
