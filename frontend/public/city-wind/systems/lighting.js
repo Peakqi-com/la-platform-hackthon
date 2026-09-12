@@ -43,7 +43,7 @@ export class LightingSystem{
   this.sunLight=new THREE.DirectionalLight(0xffead0,3.8);this.sunLight.castShadow=true;this.sunLight.shadow.mapSize.set(quality.settings.shadowMap,quality.settings.shadowMap);this.sunLight.shadow.camera.left=-82;this.sunLight.shadow.camera.right=82;this.sunLight.shadow.camera.top=80;this.sunLight.shadow.camera.bottom=-80;this.sunLight.shadow.camera.near=18;this.sunLight.shadow.camera.far=250;this.sunLight.shadow.bias=.00035;this.sunLight.shadow.normalBias=.13;this.sunLight.shadow.radius=quality.level==='HIGH'?2:1;scene.add(this.sunLight);
   this.moonLight=new THREE.DirectionalLight(0x91aee3,.1);this.moonLight.position.set(-64,52,-88);scene.add(this.moonLight);
   this.fill=new THREE.DirectionalLight(0x8cb8bd,1.8);this.fill.position.set(70,35,-40);scene.add(this.fill);
-  this.sun=this.createCelestial(0xffd195,5,26,.6);this.moon=this.createMoon(5,26,.38);scene.add(this.sun,this.moon);
+  this.sun=this.createCelestial(0xffd195,9,44,.58);this.moon=this.createMoon(9,46,.36);scene.add(this.sun,this.moon);
   const starGeo=new THREE.BufferGeometry(),starData=[];let seed=4821;for(let i=0;i<270;i++){seed=(seed*1664525+1013904223)>>>0;const a=seed/4294967296*Math.PI*2;seed=(seed*1664525+1013904223)>>>0;const r=170+seed/4294967296*90;seed=(seed*1664525+1013904223)>>>0;starData.push(Math.cos(a)*r,55+seed/4294967296*145,Math.sin(a)*r);}starGeo.setAttribute('position',new THREE.Float32BufferAttribute(starData,3));this.stars=new THREE.Points(starGeo,new THREE.PointsMaterial({color:0xcfe2e3,size:.7,transparent:true,opacity:0,depthWrite:false,fog:false}));scene.add(this.stars);
   materials.createEnvironment(renderer,scene);materials.setAnisotropy(Math.min(8,renderer.capabilities.getMaxAnisotropy()));this.streetLights=new StreetLightManager(scene,city,quality);
  }
@@ -54,6 +54,25 @@ export class LightingSystem{
 
  // 月亮：表面有月海與隕石坑，正面站一隻搗藥的兔子（中秋彩蛋）。
  // 兔子與坑都掛在一個朝向鏡頭的群組上，不管相機怎麼動都看得到正面。
+
+ // 日月的圓盤改用「相機座標 + 畫面位置」擺放。用世界座標放在天上時，
+ // 每一章的鏡頭都不同，很容易跑出畫面或被頁首擋住。
+ // sx/sy 是畫面比例（0 左/上，1 右/下），並補償 camera.setViewOffset 的位移。
+ placeDisc(obj,camera,sx,sy,distance){
+  const f=this._f||(this._f=new THREE.Vector3()),r=this._r||(this._r=new THREE.Vector3()),u=this._u||(this._u=new THREE.Vector3());
+  camera.getWorldDirection(f);
+  r.crossVectors(f,camera.up).normalize();
+  u.crossVectors(r,f).normalize();
+  let ox=0,oy=0;const v=camera.view;
+  if(v&&v.enabled){ox=v.offsetX/v.fullWidth;oy=v.offsetY/v.fullHeight;}
+  const ndcX=2*(sx+ox)-1,ndcY=1-2*(sy+oy);
+  const ty=Math.tan(THREE.MathUtils.degToRad(camera.fov*.5)),tx=ty*camera.aspect;
+  obj.position.copy(camera.position)
+     .addScaledVector(f,distance)
+     .addScaledVector(r,ndcX*tx*distance)
+     .addScaledVector(u,ndcY*ty*distance);
+ }
+
  createMoon(radius,glowSize,glowOpacity){
   const root=new THREE.Group();
   const body=new THREE.Mesh(new THREE.SphereGeometry(radius,32,24),new THREE.MeshBasicMaterial({color:0xdfe4f0,fog:false,transparent:true}));
@@ -77,8 +96,8 @@ export class LightingSystem{
 
   // 搗藥的兔子（剪影）
   const ink=new THREE.MeshBasicMaterial({color:0x5d6782,fog:false,transparent:true,opacity:.72,depthWrite:false});
-  const bunny=new THREE.Group();bunny.position.set(radius*.06,-radius*.12,radius*.99);face.add(bunny);
-  const u=radius*.13;
+  const bunny=new THREE.Group();bunny.position.set(radius*.02,-radius*.42*.7,radius*.99);face.add(bunny);
+  const u=radius*.42;
   const part=(w,h,x,y,rot=0)=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),ink);m.position.set(x,y,0);m.rotation.z=rot;bunny.add(m);return m;};
   part(u*1.15,u*1.5,0,0);                      // 身體
   part(u*.8,u*.8,u*.12,u*1.15);                // 頭
@@ -100,7 +119,14 @@ export class LightingSystem{
  }
 
  update(elapsed,time,state,camera){
-  const {day,night,sunHeight,sunPosition,moonPosition}=time;this.sun.position.copy(sunPosition);this.sun.visible=sunHeight>-6;this.moon.position.copy(moonPosition);this.moon.visible=night>.08;
+  const {day,night,sunHeight,sunPosition,moonPosition}=time;
+  this.sun.visible=sunHeight>-6&&night<.96;this.moon.visible=night>.08;
+  this.sun.userData.core.material.opacity=1-smooth(.55,.94,night);
+  if(camera){
+   // 太陽沿畫面左上往右上走（仍隨 day 移動），月亮固定在左上的空區
+   this.placeDisc(this.sun,camera,.40+day*.30,.28-Math.sin(day*Math.PI)*.14,300);
+   this.placeDisc(this.moon,camera,.42,.25,260);
+  }else{this.sun.position.copy(sunPosition);this.moon.position.copy(moonPosition);}
   if(this.moon.userData.face&&camera){
    // 月面永遠朝向鏡頭，兔子才不會轉到背面去
    this.moon.userData.face.quaternion.copy(camera.quaternion);
