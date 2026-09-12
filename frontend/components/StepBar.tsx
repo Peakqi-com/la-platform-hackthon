@@ -11,10 +11,10 @@ function Inner() {
   useSearchParams();
   const { rec } = useCase();
   const done = useStepStatus();
-  if (path === "/" || !rec) return null;
+  if (path === "/dashboard" || !rec) return null;
   const q = `?case=${encodeURIComponent(rec.id)}`;
   const idx = NAV.findIndex((it) => it.match.includes(path));
-  const href = (it: { href: string }) => it.href + (it.href === "/" ? "" : q);
+  const href = (it: { href: string }) => it.href + (it.href === "/dashboard" ? "" : q);
   return (
     <ol className="no-print mb-3 flex items-center text-sm">
       {NAV.map((it, i) => { const active = i === idx; const ok = done[it.href]; return (

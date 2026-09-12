@@ -81,7 +81,7 @@ export function CaseProvider({ children }: { children: React.ReactNode }) {
   const clearUrl = () => { const u = new URL(window.location.href); u.searchParams.delete("case"); window.history.replaceState({}, "", u.toString()); };
   const deselect = useCallback(() => { setRec(null); setStatus(EMPTY); setError(null); clearUrl(); }, []);
   const path = usePathname();
-  useEffect(() => { if (path === "/") deselect(); }, [path, deselect]);   // 案件總覽＝未選案件；①～④ 才是針對某個案件
+  useEffect(() => { if (path === "/dashboard") deselect(); }, [path, deselect]);   // 案件總覽＝未選案件；①～④ 才是針對某個案件
   const resetAll = useCallback(async () => {
     const r = await api.resetAllCases();
     setRec(null); setCases([]); setStatus(EMPTY); setError(null);
@@ -94,7 +94,7 @@ export function CaseProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     api.meta().then(setMeta).catch(() => setMeta(null));
     const id = new URL(window.location.href).searchParams.get("case");
-    (async () => { await refreshList().catch(() => []); if (id && window.location.pathname !== "/") await loadCase(id); })();   // 只在網址帶 ?case= 時載入，不自動選第一件
+    (async () => { await refreshList().catch(() => []); if (id && window.location.pathname !== "/dashboard") await loadCase(id); })();   // 只在網址帶 ?case= 時載入，不自動選第一件
   }, [loadCase, refreshList]);
 
   const runKey = rec ? JSON.stringify([rec.id, rec.data, rec.submitted_table5, rec.submitted_table4]) : "";

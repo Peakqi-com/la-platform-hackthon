@@ -19,7 +19,7 @@ export default function CaseBar() {
   const [todo, setTodo] = useState<Any>(null);      // 這一案還缺什麼（/todo），案件或產出變動時重抓
   useEffect(() => { if (rec) api.todo(rec.id).then(setTodo).catch(() => setTodo(null)); else setTodo(null); }, [rec?.id, rec?.updated_at, rec?.outputs?.generated_at]);   // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { const chk = () => setNoActor(!getActor().name); chk(); window.addEventListener("storage", chk); const t = setInterval(chk, 1500); return () => { window.removeEventListener("storage", chk); clearInterval(t); }; }, []);
-  if (!rec || path === "/") return null;   // 首頁是總覽，不顯示單一案件
+  if (!rec || path === "/dashboard") return null;   // 案件總覽不顯示單一案件
   async function askReset() {
     if (!rec) return; setBusy(true);
     try { setConfirm(await api.resetPreview(rec.id)); } catch (e: Any) { setMsg(String(e.message || e)); } finally { setBusy(false); }

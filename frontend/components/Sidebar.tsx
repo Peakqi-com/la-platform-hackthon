@@ -10,7 +10,7 @@ import ActorBox from "./Actor";
 
 /* 側邊欄五項：案件總覽 → ① 輸入資料 → ② 產出書表 → ③ 審查 → ④ 輸出。勾號＝該段已完成。 */
 export const NAV: { href: string; match: string[]; label: string; sub?: string }[] = [
-  { href: "/", match: ["/"], label: "案件總覽", sub: "上傳送審書表、開啟案件" },
+  { href: "/dashboard", match: ["/dashboard"], label: "案件總覽", sub: "上傳送審書表、開啟案件" },
   { href: "/input", match: ["/input", "/case", "/parcels", "/rules"], label: "① 輸入資料", sub: "基準表・基本資料・宗地與實例" },
   { href: "/sheets", match: ["/sheets", "/table1", "/tables", "/map"], label: "② 產出書表", sub: "書表預覽（照範本）・地圖" },
   { href: "/review", match: ["/review", "/report"], label: "③ 審查", sub: "逐項比對・承辦裁決・意見書" },
@@ -44,7 +44,7 @@ function NavInner() {
   const q = rec ? `?case=${encodeURIComponent(rec.id)}` : "";
   const done = useStepStatus();
   const sub = (it: { href: string; sub?: string }) => (mode === "review" && it.href === "/input" ? "基準表・核對送審書表填載值" : mode === "review" && it.href === "/sheets" ? "重算的書表・地圖" : it.sub);
-  const items = rec ? NAV : NAV.filter((it) => it.href === "/");   // 還沒選案件：①～④ 都是針對某個案件的步驟，只留案件總覽
+  const items = rec ? NAV : NAV.filter((it) => it.href === "/dashboard");   // 還沒選案件：①～④ 都是針對某個案件的步驟，只留案件總覽
   return (
     <nav className="flex-1 px-2 py-3 text-sm">
       {items.map((it) => {
@@ -57,7 +57,7 @@ function NavInner() {
           </div>
         ) : null;
         return (<Fragment key={it.href}>{caseHead}
-          <Link href={it.href + (it.href === "/" ? "" : q)} onClick={it.href === "/" ? deselect : undefined} className={`block px-3 py-2 rounded-lg mb-1 ${active ? "bg-[#ea580c] text-white" : "hover:bg-orange-100"}`}>
+          <Link href={it.href + (it.href === "/dashboard" ? "" : q)} onClick={it.href === "/dashboard" ? deselect : undefined} className={`block px-3 py-2 rounded-lg mb-1 ${active ? "bg-[#ea580c] text-white" : "hover:bg-orange-100"}`}>
             <div className="flex items-center gap-2"><span className="font-medium">{it.label}</span>{done[it.href] && <span className={`ml-auto text-xs ${active ? "text-white" : "text-emerald-700"}`} title="此段已完成">✓</span>}</div>
             {sub(it) && <div className={`text-[11px] ${active ? "opacity-90" : "opacity-70"}`}>{sub(it)}</div>}
           </Link>
@@ -77,7 +77,7 @@ function ResetAllBox() {
   const [msg, setMsg] = useState<string | null>(null);
   const run = async () => {
     setBusy(true); setMsg(null);
-    try { const n = await resetAll(); setArm(false); setMsg(`已清除 ${n} 件案件`); router.push("/"); }
+    try { const n = await resetAll(); setArm(false); setMsg(`已清除 ${n} 件案件`); router.push("/dashboard"); }
     catch (e: Any) { setMsg(`清除失敗：${String(e?.message || e)}`); }
     finally { setBusy(false); }
   };
