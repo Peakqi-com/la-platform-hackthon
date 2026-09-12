@@ -20,6 +20,8 @@ const ITEMS: Item[] = [
   { key: "sketch", name: "地價區段略圖", desc: "區段範圍、宗地位置、道路、段籍圖底圖，含比例尺與簽章欄", needOutputs: true, formats: [{ key: "sketch", fmt: "PNG", url: (id) => `/api/cases/${id}/map.png?mode=sketch`, file: (no) => `${no}_地價區段略圖.png` }] },
   { key: "zoning", name: "地價使用分區圖", desc: "使用分區色塊與區段範圍", needOutputs: true, formats: [{ key: "zoning", fmt: "PNG", url: (id) => `/api/cases/${id}/map.png?mode=zoning`, file: (no) => `${no}_地價使用分區圖.png` }] },
   { key: "section", name: "地價區段圖", desc: "區段範圍、宗地、設施位置與量測路線", needOutputs: true, formats: [{ key: "section", fmt: "PNG", url: (id) => `/api/cases/${id}/map.png?mode=section`, file: (no) => `${no}_地價區段圖.png` }] },
+  { key: "official", name: "地政局正式範本書表", desc: "直接填入地政局 Excel 範本：地價區段勘查表（每區段一張工作表）、影響地價區域因素分析明細表（住宅用地版面）、比較法調查估價表；格線與版面與範本相同", needOutputs: true,
+    formats: [{ key: "ot3", fmt: "勘查表", url: (id) => `/api/cases/${id}/official/t3.xlsx`, file: (no) => `${no}_表3_地價區段勘查表.xlsx` }, { key: "ot5", fmt: "區域因素表", url: (id) => `/api/cases/${id}/official/t5.xlsx`, file: (no) => `${no}_表5-1_影響地價區域因素分析明細表.xlsx` }, { key: "ot4", fmt: "比較法估價表", url: (id) => `/api/cases/${id}/official/t4.xlsx`, file: (no) => `${no}_表4_比較法調查估價表.xlsx` }, { key: "ozip", fmt: "三份 zip", url: (id) => `/api/cases/${id}/official.zip`, file: (no) => `${no}_正式範本書表.zip` }] },
   { key: "parcels", name: "宗地個別因素清冊", desc: "本案比準地與比較標的的個別因素（清冊版面），可填後再匯入", formats: [{ key: "parcels", fmt: "Excel", url: (id) => `/api/cases/${id}/parcels.xlsx`, file: (no) => `${no}_宗地個別因素清冊.xlsx` }] },
   { key: "comps", name: "買賣實例", desc: "比較標的交易資料，可填後再匯入", formats: [{ key: "comps", fmt: "Excel", url: (id) => `/api/cases/${id}/comparables.xlsx`, file: (no) => `${no}_買賣實例.xlsx` }] },
 ];

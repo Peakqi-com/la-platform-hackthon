@@ -252,6 +252,11 @@ def _submitted_from_expected(fx: dict) -> tuple[dict, dict]:
 
 def demo_case(variant: str = "template") -> dict:
     """回傳 {"data", "submitted_table5", "submitted_table4", "name", "notes"}。"""
+    if variant == "shulin":                                            # 決賽題目：樹林區普通住宅用地（題目 PDF 的填載值，其餘待圖資與地籍圖）
+        fx = json.loads((FIXTURES_DIR / "shulin_case_1110901.json").read_text(encoding="utf-8"))
+        data = {k: copy.deepcopy(fx[k]) for k in ("case", "sections", "subject_parcel", "comparables")}
+        return {"data": data, "submitted_table5": None, "submitted_table4": None, "name": "決賽題目：新北市樹林區普通住宅用地（P001-00 比準地樹德段1415）", "variant": variant,
+                "notes": ["題目只給四個區段勘查表的部分欄位、三個比較標的的單價與期日調整率；設施距離、宗地個別因素待地籍圖與圖資推算。表5-1 使用分區、建蔽率、容積率依題目備註免修正。"]}
     fx = json.loads((FIXTURES_DIR / "sample_case_P002-00.json").read_text(encoding="utf-8"))
     data = {k: copy.deepcopy(fx[k]) for k in ("case", "sections", "subject_parcel", "comparables")}
     geo_path = FIXTURES_DIR / "sample_geometry_P002-00.json"

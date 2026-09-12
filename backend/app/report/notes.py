@@ -119,6 +119,8 @@ def build_notes(data: dict, result: dict | None = None) -> dict[str, Any]:
              "comparables": {str(c.get("comp_no")): (manual.get("comparables") or {}).get(str(c.get("comp_no"))) or comparable_note(c, by_no.get(str(c.get("comp_no"))), data["case"])
                              for c in data.get("comparables") or []},
              "case": manual.get("case") or case_note(data, t4)}
+    if manual.get("table5_case"):                                       # 區域因素分析明細表的全案備註可與比較法調查估價表不同（決賽題目就是）
+        notes["table5_case"] = manual["table5_case"]
     return notes
 
 

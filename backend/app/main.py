@@ -369,8 +369,8 @@ FIXTURES_DIR = Path(__file__).resolve().parents[2] / "fixtures"
 def demo_case_endpoint(variant: str = "template", save: bool = False):
     """demo 變體：template | tampered | residential。save=true 存成案件並回 id。"""
     from app import cases as C
-    if variant not in ("template", "tampered", "residential", "blank_survey"):
-        raise HTTPException(400, "variant 須為 template | tampered | residential | blank_survey")
+    if variant not in ("template", "tampered", "residential", "blank_survey", "shulin"):
+        raise HTTPException(400, "variant 須為 template | tampered | residential | blank_survey | shulin")
     d = C.demo_case(variant)
     if save:
         rec = C.save_case(d["data"], name=d["name"], origin=f"demo:{variant}", submitted_table5=d["submitted_table5"], submitted_table4=d["submitted_table4"])
@@ -403,7 +403,7 @@ def cases_list():
 
 
 
-_ORIGIN_LABELS = {"manual": "送審書表或手動建立", "demo:template": "範例", "demo:tampered": "範例（含填載錯誤）", "demo:residential": "範例（住宅用地）",
+_ORIGIN_LABELS = {"manual": "送審書表或手動建立", "demo:template": "範例", "demo:tampered": "範例（含填載錯誤）", "demo:residential": "範例（住宅用地）", "demo:shulin": "決賽題目（樹林區）",
                   "demo:blank_survey": "範例（僅勘查表）", "from_lot": "依地號產生", "import": "檔案匯入"}
 
 
@@ -888,6 +888,59 @@ def cases_bundle(cid: str, request: Request, appraiser: str = "", reviewer: str 
     AUD.log(cid, AUD.actor_from_headers(request.headers), "export", fname)
     return StreamingResponse(zbuf, media_type="application/zip", headers={"Content-Disposition": f"attachment; filename*=UTF-8''{urllib.parse.quote(fname)}"})
 
+
+
+def _official_inputs(rec: dict, appraiser: str = "", fill_date: str = ""):
+    """地政局正式範本填值用：引擎結果＋備註＋簽章欄。"""
+    from app.report.notes import build_notes
+    data = rec["data"]
+    reg, ind = _rulesets(data["case"])
+    result = run_case(reg, ind, data)
+    try:
+        notes = build_notes(data, result)
+    except Exception:  # noqa: BLE001 - 備註產生失敗不擋書表
+        notes = build_notes(data, None)
+    meta = {"appraiser": appraiser or data["case"].get("appraiser") or "", "fill_date": fill_date or data["case"].get("fill_date") or "", "notes": notes}
+    return data, result, reg, ind, meta
+
+
+@app.get("/api/cases/{cid}/official.zip")
+def cases_official_zip(cid: str, request: Request, appraiser: str = "", fill_date: str = ""):
+    """地政局正式範本三份 Excel（表3 每區段一張工作表、表5-1、表4）打包。"""
+    from app import cases as C
+    from app.output.official_xlsx import official_zip
+    rec = C.get_case(cid)
+    if not rec:
+        raise HTTPException(404, "沒有這個案件")
+    try:
+        blob = official_zip(*_official_inputs(rec, appraiser, fill_date))
+    except InputError as e:
+        raise HTTPException(422, str(e)) from e
+    fname = f"{rec['data']['case'].get('case_no', 'case')}_正式範本書表.zip"
+    AUD.log(cid, AUD.actor_from_headers(request.headers), "export", fname)
+    return StreamingResponse(io.BytesIO(blob), media_type="application/zip",
+                             headers={"Content-Disposition": f"attachment; filename*=UTF-8''{urllib.parse.quote(fname)}"})
+
+
+@app.get("/api/cases/{cid}/official/{key}.xlsx")
+def cases_official_xlsx(cid: str, key: str, request: Request, appraiser: str = "", fill_date: str = ""):
+    """地政局正式範本單張：key = t3（勘查表）| t5（區域因素分析明細表）| t4（比較法調查估價表）。"""
+    from app import cases as C
+    from app.output.official_xlsx import TEMPLATES, fill_table3, fill_table4, fill_table5, workbook_bytes
+    if key not in TEMPLATES:
+        raise HTTPException(404, "key 須為 t3、t5 或 t4")
+    rec = C.get_case(cid)
+    if not rec:
+        raise HTTPException(404, "沒有這個案件")
+    try:
+        data, result, reg, ind, meta = _official_inputs(rec, appraiser, fill_date)
+        wb = fill_table3(data, reg, meta) if key == "t3" else fill_table5(data, result["table5"], reg, meta) if key == "t5" else fill_table4(data, result["table4"], ind, meta)
+    except InputError as e:
+        raise HTTPException(422, str(e)) from e
+    fname = f"{data['case'].get('case_no', 'case')}_{TEMPLATES[key][2]}.xlsx"
+    AUD.log(cid, AUD.actor_from_headers(request.headers), "export", fname)
+    return StreamingResponse(io.BytesIO(workbook_bytes(wb)), media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                             headers={"Content-Disposition": f"attachment; filename*=UTF-8''{urllib.parse.quote(fname)}"})
 
 @app.get("/api/cases/{cid}/parcels.xlsx")
 def cases_parcels_xlsx(cid: str, request: Request):

@@ -145,6 +145,11 @@ def grade(rule: Rule, obs: Any) -> str | None:
     if t == "enum":
         if obs is None:
             raise GradeError(f"{rule.id} {rule.name}: 缺少觀測值")
+        if isinstance(obs, bool):                                      # 三級「有無限制建築」等：勘查表存布林，基準表條件寫「無」「有」
+            obs = "有" if obs else "無"
+        elif isinstance(obs, (list, tuple, dict)) and any("項" in k for k in c.get("map", {})):   # 「建築基地改良」：條件是項數，勘查表存勾選清單
+            n = sum(1 for v in obs.values() if v) if isinstance(obs, dict) else len(obs)
+            obs = "無" if n == 0 else {1: "一項", 2: "二項", 3: "三項"}.get(n, "四項以上")
         key = obs if isinstance(obs, str) else str(obs)
         key = c.get("normalize", {}).get(key, key)
         if key in c["map"]:

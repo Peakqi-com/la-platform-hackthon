@@ -11,10 +11,11 @@ import { api, Any, fmtMoney, LOW_CONF, STATUS_LABEL } from "@/lib/api";
 import { actorHeaders, zhError } from "@/lib/api";
 
 const NTPC_DISTRICTS = ["金山區", "萬里區", "石門區", "三芝區", "淡水區", "八里區", "林口區", "五股區", "泰山區", "蘆洲區", "三重區", "新莊區", "板橋區", "中和區", "永和區", "土城區", "樹林區", "鶯歌區", "三峽區", "新店區", "深坑區", "石碇區", "坪林區", "烏來區", "汐止區", "瑞芳區", "平溪區", "雙溪區", "貢寮區"];
-const EXAMPLES: { v: "template" | "tampered" | "residential" | "blank_survey"; title: string; desc: string }[] = [
+const EXAMPLES: { v: "template" | "tampered" | "residential" | "blank_survey" | "shulin"; title: string; desc: string }[] = [
   { v: "template", title: "範例一：金山區 P002-00 地價區段", desc: "送審書表填載與系統核算相符。" },
   { v: "tampered", title: "範例二：含填載錯誤之送審書表", desc: "同一案但等級與修正率抄錯，看不符項、承辦裁決與意見書。" },
   { v: "blank_survey", title: "範例三：僅有年期、區段編號、區段範圍之勘查表", desc: "由圖資推算勘查表其餘欄位。" },
+  { v: "shulin", title: "範例四：樹林區普通住宅用地（四個區段、三個比較標的）", desc: "住宅用地基準表；勘查表與個別因素待圖資推算，可輸出地政局正式範本書表。" },
 ];
 type NewMethod = "upload" | "lot" | "example";
 const KIND_NAME: Record<string, string> = { pdf_forms: "送審書表 PDF", parcels: "宗地個別因素清冊", comparables: "買賣實例", rules_table: "評價基準明細表" };

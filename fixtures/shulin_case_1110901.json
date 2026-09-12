@@ -1,0 +1,294 @@
+{
+ "$note": "決賽題目（樹林區普通住宅用地）：題目 PDF 給的填載值轉成內部 schema；空白處待圖資推算或人工填。",
+ "case": {
+  "case_no": "1110901-99-XXX",
+  "valuation_date": "1110901",
+  "district": "新北市樹林區",
+  "land_use": "住宅用地",
+  "rulesets": {
+   "regional": "shulin_residential_regional",
+   "individual": "shulin_residential_individual"
+  },
+  "regional_no_adjust": [
+   "R1-2",
+   "R1-3",
+   "R1-4"
+  ],
+  "notes": {
+   "case": "1.價格日期調整係參酌新北市樹林區土地平均區段地價表(住宅區)進行調整。\n2.比準地所在區段於案例蒐集期間(111年3月2日至111年9月1日間)無適當成交案例，故依土地徵收補償市價查估辦法第17條第3項規定，擴大選取範圍及案例蒐集期間至估價基準日前一年內(110年9月2日至111年9月1日)。",
+   "table5_case": "使用分區、建蔽率、容積率修正併同於比較法調查估價表宗地個別因素考量調整修正"
+  }
+ },
+ "sections": {
+  "P001-00": {
+   "section_id": "P001-00",
+   "range_desc": "沿八德街以西、啟智街及未開闢計畫道路以南、啟智街187巷以東、啟智街187巷24弄以北之捷運開發區(變更前為第一種住宅區)",
+   "survey": {
+    "land_control": {
+     "urban_plan": "都市計畫內",
+     "zoning": "捷運開發區(變更前為第一種住宅區)",
+     "bcr": 50,
+     "far": 260,
+     "building_prohibited": false,
+     "building_restricted": false
+    },
+    "transport": {
+     "main_road_width_m": {
+      "name": "八德街",
+      "value": 28
+     },
+     "avg_road_width_m": {
+      "value": 12
+     },
+     "major_station": [],
+     "bus_stop": [],
+     "interchange": [],
+     "road_development": "大部分規劃及闢建"
+    },
+    "natural": {
+     "sunlight": "充分",
+     "view": "視野、景觀尚可",
+     "slope": "平均坡度未滿5度",
+     "drainage": "普通完善",
+     "terrain": "極平坦堅硬"
+    },
+    "improvement": {
+     "building_site": [
+      "整平或填挖基地",
+      "開挖水溝",
+      "鋪築道路",
+      "埋設管道"
+     ]
+    },
+    "public": {},
+    "special": {},
+    "pollution": {},
+    "commerce": {},
+    "other": null,
+    "extra": {
+     "building_density": "60%",
+     "building_type": "透天厝、公寓",
+     "land_use_status": [
+      "商業用",
+      "住宅用"
+     ]
+    }
+   }
+  },
+  "P002-00": {
+   "section_id": "P002-00",
+   "range_desc": "沿樹人街以北、長壽街21巷以西、啟智街14巷以南及樹德街136巷以東之第一種住宅區",
+   "survey": {
+    "land_control": {
+     "urban_plan": "都市計畫內",
+     "zoning": "第一種住宅區",
+     "bcr": 50,
+     "far": 200,
+     "building_prohibited": false,
+     "building_restricted": false
+    },
+    "transport": {
+     "main_road_width_m": {
+      "name": "樹人街",
+      "value": 7
+     },
+     "avg_road_width_m": {
+      "value": 6
+     },
+     "major_station": [],
+     "bus_stop": [],
+     "interchange": [],
+     "road_development": "部分規劃及闢建"
+    },
+    "natural": {
+     "sunlight": "充分",
+     "view": "視野、景觀尚可",
+     "slope": "平均坡度未滿5度",
+     "drainage": "普通完善",
+     "terrain": "極平坦堅硬"
+    },
+    "improvement": {
+     "building_site": [
+      "整平或填挖基地",
+      "開挖水溝",
+      "鋪築道路",
+      "埋設管道"
+     ]
+    },
+    "public": {},
+    "special": {},
+    "pollution": {},
+    "commerce": {},
+    "other": null,
+    "extra": {
+     "building_density": "70%",
+     "building_type": "公寓、透天",
+     "land_use_status": [
+      "住宅用"
+     ]
+    }
+   }
+  },
+  "P003-00": {
+   "section_id": "P003-00",
+   "range_desc": "沿東榮街以北、鎮前街411巷1弄以南、東榮街88巷以東、鎮前街367巷以西之第一種住宅區",
+   "survey": {
+    "land_control": {
+     "urban_plan": "都市計畫內",
+     "zoning": "第一種住宅區",
+     "bcr": 50,
+     "far": 260,
+     "building_prohibited": false,
+     "building_restricted": false
+    },
+    "transport": {
+     "main_road_width_m": {
+      "name": "東榮街",
+      "value": 10
+     },
+     "avg_road_width_m": {
+      "value": 7
+     },
+     "major_station": [],
+     "bus_stop": [],
+     "interchange": [],
+     "road_development": "全部規劃及闢建"
+    },
+    "natural": {
+     "sunlight": "充分",
+     "view": "視野、景觀尚可",
+     "slope": "平均坡度未滿5度",
+     "drainage": "普通完善",
+     "terrain": "極平坦堅硬"
+    },
+    "improvement": {
+     "building_site": [
+      "整平或填挖基地",
+      "開挖水溝",
+      "鋪築道路",
+      "埋設管道"
+     ]
+    },
+    "public": {},
+    "special": {},
+    "pollution": {},
+    "commerce": {},
+    "other": null,
+    "extra": {
+     "building_density": "70%",
+     "building_type": "公寓、透天",
+     "land_use_status": [
+      "住宅用"
+     ]
+    }
+   }
+  },
+  "P004-00": {
+   "section_id": "P004-00",
+   "range_desc": "沿潭興街以西、潭興街107巷21弄以東及以北、潭興街91巷以南之第一種住宅區",
+   "survey": {
+    "land_control": {
+     "urban_plan": "都市計畫內",
+     "zoning": "第一種住宅區",
+     "bcr": 50,
+     "far": 260,
+     "building_prohibited": false,
+     "building_restricted": false
+    },
+    "transport": {
+     "main_road_width_m": {
+      "name": "潭興街",
+      "value": 10
+     },
+     "avg_road_width_m": {
+      "value": 7
+     },
+     "major_station": [],
+     "bus_stop": [],
+     "interchange": [],
+     "road_development": "全部規劃及闢建"
+    },
+    "natural": {
+     "sunlight": "充分",
+     "view": "視野、景觀尚可",
+     "slope": "平均坡度未滿5度",
+     "drainage": "普通完善",
+     "terrain": "極平坦堅硬"
+    },
+    "improvement": {
+     "building_site": [
+      "整平或填挖基地",
+      "開挖水溝",
+      "鋪築道路",
+      "埋設管道"
+     ]
+    },
+    "public": {},
+    "special": {},
+    "pollution": {},
+    "commerce": {},
+    "other": null,
+    "extra": {
+     "building_density": "50%",
+     "building_type": "公寓",
+     "land_use_status": [
+      "住宅用"
+     ]
+    }
+   }
+  }
+ },
+ "subject_parcel": {
+  "parcel_id": "樹德段1415地號",
+  "address": "新北市樹林區樹德段1415地號",
+  "section_id": "P001-00",
+  "nuisance": null
+ },
+ "comparables": [
+  {
+   "comp_no": 1,
+   "parcel_id": "樹德段284地號",
+   "address": "新北市樹林區樹德段284地號",
+   "section_id": "P002-00",
+   "normal_unit_price": 130167,
+   "transaction_date": "110.09.14",
+   "date_adjustment": {
+    "pct": 5.96,
+    "note": "價格日期調整係參酌新北市樹林區土地平均區段地價表(住宅區)進行調整"
+   },
+   "area_m2": 120.0,
+   "zoning": "第一種住宅區",
+   "nuisance": null
+  },
+  {
+   "comp_no": 2,
+   "parcel_id": "太平段367、917地號",
+   "address": "新北市樹林區太平段367、917地號",
+   "section_id": "P003-00",
+   "normal_unit_price": 135275,
+   "transaction_date": "111.01.11",
+   "date_adjustment": {
+    "pct": 4.09,
+    "note": "同上"
+   },
+   "area_m2": 116.06,
+   "zoning": "第一種住宅區",
+   "nuisance": null
+  },
+  {
+   "comp_no": 3,
+   "parcel_id": "文林段317地號",
+   "address": "新北市樹林區文林段317地號",
+   "section_id": "P004-00",
+   "normal_unit_price": 170909,
+   "transaction_date": "110.10.29",
+   "date_adjustment": {
+    "pct": 5.49,
+    "note": "同上"
+   },
+   "area_m2": 668.72,
+   "zoning": "第一種住宅區",
+   "nuisance": null
+  }
+ ]
+}

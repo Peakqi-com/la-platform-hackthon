@@ -43,7 +43,7 @@ const post = <T = Any>(url: string, body: Any) => j<T>(url, { method: "POST", bo
 export const api = {
   health: () => j("/api/health"),
   meta: () => j("/api/meta"),
-  demo: (variant: "template" | "tampered" | "residential" | "blank_survey", save = true) => j(`/api/cases/demo?variant=${variant}&save=${save}`),
+  demo: (variant: "template" | "tampered" | "residential" | "blank_survey" | "shulin", save = true) => j(`/api/cases/demo?variant=${variant}&save=${save}`),
   listCases: () => j<{ cases: Any[] }>("/api/cases"),
   getCase: (id: string) => j<CaseRecord>(`/api/cases/${encodeURIComponent(id)}`),
   saveCase: (rec: Partial<CaseRecord> & { data: CaseData }) =>

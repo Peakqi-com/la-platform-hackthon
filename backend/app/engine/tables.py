@@ -74,16 +74,23 @@ def _grade_safe(rule: Rule, obs: Any, issues: list[str], who: str) -> str | None
         return None
 
 
-def build_table5(rs: RuleSet, subject_section: dict, comparable_section: dict) -> Table5:
+def build_table5(rs: RuleSet, subject_section: dict, comparable_section: dict, no_adjust: list[str] | None = None) -> Table5:
+    """no_adjust：本案在表5 免修正的細項（rule id 或細項名）；等級照判、修正率填「-」不計入小計。
+    例：決賽題目表5-1 備註「使用分區、建蔽率、容積率修正併同於比較法調查估價表宗地個別因素考量調整修正」。"""
     rows: list[T5Row] = []
     subtotals: dict[int, float] = {g: 0.0 for g in rs.groups}
+    skip = set(no_adjust or [])
     for rule in rs.rules:
         issues: list[str] = []
         s_obs = _get(subject_section["survey"], rule.survey_field) if rule.survey_field else None
         c_obs = _get(comparable_section["survey"], rule.survey_field) if rule.survey_field else None
         s_lv = _grade_safe(rule, s_obs, issues, "比準地區段") if not rule.is_manual else None
         c_lv = _grade_safe(rule, c_obs, issues, "比較標的區段") if not rule.is_manual else None
-        pct = adjustment(rule, s_lv, c_lv) if not rule.is_manual else 0.0
+        if rule.id in skip or rule.name in skip:
+            issues.append("本案免修正（併同比較法調查估價表個別因素調整）")
+            pct = None
+        else:
+            pct = adjustment(rule, s_lv, c_lv) if not rule.is_manual else 0.0
         if pct is not None:
             subtotals[rule.group] += pct
         rows.append(T5Row(rule.id, rule.item_no, rule.group, rule.name, s_lv, c_lv,
@@ -334,7 +341,7 @@ def run_case(regional_rs: RuleSet, individual_rs: RuleSet, data: dict) -> dict:
     t5: dict[int, Table5] = {}
     totals: dict[int, float] = {}
     for comp in data["comparables"]:
-        t = build_table5(regional_rs, sections[subject["section_id"]], sections[comp["section_id"]])
+        t = build_table5(regional_rs, sections[subject["section_id"]], sections[comp["section_id"]], no_adjust=data["case"].get("regional_no_adjust"))
         t5[comp["comp_no"]] = t
         totals[comp["comp_no"]] = t.total_pct
     t4 = build_table4(individual_rs, data["case"], subject, data["comparables"], totals)

@@ -7,7 +7,7 @@ export interface Status { run: Any | null; findings: Finding[] | null; error: st
 interface Ctx {
   rec: CaseRecord | null; loading: boolean; error: string | null; cases: Any[]; meta: Any | null; status: Status;
   loadCase: (id: string) => Promise<void>;
-  loadDemo: (variant: "template" | "tampered" | "residential" | "blank_survey") => Promise<void>;
+  loadDemo: (variant: "template" | "tampered" | "residential" | "blank_survey" | "shulin") => Promise<void>;
   save: (patch: { data?: CaseData; name?: string; submitted_table5?: Any; submitted_table4?: Any }) => Promise<CaseRecord>;
   patch: (patch: { name?: string; status?: string; decisions?: Record<string, Any> }) => Promise<CaseRecord>;
   duplicate: (id: string, name?: string) => Promise<CaseRecord>;
@@ -43,7 +43,7 @@ export function CaseProvider({ children }: { children: React.ReactNode }) {
       setRec(r); setUrl(id);
     } catch (e: Any) { setError(String(e.message || e)); } finally { setLoading(false); }
   }, []);
-  const loadDemo = useCallback(async (variant: "template" | "tampered" | "residential" | "blank_survey") => {
+  const loadDemo = useCallback(async (variant: "template" | "tampered" | "residential" | "blank_survey" | "shulin") => {
     setLoading(true); setError(null);
     try { const d = await api.demo(variant, true); await refreshList(); await loadCase(d.id); } catch (e: Any) { setError(String(e.message || e)); setLoading(false); }
   }, [loadCase, refreshList]);
