@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCase } from "@/components/CaseContext";
 import PageHeader from "@/components/PageHeader";
 import { IOBadge } from "@/components/IO";
-import { Btn, Card, Help } from "@/components/ui";
+import { Btn, Card, Help, Modal } from "@/components/ui";
 import { vdateHint } from "@/components/vdate";
 import { api, Any, fmtMoney, LOW_CONF, STATUS_LABEL } from "@/lib/api";
 import { actorHeaders, zhError } from "@/lib/api";
@@ -16,6 +16,7 @@ const EXAMPLES: { v: "template" | "tampered" | "residential" | "blank_survey"; t
   { v: "tampered", title: "範例二：含填載錯誤之送審書表", desc: "同一案但等級與修正率抄錯，看不符項、承辦裁決與意見書。" },
   { v: "blank_survey", title: "範例三：僅有年期、區段編號、區段範圍之勘查表", desc: "由圖資推算勘查表其餘欄位。" },
 ];
+type NewMethod = "upload" | "lot" | "example";
 const KIND_NAME: Record<string, string> = { pdf_forms: "送審書表 PDF", parcels: "宗地個別因素清冊", comparables: "買賣實例", rules_table: "評價基準明細表" };
 
 export default function Home() {
@@ -50,7 +51,6 @@ export default function Home() {
       setApplyMsg(ids.length ? `已匯入系統基準表：${ids.join("、")}；到案件的「評價基準明細表」分頁按「套用至本案」。` : "檔案裡沒有可匯入的基準表。");
     } catch (e: Any) { setApplyMsg(String(e.message || e)); } finally { setBusy(false); }
   }
-  const [showNew, setShowNew] = useState(true);
   const [health, setHealth] = useState<Any>(null);
   useEffect(() => { api.health().then(setHealth).catch(() => setHealth(null)); }, []);
   const [q, setQ] = useState(""); const [stFilter, setStFilter] = useState("all"); const [showArchived, setShowArchived] = useState(false); const [sortBy, setSortBy] = useState<"opened" | "updated" | "case_no">("opened");
@@ -59,6 +59,9 @@ export default function Home() {
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);   // 封存區「刪除」兩段式確認：第一次按 → 顯示確定／取消
   const [drag, setDrag] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [newOpen, setNewOpen] = useState(false);                 // 「＋ 新增案件」對話框
+  const [method, setMethod] = useState<NewMethod | null>(null);   // 對話框第二步：上傳／依地號／範例
+  function closeNew() { setNewOpen(false); setMethod(null); setUpload(null); setNcMsg(null); }
 
   async function onUpload(file: File) {
     setBusy(true); setUpload(null); setUploadFile(file);
@@ -120,6 +123,12 @@ export default function Home() {
     if ((c.n_error ?? 0) === 0) return <span className="text-emerald-700">相符{c.n_warn ? `・${c.n_warn} 需確認` : ""}</span>;
     return <span><span className="text-red-700 font-medium">{c.n_error} 不符</span>{c.n_accepted ? <span className="text-slate-600">・已裁決 {c.n_accepted}</span> : null}{open ? <span className="text-amber-800">・待處理 {open}</span> : null}</span>;
   };
+  const METHODS: { m: NewMethod; title: string; desc: string }[] = [
+    { m: "upload", title: "上傳送審書表", desc: "有估價單位送來的六頁書表 PDF：辨識填載值、預覽辨識結果，建立後直接開啟審查。" },
+    { m: "lot", title: "依地號建案", desc: "沒有送審書表、只有年期與比準地地號：系統找地籍界線、推算勘查表、量測設施距離並產生書表。" },
+    { m: "example", title: "載入範例", desc: "用內建的三個示範案看整套流程：相符、含填載錯誤、僅有勘查表基本欄位。" },
+  ];
+  const METHOD_TITLE: Record<NewMethod, string> = { upload: "上傳送審書表", lot: "依地號建案", example: "載入範例" };
   return (
     <div>
       <PageHeader title="案件總覽" />
@@ -136,8 +145,6 @@ export default function Home() {
             </ol>
             <div className="shrink-0 flex flex-col gap-2 w-56">
             <button onClick={async () => { await loadDemo("template"); router.push("/sheets"); }} disabled={loading} className="flex-1 min-h-[3rem] px-4 py-3 rounded-lg bg-white border border-orange-300 text-orange-900 font-semibold hover:bg-orange-50 disabled:opacity-50">{loading ? "載入中…" : "用範例看一遍 →"}</button>
-            <details className="text-xs"><summary className="cursor-pointer text-slate-600">其他範例</summary>
-              <ul className="mt-1 space-y-1">{EXAMPLES.map((d) => <li key={d.v}><button className="underline text-left text-slate-700" onClick={async () => { await loadDemo(d.v); router.push("/sheets"); }} disabled={loading}>{d.title}</button></li>)}</ul></details>
           </div>
             </div>
             {health && (
@@ -156,83 +163,14 @@ export default function Home() {
           <div key={String(l)} className="bg-white border border-slate-200 rounded-lg px-4 py-3"><div className="text-xs text-slate-500">{l}</div><div className={`text-2xl font-semibold ${cls}`}>{v}</div></div>))}
       </div>)}
 
-      <div className="grid md:grid-cols-12 gap-4 mb-4 items-stretch">
-        <Card className="md:col-span-5 h-full flex flex-col" title="審查送審書表" lead="有估價單位送來的六頁書表 PDF 時走這裡。" hint="抽取填載值、依評價基準明細表核算，直接開啟審查結果；缺漏欄位會列出。">
-          <div className={`flex-1 min-h-[8rem] rounded-lg border-2 border-dashed px-4 py-5 flex flex-col items-center justify-center text-center transition ${drag ? "border-[#ea580c] bg-orange-50" : "border-orange-300 bg-orange-50/30"}`}
-            onDragOver={(e) => { e.preventDefault(); setDrag(true); }} onDragLeave={() => setDrag(false)}
-            onDrop={(e) => { e.preventDefault(); setDrag(false); const f = e.dataTransfer.files?.[0]; if (f) onUpload(f); }}>
-            <div className="text-sm font-medium">把送審書表 PDF 拖到這裡</div>
-            <div className="text-xs text-slate-500 mt-1">或</div>
-            <div className="mt-2"><Btn onClick={() => fileRef.current?.click()} disabled={busy} busy={busy}>⬆ 選擇送審書表上傳</Btn></div>
-            <input ref={fileRef} type="file" accept=".pdf,.xlsx,.xls,.csv,.json" hidden onChange={(e) => e.target.files?.[0] && onUpload(e.target.files[0])} />
-          </div>
-          <ol className="mt-3 grid grid-cols-3 gap-2 text-xs">
-            {[["1", "辨識填載值", "文字層讀取，掃描件走影像辨識"], ["2", "預覽辨識結果", "頁面、案件、缺漏與信心值"], ["3", "建立並開始審查", "逐格比對，標出不符與依據"]].map(([n, t, d]) => (
-              <li key={n} className="rounded-md bg-slate-50 border border-slate-200 px-2 py-1.5"><div className="font-medium"><span className="text-orange-700 mr-1">{n}</span>{t}</div><div className="text-[11px] text-slate-500 mt-0.5">{d}</div></li>))}
-          </ol>
-          <div className="mt-2"><Help label="還能上傳什麼">也接受宗地個別因素清冊、買賣實例 xlsx 與評價基準明細表 PDF，上傳後會判斷檔案種類；清冊與實例可直接套用到既有案件。</Help></div>
-        </Card>
-        <Card className="md:col-span-7 h-full flex flex-col" title="一鍵建案（依地號產生書表）" lead="沒有送審書表、只有年期與比準地地號時走這裡。" hint="系統找地籍界線、推定宗地屬性與區段範圍、推算勘查表、量測設施距離、從實價登錄選比較標的，再產生書表與填寫結果清單。">
-          {!showNew ? <div className="flex items-center gap-3"><Btn kind="ghost" onClick={() => setShowNew(true)}>＋ 新建案件</Btn></div> : (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-x-3 gap-y-2 text-sm">
-              {([["case_no", "案號 *"], ["valuation_date", "估價基準日（民國 7 碼）*"]] as [keyof typeof nc, string][]).map(([k, l]) => (
-                <label key={k} className="block"><span className="text-xs text-slate-500">{l}</span><input className="border rounded px-2 py-1 w-full" value={nc[k]} onChange={(e) => setNc({ ...nc, [k]: e.target.value })} />{k === "valuation_date" && vdateHint(nc.valuation_date)}</label>))}
-              <label className="block"><span className="text-xs text-slate-500">鄉鎮市區 *</span><select className="border rounded px-2 py-1 w-full" value={nc.district} onChange={(e) => setNc({ ...nc, district: e.target.value })}>{NTPC_DISTRICTS.map((d) => <option key={d} value={`新北市${d}`}>新北市{d}</option>)}</select></label>
-              <label className="block"><span className="text-xs text-slate-500" title="沒有地號時改填下方「區段範圍」，系統會圍出區段並依查估辦法 §18 自動選比準地">比準地地號 *</span>
-                {(() => {
-                  const dist = nc.district.replace("新北市", "");
-                  const inDist = lots.filter((l) => !l.district || l.district === dist);          // 沒標區的（舊格式）全部列出
-                  const useSelect = inDist.length > 0 && !manualLot;
-                  return (<>
-                    {useSelect ? <select className="border rounded px-2 py-1 w-full" value={nc.subject_parcel_id} onChange={(e) => setNc({ ...nc, subject_parcel_id: e.target.value })}>
-                      <option value="">請選擇（{dist}地籍圖內 {inDist.length} 筆）</option>{Array.from(new Set(inDist.map((l) => l.section))).map((sec) => <optgroup key={sec} label={sec}>{inDist.filter((l) => l.section === sec).map((l) => <option key={l.parcel_id} value={l.parcel_id}>{l.parcel_id}</option>)}</optgroup>)}</select>
-                      : <input className="border rounded px-2 py-1 w-full" placeholder={inDist.length ? "輸入地號（例：金美段489地號）" : `${dist}尚無地籍圖，輸入地號後請到「輸入資料」匯入地籍圖或在圖上定位`} value={nc.subject_parcel_id} onChange={(e) => setNc({ ...nc, subject_parcel_id: e.target.value })} />}
-                    {inDist.length > 0 && <button type="button" className="text-xs text-slate-600 underline mt-0.5" onClick={() => { setManualLot(!manualLot); setNc({ ...nc, subject_parcel_id: "" }); }}>{manualLot ? "改從地籍圖選" : "地籍圖沒有這筆？手動輸入"}</button>}
-                  </>);
-                })()}</label>
-              <label className="block"><span className="text-xs text-slate-500">區段編號</span><input className="border rounded px-2 py-1 w-full" placeholder="空白則暫編 P001-00" value={nc.section_id} onChange={(e) => setNc({ ...nc, section_id: e.target.value })} /></label>
-              <label className="block"><span className="text-xs text-slate-500">用地別</span><select className="border rounded px-2 py-1 w-full" value={nc.land_use} onChange={(e) => setNc({ ...nc, land_use: e.target.value })}>{["商業用地", "住宅用地", "工業用地", "農業用地", "其他用地"].map((x) => <option key={x}>{x}</option>)}</select></label>
-              <label className="block col-span-2 md:col-span-3"><span className="text-xs text-slate-500">區段範圍（無地號時必填）</span><input className="border rounded px-2 py-1 w-full" placeholder="例：北側至金包里街，南側至中山路，西側至中正路，東側至福德街" value={nc.range_desc} onChange={(e) => setNc({ ...nc, range_desc: e.target.value })} /></label>
-              <div className="col-span-2 md:col-span-3 mt-1 flex flex-wrap items-center gap-x-4 gap-y-2">
-                <label className="text-xs text-slate-700 inline-flex items-center gap-1" title="依地號找地籍界線、推定宗地屬性與區段範圍、推算勘查表、量測設施距離、從實價登錄選比較標的；地籍圖未匯入時會提示到輸入頁匯入或點圖"><input type="checkbox" checked={autoFill} onChange={(e) => setAutoFill(e.target.checked)} />建立後立即依地號產生書表（含實價登錄比較標的）</label>
-                <div className="ml-auto"><Btn onClick={createBlank} disabled={busy} busy={busy}>{autoFill ? "建立並產生 →" : "建立 →"}</Btn></div>
-              </div>
-              {ncMsg && <div className="col-span-2 md:col-span-3 text-xs text-slate-700 bg-slate-50 border border-slate-200 rounded px-2 py-1">{ncMsg}</div>}
-            </div>)}
-        </Card>
-      </div>
-      {upload && (
-        <Card title={upload.error ? "無法解析" : `辨識結果：${upload.filename}`} right={upload.kind === "pdf_forms" && !upload.error ? <><Btn kind="ghost" onClick={() => setUpload(null)}>取消</Btn><Btn onClick={createFromUpload} disabled={busy}>建立案件並開始審查 →</Btn></> : <Btn kind="ghost" onClick={() => setUpload(null)}>關閉</Btn>}>
-          {upload.error ? <div className="text-red-700 text-sm">{upload.error}</div> : (
-            <div className="text-sm">
-              <div>檔案種類：<b>{KIND_NAME[upload.kind] || upload.kind}</b></div>
-              {upload.kind === "pdf_forms" && (
-                <div className="grid md:grid-cols-4 gap-3 mt-2 text-xs">
-                  <div><div className="text-slate-500">頁面</div>{(upload.data?.pages || []).map((p: Any) => `第${p.page}頁 ${({ t1: "勘查表", t5: "區域因素分析表", t4: "比較法估價表", map: "圖說", other: "其他" } as Any)[p.kind] || p.kind}（${p.method === "text" ? "文字讀取" : p.method === "vision" ? "影像辨識" : "未讀取"}）`).join("；") || "—"}</div>
-                  <div><div className="text-slate-500">案件</div>{upload.data?.case?.case_no || "—"}；估價基準日 {upload.data?.case?.valuation_date || "—"}；{upload.data?.case?.land_use || "—"}<br />比準地 {upload.data?.subject_parcel?.parcel_id || "—"}；比較標的 {upload.data?.comparables?.length ?? 0} 件</div>
-                  <div><div className="text-slate-500">填載值</div>區域因素分析表 {Object.keys(upload.data?.submitted?.table5 || {}).length} 件比較標的；比較法估價表 {upload.data?.submitted?.table4?.comparables ? "有" : "無"}</div>
-                  <div><div className="text-slate-500">品質</div>缺漏欄位 {upload.missing_fields?.length ?? 0}；低信心欄位 {lowConf}；提醒 {upload.warnings?.length ?? 0}</div>
-                </div>
-              )}
-              {upload.missing_fields?.length > 0 && <div className="mt-2 text-xs text-amber-800">缺漏：{upload.missing_fields.slice(0, 12).join("、")}{upload.missing_fields.length > 12 ? "…" : ""}（建立後可於輸入資料頁補填）</div>}
-              {upload.warnings?.length > 0 && <ul className="mt-1 text-xs text-slate-600 list-disc pl-4 max-h-24 overflow-auto">{upload.warnings.slice(0, 8).map((w: string, i: number) => <li key={i}>{w}</li>)}</ul>}
-              {upload.kind === "rules_table" && <div className="mt-1 text-xs flex items-center gap-2">基準表已轉出。<Btn kind="ghost" onClick={importRulesFromUpload} disabled={busy}>匯入系統基準表</Btn></div>}
-              {(upload.kind === "parcels" || upload.kind === "comparables") && <div className="mt-1 text-xs flex flex-wrap items-center gap-2">已讀取 {upload.data?.parcels?.length ?? upload.data?.comparables?.length ?? 0} 筆。套用到案件：
-                <select className="border rounded px-2 py-1" value={applyTo} onChange={(e) => setApplyTo(e.target.value)}><option value="">請選擇案件</option>{cases.filter((c) => !c.archived).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
-                <Btn onClick={() => applyUploadTo(applyTo)} disabled={busy || !applyTo}>套用</Btn><span className="text-slate-500">（依地號對到比準地與比較標的，只覆蓋檔案裡有值的欄位）</span></div>}
-              {applyMsg && <div className="mt-1 text-xs text-slate-700">{applyMsg}</div>}
-            </div>
-          )}
-        </Card>
-      )}
-
       <Card title={`案件清單（${cases.length}）`} right={<>
+        <Btn onClick={() => { setMethod(null); setNewOpen(true); }} title="上傳送審書表、依地號建案或載入範例">＋ 新增案件</Btn>
         <input className="border rounded px-2 py-1 text-sm w-40" placeholder="搜尋案號／名稱／地號" value={q} onChange={(e) => setQ(e.target.value)} />
         <select className="border rounded px-2 py-1 text-sm" value={stFilter} onChange={(e) => setStFilter(e.target.value)}><option value="all">全部狀態</option>{Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
         <select className="border rounded px-2 py-1 text-sm" value={sortBy} onChange={(e) => setSortBy(e.target.value as Any)}><option value="opened">最近開啟</option><option value="updated">最近修改</option><option value="case_no">案號</option></select>
         <label className="text-xs flex items-center gap-1"><input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} />已封存（{cases.filter((c) => c.archived).length}）</label></>}>
         {listMsg && <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded p-2 mb-2 flex items-center gap-2">{listMsg}<button className="underline text-xs" onClick={() => setListMsg(null)}>關閉</button></div>}
-        {shown.length === 0 ? <div className="text-sm text-slate-500">{cases.length ? "沒有符合條件的案件" : "尚無案件。請上傳送審書表、新建案件，或按上方「用範例看一遍」。"}</div> : (
+        {shown.length === 0 ? <div className="text-sm text-slate-500">{cases.length ? "沒有符合條件的案件" : "尚無案件。按「＋ 新增案件」上傳送審書表、依地號建案或載入範例。"}</div> : (
           <div className="overflow-x-auto"><table className="grid"><thead><tr><th className="min-w-[14rem]">案件</th><th className="whitespace-nowrap">狀態</th><th className="whitespace-nowrap">審查結果</th><th className="whitespace-nowrap">比較價格</th><th className="whitespace-nowrap">產出</th><th className="whitespace-nowrap">最後操作</th><th className="whitespace-nowrap w-1">下一步</th></tr></thead>
             <tbody>{shown.map((c) => { const ns = nextStep(c); return (<tr key={c.id} className={rec?.id === c.id ? "selected" : ""}>
               <td><button className="font-medium text-left underline decoration-dotted hover:text-[#c2410c]" title="開啟案件（六頁書表預覽）" onClick={async () => { await loadCase(c.id); router.push(`/sheets?case=${encodeURIComponent(c.id)}`); }}>{c.name}</button><div className="text-xs text-slate-500">{c.case_no}・基準日 {c.valuation_date || "—"}・比準地 {c.subject_parcel_id || "—"}・比較標的 {c.n_comparables} 件{c.has_submitted ? "・有送審書表" : ""}</div></td>
@@ -252,6 +190,114 @@ export default function Home() {
             </tr>); })}</tbody></table></div>
         )}
       </Card>
+
+      {newOpen && (
+        <Modal title={method ? `新增案件：${METHOD_TITLE[method]}` : "新增案件"} onClose={closeNew}
+          back={method ? <button type="button" className="text-sm text-slate-600 hover:text-[#c2410c] underline decoration-dotted" onClick={() => { setMethod(null); setUpload(null); setNcMsg(null); }}>← 換方式</button> : undefined}>
+          {!method && (
+            <div>
+              <div className="text-xs text-slate-600 mb-3">三種方式都會建立一個新案件，差別只在資料從哪裡來。</div>
+              <div className="grid sm:grid-cols-3 gap-3">
+                {METHODS.map((x) => (
+                  <button key={x.m} type="button" onClick={() => setMethod(x.m)} className="text-left rounded-lg border border-slate-200 hover:border-[#ea580c] hover:bg-orange-50 px-4 py-4 flex flex-col gap-1 min-h-[9rem]">
+                    <div className="font-semibold">{x.title}</div><div className="text-xs text-slate-600">{x.desc}</div><div className="text-xs text-[#c2410c] mt-auto pt-2">選擇此方式 →</div>
+                  </button>))}
+              </div>
+            </div>
+          )}
+
+          {method === "upload" && (
+            <div>
+              {!upload && (<>
+                <div className={`min-h-[8rem] rounded-lg border-2 border-dashed px-4 py-5 flex flex-col items-center justify-center text-center transition ${drag ? "border-[#ea580c] bg-orange-50" : "border-orange-300 bg-orange-50/30"}`}
+                  onDragOver={(e) => { e.preventDefault(); setDrag(true); }} onDragLeave={() => setDrag(false)}
+                  onDrop={(e) => { e.preventDefault(); setDrag(false); const f = e.dataTransfer.files?.[0]; if (f) onUpload(f); }}>
+                  <div className="text-sm font-medium">把送審書表 PDF 拖到這裡</div>
+                  <div className="text-xs text-slate-500 mt-1">或</div>
+                  <div className="mt-2"><Btn onClick={() => fileRef.current?.click()} disabled={busy} busy={busy}>⬆ 選擇送審書表上傳</Btn></div>
+                  <input ref={fileRef} type="file" accept=".pdf,.xlsx,.xls,.csv,.json" hidden onChange={(e) => e.target.files?.[0] && onUpload(e.target.files[0])} />
+                </div>
+                <ol className="mt-3 grid grid-cols-3 gap-2 text-xs">
+                  {[["1", "辨識填載值", "文字層讀取，掃描件走影像辨識"], ["2", "預覽辨識結果", "頁面、案件、缺漏與信心值"], ["3", "建立並開始審查", "逐格比對，標出不符與依據"]].map(([n, t, d]) => (
+                    <li key={n} className="rounded-md bg-slate-50 border border-slate-200 px-2 py-1.5"><div className="font-medium"><span className="text-orange-700 mr-1">{n}</span>{t}</div><div className="text-[11px] text-slate-500 mt-0.5">{d}</div></li>))}
+                </ol>
+                <div className="mt-2"><Help label="還能上傳什麼">也接受宗地個別因素清冊、買賣實例 xlsx 與評價基準明細表 PDF，上傳後會判斷檔案種類；清冊與實例可直接套用到既有案件。</Help></div>
+              </>)}
+              {upload && (
+                <div>
+                  <div className="flex items-start gap-3 flex-wrap mb-3">
+                    <div className="font-semibold flex-1 min-w-[12rem]">{upload.error ? "無法解析" : `辨識結果：${upload.filename}`}</div>
+                    <div className="ml-auto flex gap-2">{upload.kind === "pdf_forms" && !upload.error ? <><Btn kind="ghost" onClick={() => setUpload(null)}>重新上傳</Btn><Btn onClick={createFromUpload} disabled={busy} busy={busy}>建立案件並開始審查 →</Btn></> : <Btn kind="ghost" onClick={() => setUpload(null)}>重新上傳</Btn>}</div>
+                  </div>
+                  {upload.error ? <div className="text-red-700 text-sm">{upload.error}</div> : (
+                    <div className="text-sm">
+                      <div>檔案種類：<b>{KIND_NAME[upload.kind] || upload.kind}</b></div>
+                      {upload.kind === "pdf_forms" && (
+                        <div className="grid md:grid-cols-4 gap-3 mt-2 text-xs">
+                          <div><div className="text-slate-500">頁面</div>{(upload.data?.pages || []).map((p: Any) => `第${p.page}頁 ${({ t1: "勘查表", t5: "區域因素分析表", t4: "比較法估價表", map: "圖說", other: "其他" } as Any)[p.kind] || p.kind}（${p.method === "text" ? "文字讀取" : p.method === "vision" ? "影像辨識" : "未讀取"}）`).join("；") || "—"}</div>
+                          <div><div className="text-slate-500">案件</div>{upload.data?.case?.case_no || "—"}；估價基準日 {upload.data?.case?.valuation_date || "—"}；{upload.data?.case?.land_use || "—"}<br />比準地 {upload.data?.subject_parcel?.parcel_id || "—"}；比較標的 {upload.data?.comparables?.length ?? 0} 件</div>
+                          <div><div className="text-slate-500">填載值</div>區域因素分析表 {Object.keys(upload.data?.submitted?.table5 || {}).length} 件比較標的；比較法估價表 {upload.data?.submitted?.table4?.comparables ? "有" : "無"}</div>
+                          <div><div className="text-slate-500">品質</div>缺漏欄位 {upload.missing_fields?.length ?? 0}；低信心欄位 {lowConf}；提醒 {upload.warnings?.length ?? 0}</div>
+                        </div>
+                      )}
+                      {upload.missing_fields?.length > 0 && <div className="mt-2 text-xs text-amber-800">缺漏：{upload.missing_fields.slice(0, 12).join("、")}{upload.missing_fields.length > 12 ? "…" : ""}（建立後可於輸入資料頁補填）</div>}
+                      {upload.warnings?.length > 0 && <ul className="mt-1 text-xs text-slate-600 list-disc pl-4 max-h-24 overflow-auto">{upload.warnings.slice(0, 8).map((w: string, i: number) => <li key={i}>{w}</li>)}</ul>}
+                      {upload.kind === "rules_table" && <div className="mt-1 text-xs flex items-center gap-2">基準表已轉出。<Btn kind="ghost" onClick={importRulesFromUpload} disabled={busy}>匯入系統基準表</Btn></div>}
+                      {(upload.kind === "parcels" || upload.kind === "comparables") && <div className="mt-1 text-xs flex flex-wrap items-center gap-2">已讀取 {upload.data?.parcels?.length ?? upload.data?.comparables?.length ?? 0} 筆。套用到案件：
+                        <select className="border rounded px-2 py-1" value={applyTo} onChange={(e) => setApplyTo(e.target.value)}><option value="">請選擇案件</option>{cases.filter((c) => !c.archived).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+                        <Btn onClick={() => applyUploadTo(applyTo)} disabled={busy || !applyTo}>套用</Btn><span className="text-slate-500">（依地號對到比準地與比較標的，只覆蓋檔案裡有值的欄位）</span></div>}
+                      {applyMsg && <div className="mt-1 text-xs text-slate-700">{applyMsg}</div>}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {method === "lot" && (
+            <div>
+              <div className="text-xs text-slate-600 mb-3">系統找地籍界線、推定宗地屬性與區段範圍、推算勘查表、量測設施距離、從實價登錄選比較標的，再產生書表與填寫結果清單。</div>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-x-3 gap-y-2 text-sm">
+                {([["case_no", "案號 *"], ["valuation_date", "估價基準日（民國 7 碼）*"]] as [keyof typeof nc, string][]).map(([k, l]) => (
+                  <label key={k} className="block"><span className="text-xs text-slate-500">{l}</span><input className="border rounded px-2 py-1 w-full" value={nc[k]} onChange={(e) => setNc({ ...nc, [k]: e.target.value })} />{k === "valuation_date" && vdateHint(nc.valuation_date)}</label>))}
+                <label className="block"><span className="text-xs text-slate-500">鄉鎮市區 *</span><select className="border rounded px-2 py-1 w-full" value={nc.district} onChange={(e) => setNc({ ...nc, district: e.target.value })}>{NTPC_DISTRICTS.map((d) => <option key={d} value={`新北市${d}`}>新北市{d}</option>)}</select></label>
+                <label className="block"><span className="text-xs text-slate-500" title="沒有地號時改填下方「區段範圍」，系統會圍出區段並依查估辦法 §18 自動選比準地">比準地地號 *</span>
+                  {(() => {
+                    const dist = nc.district.replace("新北市", "");
+                    const inDist = lots.filter((l) => !l.district || l.district === dist);          // 沒標區的（舊格式）全部列出
+                    const useSelect = inDist.length > 0 && !manualLot;
+                    return (<>
+                      {useSelect ? <select className="border rounded px-2 py-1 w-full" value={nc.subject_parcel_id} onChange={(e) => setNc({ ...nc, subject_parcel_id: e.target.value })}>
+                        <option value="">請選擇（{dist}地籍圖內 {inDist.length} 筆）</option>{Array.from(new Set(inDist.map((l) => l.section))).map((sec) => <optgroup key={sec} label={sec}>{inDist.filter((l) => l.section === sec).map((l) => <option key={l.parcel_id} value={l.parcel_id}>{l.parcel_id}</option>)}</optgroup>)}</select>
+                        : <input className="border rounded px-2 py-1 w-full" placeholder={inDist.length ? "輸入地號（例：金美段489地號）" : `${dist}尚無地籍圖，輸入地號後請到「輸入資料」匯入地籍圖或在圖上定位`} value={nc.subject_parcel_id} onChange={(e) => setNc({ ...nc, subject_parcel_id: e.target.value })} />}
+                      {inDist.length > 0 && <button type="button" className="text-xs text-slate-600 underline mt-0.5" onClick={() => { setManualLot(!manualLot); setNc({ ...nc, subject_parcel_id: "" }); }}>{manualLot ? "改從地籍圖選" : "地籍圖沒有這筆？手動輸入"}</button>}
+                    </>);
+                  })()}</label>
+                <label className="block"><span className="text-xs text-slate-500">區段編號</span><input className="border rounded px-2 py-1 w-full" placeholder="空白則暫編 P001-00" value={nc.section_id} onChange={(e) => setNc({ ...nc, section_id: e.target.value })} /></label>
+                <label className="block"><span className="text-xs text-slate-500">用地別</span><select className="border rounded px-2 py-1 w-full" value={nc.land_use} onChange={(e) => setNc({ ...nc, land_use: e.target.value })}>{["商業用地", "住宅用地", "工業用地", "農業用地", "其他用地"].map((x) => <option key={x}>{x}</option>)}</select></label>
+                <label className="block col-span-2 md:col-span-3"><span className="text-xs text-slate-500">區段範圍（無地號時必填）</span><input className="border rounded px-2 py-1 w-full" placeholder="例：北側至金包里街，南側至中山路，西側至中正路，東側至福德街" value={nc.range_desc} onChange={(e) => setNc({ ...nc, range_desc: e.target.value })} /></label>
+                <div className="col-span-2 md:col-span-3 mt-1 flex flex-wrap items-center gap-x-4 gap-y-2">
+                  <label className="text-xs text-slate-700 inline-flex items-center gap-1" title="依地號找地籍界線、推定宗地屬性與區段範圍、推算勘查表、量測設施距離、從實價登錄選比較標的；地籍圖未匯入時會提示到輸入頁匯入或點圖"><input type="checkbox" checked={autoFill} onChange={(e) => setAutoFill(e.target.checked)} />建立後立即依地號產生書表（含實價登錄比較標的）</label>
+                  <div className="ml-auto"><Btn onClick={createBlank} disabled={busy} busy={busy}>{autoFill ? "建立並產生 →" : "建立 →"}</Btn></div>
+                </div>
+                {ncMsg && <div className="col-span-2 md:col-span-3 text-xs text-slate-700 bg-slate-50 border border-slate-200 rounded px-2 py-1">{ncMsg}</div>}
+              </div>
+            </div>
+          )}
+
+          {method === "example" && (
+            <ul className="grid gap-2">
+              {EXAMPLES.map((d) => (
+                <li key={d.v}>
+                  <button type="button" disabled={loading} onClick={async () => { await loadDemo(d.v); closeNew(); router.push("/sheets"); }} className="w-full text-left rounded-lg border border-slate-200 hover:border-[#ea580c] hover:bg-orange-50 px-4 py-3 disabled:opacity-50">
+                    <div className="font-semibold">{d.title}</div><div className="text-xs text-slate-600 mt-0.5">{d.desc}</div>
+                  </button>
+                </li>))}
+              {loading && <li className="text-xs text-slate-500">載入中…</li>}
+            </ul>
+          )}
+        </Modal>
+      )}
     </div>
   );
 }
