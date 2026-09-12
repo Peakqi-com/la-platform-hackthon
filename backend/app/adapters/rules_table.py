@@ -421,7 +421,7 @@ def _match_catalog(item: RawItem, catalog: list[CatalogItem], used: set[str], re
     scored.sort(key=lambda x: -x[0])
     if scored and scored[0][0] >= 0.45:
         if scored[0][0] < 0.75:
-            result.warn(f"細項「{raw}」以相似度 {scored[0][0]:.2f} 對到內政部項目「{scored[0][1].name}」，請確認")
+            result.warn(f"細項「{raw}」對到內政部項目「{scored[0][1].name}」（名稱不完全相同，請確認）")
         return scored[0][1]
     return None
 
@@ -440,7 +440,7 @@ def _order_fallback(item: RawItem, catalog: list[CatalogItem], used: set[str], r
 def _build_criteria(item: RawItem, cat: CatalogItem | None, result: AdapterResult, rid: str) -> dict[str, Any]:
     conds = {lv: parse_condition(txt) for lv, txt in item.conditions.items() if txt}
     if not conds:
-        result.warn(f"{rid} {item.raw_name}: 備註欄無判定條件，criteria 設為 manual")
+        result.warn(f"細項「{item.raw_name}」備註欄沒有判定條件，等級由估價師自填、系統不判定")
         return {"type": "manual"}
     kinds = {c["kind"] for c in conds.values()}
     kind_hint = cat.kind if cat else None
@@ -510,7 +510,7 @@ def _build_criteria(item: RawItem, cat: CatalogItem | None, result: AdapterResul
         if normalize:
             crit["normalize"] = normalize
         return crit
-    result.warn(f"{rid} {item.raw_name}: 條件文字混合數值與文字（{sorted(kinds)}），無法自動判定，criteria 設為 manual")
+    result.warn(f"細項「{item.raw_name}」的條件文字同時有數值與文字，系統無法自動判定，等級由估價師自填")
     return {"type": "manual", "conditions": item.conditions}
 
 

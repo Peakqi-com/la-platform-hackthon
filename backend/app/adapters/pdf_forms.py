@@ -423,7 +423,7 @@ def parse_table5(page, regional: RuleSet, result: AdapterResult) -> dict[int, di
             continue
         rule = _find_rule(regional, name)
         if rule is None:
-            result.warn(f"表5 細項「{_flat(name)}」對不到基準表 {regional.id}，略過")
+            result.warn(f"區域因素分析表細項「{_flat(name)}」在本案評價基準明細表沒有對應項目，未比對")
             continue
         s_num, s_lv = row[2], _norm_level(rule, row[3])
         for k, (a, b, c) in enumerate(comp_cols):
@@ -679,6 +679,21 @@ def _parcel_from_t4(entry: dict, individual: RuleSet, result: AdapterResult, pat
 # ------------------------------------------------------------------ 主流程
 
 
+SCOPE_ZH = {"regional": "區域因素", "individual": "個別因素"}
+
+
+def ruleset_label(rid: str) -> str:
+    """基準表 id → 給人看的名稱：示範表標「示範」，其餘取 source 第一段（括號前）；讀不到就回 id。"""
+    from app.engine.rules import RULES_DIR
+    try:
+        d = json.loads((RULES_DIR / f"{rid}.json").read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return rid
+    src = str(d.get("source") or d.get("name") or rid)
+    short = re.split(r"[（(]", src, maxsplit=1)[0].strip() or rid
+    return f"{short}（示範表）" if rid.startswith("demo_") else short
+
+
 def pick_rulesets(land_use: str | None, result: AdapterResult, override: dict | None = None, district: str | None = None) -> tuple[RuleSet, RuleSet, dict]:
     ids = {"regional": None, "individual": None}
     if override:
@@ -699,10 +714,10 @@ def pick_rulesets(land_use: str | None, result: AdapterResult, override: dict | 
         cands.sort(key=lambda t: (not (district and t[1] and t[1] in district), t[0].startswith(("demo_", "uploaded_")), t[0]))
         cands = [t[0] for t in cands]
         if not cands:
-            result.warn(f"找不到用地別「{land_use}」的 {scope} 基準表，改用金山商業用地表對照細項名稱（僅供抽取，非審查依據）")
+            result.warn(f"找不到用地別「{land_use}」的{SCOPE_ZH[scope]}基準表，改用金山商業用地表對照細項名稱（僅供抽取，非審查依據）")
             cands = [f"jinshan_commercial_{scope}"]
         elif len(cands) > 1:
-            result.warn(f"用地別「{land_use}」有多份 {scope} 基準表 {cands}，取第一份；請在 case.rulesets 指定")
+            result.warn(f"用地別「{land_use}」有 {len(cands)} 份{SCOPE_ZH[scope]}基準表，已採用「{ruleset_label(cands[0])}」；要換的話到「評價基準明細表」分頁選擇")
         ids[scope] = cands[0]
     return load_ruleset(ids["regional"]), load_ruleset(ids["individual"]), ids
 
@@ -747,7 +762,8 @@ def read_pdf_forms(src: str | Path | bytes, *, filename: str | None = None, use_
         if skip:
             ctx["case"]["regional_no_adjust"] = skip
             ctx["case"].setdefault("notes", {})["table5_case"] = sentence
-            result.warn(f"表5 備註載明免修正：{'、'.join(skip)}（{sentence[:40]}…），表5 該列填「-」不計入小計")
+            names = [ru.name for ru in regional.rules if ru.id in skip]
+            result.warn(f"區域因素分析表備註載明免修正：{'、'.join(names)}（{sentence[:40]}…），該列填「-」不計入小計")
         break
     vision_pages: list[tuple[int, Any, str]] = []
     for pno, page, kind, nchars in pages:
