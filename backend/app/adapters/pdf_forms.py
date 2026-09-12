@@ -30,6 +30,7 @@ from .common import (
     annotate_facility_defaults,
     char_jaccard,
     guess_facility_type,
+    is_garbage,
     make_facility,
     norm_label,
     norm_text,
@@ -618,11 +619,11 @@ def _parcel_from_t4(entry: dict, individual: RuleSet, result: AdapterResult, pat
     for rule in sorted([r for r in individual.rules if r.item_no], key=lambda r: r.item_no):
         f = rule.parcel_field
         v = items.get(rule.item_no)
-        if isinstance(v, dict) and str(v.get("name") or "").strip() in ("M", "m", "M)", "公尺"):      # 單位格「M」被當成名稱 → 空
+        if isinstance(v, dict) and is_garbage(v.get("name")):                                        # 單位格「M」、勾選符號被當成名稱 → 空
             v = {**v, "name": None}
             if v.get("num") is None:
                 v = None
-        elif isinstance(v, str) and v.strip() in ("M", "m"):
+        elif isinstance(v, str) and is_garbage(v):
             v = None
         ctype = rule.criteria.get("type")
         if f == "front_road_width_m":

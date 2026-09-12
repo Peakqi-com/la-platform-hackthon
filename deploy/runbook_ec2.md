@@ -26,7 +26,8 @@ DATA_TGZ=~/ntpc-data.tgz ./deploy/provision.sh        # 帶資料包；或本機
 - 服務用 systemd（`ntpc-backend`、`ntpc-frontend`、`caddy`），重開機自動起；log：`sudo journalctl -u ntpc-backend -n 50`。程式在 `/opt/app`，環境變數在 `/opt/app/.env`。
 - macOS 打包會夾帶 `._*` AppleDouble 檔，`rules/*.json` 的 glob 會把它們當 JSON 讀而 500；provision.sh 已用 `COPYFILE_DISABLE=1` 並排除，remote_setup.sh 解開後也會再清一次。
 - 本機 macOS 內建 bash 3.2：腳本裡變數後面緊接中文要寫 `${VAR}`，否則會被當成變數名的一部分。
-- 2026-09-12 已在帳號 565762307497（us-west-2）跑過一次：https://54.188.82.141.sslip.io，i-0028c53f20f3ccf9b，私鑰 `~/.ssh/ntpc-key.pem`。
+- 2026-09-12 已在帳號 565762307497（us-west-2）跑過一次：https://54.188.82.141.sslip.io，i-0028c53f20f3ccf9b，私鑰 `~/.ssh/ntpc-key.pem`（本機沒有這把鑰匙且 22 埠只開給佈建時的 IP，從其他機器連不上）。
+- 2026-09-13 從外部看到的狀況：`/api/health` 500、`POST …/from_lot` 500（13 秒後）、`/api/reload` 正常但顯示「實價登錄 1970-01-01」＝主機缺 `data/lvr/f_land.json`。自動部署以 `/api/health` 含 `"ok":true` 判斷成功，健康檢查 500 會讓每次部署都回滾、主機停在舊版；已改成每一項各自包起來（壞掉的項目列在 `errors`），依地號產生失敗改回 `{"detail": "依地號產生失敗（例外類型）：原因"}`。補檔：`rsync -e 'ssh -i ~/.ssh/ntpc-key.pem' data/lvr/f_land.json ubuntu@54.188.82.141:/opt/app/data/lvr/`，看原因：`sudo journalctl -u ntpc-backend -n 100`、`/opt/app/deploy/autodeploy.sh status`。
 
 ### 自動部署（push 到 main 即上線）
 EC2 上 `deploy/autodeploy.sh` 由 systemd timer 每 60 秒 `git fetch`，main 有新 commit 就 `reset --hard`、依變更重裝依賴／重建前端、重啟，健康檢查失敗自動回滾；紀錄在 `/opt/app/deploy.log`。拉取式，不開入站埠、不存 AWS 金鑰。

@@ -117,6 +117,19 @@ def same_char_multiset(a: str, b: str) -> bool:
 _NUM_RE = re.compile(r"[-+]?\d[\d,]*(?:\.\d+)?")
 
 
+_GARBAGE_RE = re.compile(r"^[\s○●◎□■△▲×✓✔\-—－_/]*$|^(?:M|m|M\)|公尺|%|％|㎡|M2)$")
+
+
+def is_garbage(v: Any) -> bool:
+    """書表／範本裡的勾選符號與單位格（○ ● □ M ㎡ %）被當成值 → 視為空。"""
+    if isinstance(v, str):
+        return bool(_GARBAGE_RE.match(v.strip()))
+    if isinstance(v, dict):
+        vals = [x for x in v.values() if x not in (None, "")]
+        return bool(vals) and all(isinstance(x, str) and is_garbage(x) for x in vals)
+    return False
+
+
 def is_blank(v: Any) -> bool:
     return v is None or v is MISSING or (isinstance(v, str) and v.strip() == "")
 
@@ -305,6 +318,8 @@ def make_facility(name: str | None, distance_m: float | None, *, ftype: str | No
     """
     組 Facility。measure/origin 缺時不在這裡猜；由 annotate_facility_defaults() 依 facility_measurement.json 補預設並標 assumed。
     """
+    if isinstance(name, str) and is_garbage(name):
+        name = None
     if name is None and distance_m is None and in_section is None:
         return None
     f: dict[str, Any] = {"name": name}

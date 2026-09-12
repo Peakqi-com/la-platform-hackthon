@@ -13,6 +13,7 @@ import copy
 import hashlib
 import io
 import json
+import logging
 import re
 import time
 import urllib.parse
@@ -29,6 +30,8 @@ from app import audit as AUD
 from app.engine.rules import RULES_DIR, load_ruleset
 from app.engine.tables import InputError, run_case
 from app.engine.verify import collect_findings
+
+log = logging.getLogger("ntpc")
 
 app = FastAPI(title="土地徵收補償市價查估 估價案件審查輔助系統", version="0.2.0")
 
@@ -111,13 +114,20 @@ def _rulesets(case: dict[str, Any]):
 
 @app.get("/api/health")
 def health():
+    """服務健康：每一項各自包起來，任何一項壞掉只在該項回 error，整體仍 200（自動部署以此判斷服務是否起來）。"""
     from app.llm import provider_status
     from app.maps.render import tile_cache_status
     from app.market.lvr import lvr_status
     from app.spatial import service
     from app.spatial.terrain import status as terrain_status
-    return {"ok": True, "llm": provider_status(), "spatial": service.status(), "tiles": tile_cache_status(), "lvr": lvr_status(), "terrain": terrain_status(),
-            "data_files": service.data_file_times()}
+    out: dict[str, Any] = {"ok": True, "errors": []}
+    for name, fn in (("llm", provider_status), ("spatial", service.status), ("tiles", tile_cache_status), ("lvr", lvr_status), ("terrain", terrain_status), ("data_files", service.data_file_times)):
+        try:
+            out[name] = fn()
+        except Exception as e:  # noqa: BLE001 - 一項壞掉不能讓整個健康檢查 500
+            out[name] = {"error": f"{type(e).__name__}: {e}"}
+            out["errors"].append(name)
+    return out
 
 
 @app.post("/api/reload")
@@ -242,6 +252,8 @@ def detect_kind(filename: str, content: bytes) -> str:
                 labels.update(norm_label(v) for v in row if isinstance(v, str))
         if "pct_優" in labels or "pct優" in labels:
             return "rules_table"
+        if any(t.strip() in OFFICIAL_SHEETS or t.strip().startswith("表5-") for t in wb.sheetnames):   # 地政局正式範本（表3／表4／表5）：由系統填寫，不當輸入解析
+            return "official_xlsx"
         if labels & {"實例編號", "土地正常單價", "交易日期"}:
             return "comparables"
         if labels & {"宗地流水號", "面積", "地號"}:
@@ -1069,7 +1081,8 @@ def _detect_input_kind(filename: str, content: bytes) -> str:
         raise HTTPException(422, f"無法讀取檔案：{e}") from e
 
 
-_INPUT_ORDER = {"pdf_forms": 0, "rules_table": 1, "rules_json": 1, "parcels": 2, "comparables": 3, "cadastre": 4, "section_map": 5}
+_INPUT_ORDER = {"pdf_forms": 0, "rules_table": 1, "rules_json": 1, "parcels": 2, "comparables": 3, "cadastre": 4, "section_map": 5, "official_xlsx": 9}
+OFFICIAL_SHEETS = {"表3區段勘查表", "表4比較法調查估價表"}
 
 
 def _apply_one_input(cid: str, content: bytes, filename: str, *, kind: str = "auto", use_vision: str = "auto",
@@ -1163,6 +1176,9 @@ def _apply_one_input(cid: str, content: bytes, filename: str, *, kind: str = "au
             rec = r["record"]
             entry.update(matched=r["matched"], unmatched=r["unmatched"])
             entry["summary"] = f"地價區段圖 {r['n']} 區段；對到本案區段 {'、'.join(r['matched']) or '無'}" + (f"；對不到 {'、'.join(r['unmatched'])}" if r["unmatched"] else "")
+        elif k == "official_xlsx":
+            entry["summary"] = "地政局正式範本（表3／表4／表5 xlsx）：這份由系統依核算結果填寫，不作為輸入解析，已略過；填好的範本請到「輸出」頁下載"
+            entry["notes"] = ["空白範本若被當成清冊併入，會把範本裡的符號寫進宗地欄位；已改為略過"]
         else:
             raise HTTPException(422, f"不支援的輸入檔種類：{k}")
     except HTTPException:
@@ -1922,14 +1938,25 @@ def cases_from_lot(cid: str, payload: FromLotPayload, request: Request):
     reg, ind = _rulesets(data["case"])
     pre_steps: list[dict[str, Any]] = []
     parcel_id = payload.parcel_id
-    if not (parcel_id or data["subject_parcel"].get("parcel_id")):     # 無地號：用區段範圍文字圍區段、依 §18 自動選比準地
-        from app.spatial.lot import prepare_from_range
-        pre_steps = prepare_from_range(data, roads=get_roads(data=data), zoning=get_zoning_store(), provider=_cadastre_provider_for(data))
-        parcel_id = data["subject_parcel"].get("parcel_id") or ""
-        payload.parcel_changed = bool(parcel_id)
-    out = generate_from_lot(data, parcel_id=parcel_id, manual_point=payload.manual_point, overwrite=payload.overwrite, parcel_changed=payload.parcel_changed,
-                            regional=reg, individual=ind, resolve_geometries=_resolve_case_geometries,
-                            roads=get_roads(data=data), zoning=get_zoning_store(), store=service.get_poi_store(), osrm=service.get_osrm(), walk_graph=get_walk_graph(data=data))
+    try:
+        if not (parcel_id or data["subject_parcel"].get("parcel_id")):     # 無地號：用區段範圍文字圍區段、依 §18 自動選比準地
+            from app.spatial.lot import prepare_from_range
+            pre_steps = prepare_from_range(data, roads=get_roads(data=data), zoning=get_zoning_store(), provider=_cadastre_provider_for(data))
+            parcel_id = data["subject_parcel"].get("parcel_id") or ""
+            payload.parcel_changed = bool(parcel_id)
+        try:
+            osrm = service.get_osrm()
+        except Exception as e:  # noqa: BLE001 - 路徑規劃服務沒起來就改走步行圖／直線
+            log.warning("OSRM 不可用，改用步行圖：%s", e)
+            osrm = None
+        out = generate_from_lot(data, parcel_id=parcel_id, manual_point=payload.manual_point, overwrite=payload.overwrite, parcel_changed=payload.parcel_changed,
+                                regional=reg, individual=ind, resolve_geometries=_resolve_case_geometries,
+                                roads=get_roads(data=data), zoning=get_zoning_store(), store=service.get_poi_store(), osrm=osrm, walk_graph=get_walk_graph(data=data))
+    except HTTPException:
+        raise
+    except Exception as e:
+        log.exception("依地號產生失敗 %s", cid)
+        raise HTTPException(500, f"依地號產生失敗（{type(e).__name__}）：{e}") from e
     out["steps"] = pre_steps + out["steps"]
     rec = C.save_case(out["data"], cid=cid, submitted_table5=rec.get("submitted_table5"), submitted_table4=rec.get("submitted_table4"))
     if payload.with_comparables and out["data"]["subject_parcel"].get("geometry") is not None and (out["parcel_changed"] or not out["data"].get("comparables")):

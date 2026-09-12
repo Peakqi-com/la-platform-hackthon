@@ -20,7 +20,9 @@ from dataclasses import dataclass, field
 from typing import Any
 
 KIND_LABELS = {"pdf_forms": "送審書表 PDF", "parcels": "宗地個別因素清冊", "comparables": "買賣實例", "rules_table": "評價基準明細表",
-               "cadastre": "地籍圖", "section_map": "地價區段圖"}
+               "cadastre": "地籍圖", "section_map": "地價區段圖", "official_xlsx": "地政局正式範本（略過）"}
+from app.adapters.common import is_garbage as _garbage
+
 PAGE_LABELS = {"t1": "勘查表", "t5": "區域因素分析表", "t4": "比較法估價表", "map": "圖說", "other": "其他"}
 CASE_KEYS = ("case_no", "valuation_date", "land_use", "district", "fill_date", "appraiser")
 GEOM_KEYS = ("geometry", "geometry_source", "geometry_note", "status", "derived")
@@ -228,7 +230,7 @@ def merge_parcel_list(data: dict, items: list[dict], kind: str) -> MergeReport:
             continue
         n = 0
         for k, v in it.items():
-            if k in SKIP_ALWAYS or v is None:
+            if k in SKIP_ALWAYS or v is None or _garbage(v):
                 continue
             cur = target.get(k)
             if _eq(cur, v):

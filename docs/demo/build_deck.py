@@ -544,8 +544,9 @@ for i, (t, img, cap_) in enumerate([("場景一　送審書表 → 逐格核算"
     text(s, x, Inches(1.9), Inches(3.9), Inches(0.5), t, size=15, color=CYAN, bold=True)
     picture(s, img, x, Inches(2.4), Inches(3.9), Inches(3.0), border=False)
     text(s, x, Inches(5.45), Inches(3.9), Inches(0.4), cap_, size=12, color=PINK)
-qr = rect(s, W - Inches(2.2), Inches(5.6), Inches(1.5), Inches(1.5), NAVY_L, line=CYAN)
-text(s, W - Inches(2.2), Inches(6.05), Inches(1.5), Inches(0.6), "QR code\n（部署網址）", size=11, color=CYAN, align=PP_ALIGN.CENTER)
+rect(s, W - Inches(1.95), Inches(5.85), Inches(1.2), Inches(1.2), WHITE, line=CYAN)
+picture(s, "qr_deploy.png", W - Inches(1.9), Inches(5.9), Inches(1.1), Inches(1.1), border=False)       # 正式環境 https://54.188.82.141.sslip.io/
+text(s, W - Inches(3.7), Inches(6.25), Inches(1.7), Inches(0.4), "掃描開啟系統 →", size=12, color=CYAN, align=PP_ALIGN.RIGHT)
 text(s, Inches(0.7), Inches(6.2), Inches(9), Inches(0.5), "隊名 AI城市起風　吳昭奇・洪湛閎・丁家麒", size=14, color=WHITE)
 footer(s, dark=True)
 

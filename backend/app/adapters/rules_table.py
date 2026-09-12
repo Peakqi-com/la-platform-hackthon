@@ -504,6 +504,17 @@ def _build_criteria(item: RawItem, cat: CatalogItem | None, result: AdapterResul
         if not mapping:                                                   # 條件全是「其他影響因素極優／優…」這種主觀描述 → 人工判定
             return {"type": "manual", "conditions": item.conditions}
         crit = {"type": "enum", "map": mapping}
+        if any("停車" in k for k in mapping):                       # 21 停車方便性：系統推定值「可／不可路邊停車」對應 優／劣（普通留人工）
+            nz = {}
+            for k in mapping:
+                if "優" in k:
+                    nz.setdefault("可路邊停車", k)
+                elif "劣" in k:
+                    nz.setdefault("不可路邊停車", k)
+                elif "普通" in k:
+                    nz.setdefault("普通", k)
+            if nz:
+                crit["normalize"] = nz
         if default:
             crit["default"] = default
         normalize = _zoning_normalize(mapping)
