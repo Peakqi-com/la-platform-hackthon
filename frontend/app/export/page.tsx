@@ -13,7 +13,7 @@ type Item = { key: string; name: string; desc: string; formats: Fmt[]; needOutpu
 
 const reportQuery = () => { const a = getActor(); return `?reviewer=${encodeURIComponent(a.name)}&reviewer_role=${encodeURIComponent(a.role)}`; };
 const ITEMS: Item[] = [
-  { key: "sheets", name: "查估書表", desc: "六頁：地價區段勘查表、影響地價區域因素分析明細表、比較法調查估價表、地價區段略圖、地價使用分區圖、地價區段圖（Excel 為六張工作表，PDF 照範本頁序）", needOutputs: true,
+  { key: "sheets", name: "查估書表", desc: "地價區段勘查表（比準地與各比較標的區段各一張）、影響地價區域因素分析明細表、比較法調查估價表、地價區段略圖、地價使用分區圖、地價區段圖（Excel 一表一工作表，PDF 照範本頁序）", needOutputs: true,
     formats: [{ key: "xlsx", fmt: "Excel", url: (id) => `/api/cases/${id}/sheets.xlsx`, file: (no) => `${no}_查估書表.xlsx` }, { key: "pdf", fmt: "PDF", url: (id) => `/api/cases/${id}/sheets.pdf`, file: (no) => `${no}_查估書表.pdf` }] },
   { key: "report", name: "審查意見書", desc: "逐條意見含審查重點條號、法源與承辦裁決，附三張圖說；落款為操作身分", needOutputs: true,
     formats: [{ key: "docx", fmt: "Word", url: (id) => `/api/cases/${id}/report.docx${reportQuery()}`, file: (no) => `${no}_審查意見書.docx` }, { key: "rpdf", fmt: "PDF", url: (id) => `/api/cases/${id}/report.pdf${reportQuery()}`, file: (no) => `${no}_審查意見書.pdf` }] },

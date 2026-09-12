@@ -179,9 +179,9 @@ export default function Home() {
         <div>
           <div className="flex-1 min-w-[20rem]">
             <div className="text-lg font-semibold">這套系統做什麼</div>
-            <Help className="mt-1">估價單位送來土地徵收補償市價查估的六頁書表，系統依評價基準明細表把三張表重算一份，逐格比對估價單位填載值與核算值，指出不符處並附查估辦法條號與作業手冊頁碼，最後產出審查意見書與正式書表。等級、修正率與價格全部由規則引擎依《土地徵收補償市價查估辦法》與作業手冊確定性計算，每一格都能對回基準明細表；AI（語言模型）只用於掃描件辨識與意見書文字潤飾，不參與數字。</Help>
+            <Help className="mt-1">估價單位送來土地徵收補償市價查估書表（各區段勘查表、區域因素分析明細表、比較法調查估價表與三張圖說），系統依評價基準明細表把三張表重算一份，逐格比對估價單位填載值與核算值，指出不符處並附查估辦法條號與作業手冊頁碼，最後產出審查意見書與正式書表。等級、修正率與價格全部由規則引擎依《土地徵收補償市價查估辦法》與作業手冊確定性計算，每一格都能對回基準明細表；AI（語言模型）只用於掃描件辨識與意見書文字潤飾，不參與數字。</Help>
             <div className="mt-3 flex flex-wrap items-stretch gap-2"><ol className="flex-1 min-w-[20rem] grid sm:grid-cols-4 gap-2 text-sm">
-              {[["①", "輸入資料", "上傳送審書表 PDF，或填年期與地號一鍵建案；匯入該地區的評價基準明細表"], ["②", "產出書表", "依基準表判定等級、修正率與價格鏈，重算六頁書表並預覽"], ["③", "審查", "逐格比對填載值與核算值，標出不符與依據；承辦逐項裁決、產生審查意見書"], ["④", "輸出", "下載正式書表 Excel／PDF、審查意見書 Word／PDF、三張圖說"]].map(([n, t, d]) => (
+              {[["①", "輸入資料", "上傳送審書表 PDF，或填年期與地號一鍵建案；匯入該地區的評價基準明細表"], ["②", "產出書表", "依基準表判定等級、修正率與價格鏈，重算全部書表並預覽"], ["③", "審查", "逐格比對填載值與核算值，標出不符與依據；承辦逐項裁決、產生審查意見書"], ["④", "輸出", "下載正式書表 Excel／PDF、審查意見書 Word／PDF、三張圖說"]].map(([n, t, d]) => (
                 <li key={n} className="bg-white border border-orange-200 rounded-lg px-3 py-2"><div className="font-semibold"><span className="text-orange-700 mr-1">{n}</span>{t}</div><div className="text-xs text-slate-700 mt-1">{d}</div></li>))}
             </ol>
             <div className="shrink-0 flex flex-col gap-2 w-56">

@@ -12,7 +12,7 @@ import ActorBox from "./Actor";
 export const NAV: { href: string; match: string[]; label: string; sub?: string }[] = [
   { href: "/", match: ["/"], label: "案件總覽", sub: "上傳送審書表、開啟案件" },
   { href: "/input", match: ["/input", "/case", "/parcels", "/rules"], label: "① 輸入資料", sub: "基準表・基本資料・宗地與實例" },
-  { href: "/sheets", match: ["/sheets", "/table1", "/tables", "/map"], label: "② 產出書表", sub: "六頁書表預覽（照範本）・地圖" },
+  { href: "/sheets", match: ["/sheets", "/table1", "/tables", "/map"], label: "② 產出書表", sub: "書表預覽（照範本）・地圖" },
   { href: "/review", match: ["/review", "/report"], label: "③ 審查", sub: "逐項比對・承辦裁決・意見書" },
   { href: "/export", match: ["/export"], label: "④ 輸出", sub: "下載全部" },
 ];
@@ -43,7 +43,7 @@ function NavInner() {
   const { rec, mode } = useCase();
   const q = rec ? `?case=${encodeURIComponent(rec.id)}` : "";
   const done = useStepStatus();
-  const sub = (it: { href: string; sub?: string }) => (mode === "review" && it.href === "/input" ? "基準表・核對送審書表填載值" : mode === "review" && it.href === "/sheets" ? "重算的六頁書表・地圖" : it.sub);
+  const sub = (it: { href: string; sub?: string }) => (mode === "review" && it.href === "/input" ? "基準表・核對送審書表填載值" : mode === "review" && it.href === "/sheets" ? "重算的書表・地圖" : it.sub);
   const items = rec ? NAV : NAV.filter((it) => it.href === "/");   // 還沒選案件：①～④ 都是針對某個案件的步驟，只留案件總覽
   return (
     <nav className="flex-1 px-2 py-3 text-sm">

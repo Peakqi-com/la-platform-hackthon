@@ -393,8 +393,19 @@ def build_workbook(data: dict, *, meta: dict | None = None, regional: RuleSet | 
     wb = Workbook()
     ws1 = wb.active
     subject_sid = data["subject_parcel"].get("section_id")
-    section = (data.get("sections") or {}).get(subject_sid) or next(iter((data.get("sections") or {}).values()), {"section_id": subject_sid, "survey": {}})
+    sections = data.get("sections") or {}
+    section = sections.get(subject_sid) or next(iter(sections.values()), {"section_id": subject_sid, "survey": {}})
     write_table1(ws1, section, case, regional, meta | {"level_numbers": (meta.get("table1_level_numbers") or {}).get(subject_sid, {})})
+    # 比較標的所在區段各一張勘查表（實務上比準地＋每個比較標的區段都要勘查表；決賽題目就是四張）
+    order = [c.get("section_id") for c in data.get("comparables") or []] + list(sections)
+    done = {section.get("section_id")}
+    for sid in order:
+        if not sid or sid in done or sid not in sections:
+            continue
+        done.add(sid)
+        wsx = wb.create_sheet()
+        write_table1(wsx, sections[sid], case, regional, meta | {"level_numbers": (meta.get("table1_level_numbers") or {}).get(sid, {})})
+        wsx.title = f"表1 {sid}"[:31]
     ws5 = wb.create_sheet()
     write_table5(ws5, result["table5"], regional, case, meta)
     ws4 = wb.create_sheet()

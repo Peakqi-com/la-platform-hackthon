@@ -803,7 +803,7 @@ def cases_sheets(cid: str):
 
 @app.get("/api/cases/{cid}/sheets.pdf")
 def cases_sheets_pdf(cid: str, request: Request, appraiser: str = "", fill_date: str = "", inline: bool = False):
-    """完整書表 PDF：表1、表5、表4 各一頁＋三張圖說各一頁（六頁，照範本順序）。inline=1 → 瀏覽器直接開啟（列印用），否則下載。"""
+    """完整書表 PDF：勘查表每個區段一頁（比準地區段在前）、表5、表4 各一頁＋三張圖說各一頁，照範本順序。inline=1 → 瀏覽器直接開啟（列印用），否則下載。"""
     from app import cases as C
     from app.output.grid import grids_to_pdf, workbook_grids
     rec = C.get_case(cid)
@@ -820,7 +820,7 @@ def cases_sheets_pdf(cid: str, request: Request, appraiser: str = "", fill_date:
 
 @app.get("/api/cases/{cid}/sheets.xlsx")
 def cases_sheets_xlsx(cid: str, request: Request, appraiser: str = "", fill_date: str = ""):
-    """完整書表 Excel：六張工作表（三表＋三圖）。"""
+    """完整書表 Excel：各區段勘查表、表5、表4 各一張工作表＋三張圖說工作表。"""
     from app import cases as C
     rec = C.get_case(cid)
     if not rec:

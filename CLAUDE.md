@@ -112,4 +112,5 @@ docker compose up --build                   # 全套
 - [x] 審查意見書改出 Word／PDF（`app/report/render.py`，python-docx＋reportlab，附三張圖說）：`GET /api/cases/{id}/report.docx|.pdf?reviewer=&reviewer_role=`；zip 內含兩種；不再提供 .md 下載（`/api/report` 的 markdown 只做頁面預覽）。依賴：reportlab、python-docx、pyshp、certifi 已寫進 pyproject
 - [x] 一個案件、多份輸入檔（`app/inputs.py` 純函式合併＋`main.py` 端點）：`POST /api/cases/from_inputs`（多檔建一案；沒書表 PDF 要給案號與基準日）、`POST /api/cases/{id}/inputs`（多檔加入既有案）、`DELETE /api/cases/{id}/inputs/{iid}`（移除＝回 `inputs_base` 快照重新併入其餘檔）、`GET …/inputs/{iid}/file`；併入順序 書表 → 基準表 → 清冊 → 實例 → 地籍圖 → 區段圖；書表拆檔（勘查表／表5／表4 各一份）併入結果與整份相同（`tests/test_inputs.py`）；`/api/adapt` 結果依 sha1 快取 30 分鐘，首頁預覽後建案不重跑影像辨識；單檔 `…/import` 改走同一流程。前端：新增案件對話框「上傳輸入檔」多選→逐份預覽→「合併為一個案件／每份各建一案／加入到既有案件」；案件清單「輸入資料」徽章欄（`components/Inputs.tsx` `InputBadges`）、案件列「輸入檔 N 份」、①基本資料分頁「輸入檔」卡片（加入／移除／下載原檔）、審查頁「輸入檔不一致」表。操作紀錄動作 `input`／`input_remove`
 - 圖說底圖抓 NLSC WMTS 需要網路與憑證（python.org 版 Python 用 certifi）；瓦片快取在 `data/tiles/`；離線時白底並註明
+- [x] 2026-09-12 書表頁數依區段數：勘查表每個區段一張（比準地區段在前、比較標的區段依序），再表5、表4、三張圖說；Excel 一表一工作表、預覽與 PDF 同序。決賽題目四個區段 → 9 頁。地政局正式範本另有 `app/output/official_xlsx.py`（docs/12）。
 - [ ] demo 案例 ×3、runbook、影片、簡報
