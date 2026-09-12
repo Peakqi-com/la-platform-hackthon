@@ -43,3 +43,21 @@ def test_truncated_lvr_file_does_not_break(tmp_path, monkeypatch):
     d = load_lvr()
     assert d["records"] == [] and "損毀" in d["error"]
     assert lvr_status()["n"] == 0 and lvr_status()["error"]
+
+
+def test_removing_an_input_reruns_auto_from_lot(monkeypatch, tmp_path):
+    """移除輸入檔會回到快照重併；重併後要再接依地號自動產生，否則推定的個別因素會變回空白。"""
+    import app.main as M
+    calls = []
+    monkeypatch.setattr(M, "_auto_from_lot", lambda cid, request, results: calls.append(cid))
+    client = TestClient(app)
+    pdf = Path(__file__).resolve().parents[2] / "docs" / "reference" / "查估書表範本.pdf"
+    rules = Path(__file__).resolve().parents[2] / "rules" / "shulin_residential_regional.json"
+    r = client.post("/api/cases/from_inputs", files=[("files", (pdf.name, pdf.read_bytes(), "application/pdf")), ("files", (rules.name, rules.read_bytes(), "application/json"))],
+                    data={"name": "重併測試"})
+    assert r.status_code == 200, r.text
+    cid = r.json()["case"]["id"]
+    iid = next(i["id"] for i in r.json()["case"]["inputs"] if i["kind"] == "rules_table")
+    n = len(calls)
+    r2 = client.delete(f"/api/cases/{cid}/inputs/{iid}")
+    assert r2.status_code == 200 and len(calls) == n + 1 and calls[-1] == cid

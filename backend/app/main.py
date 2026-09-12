@@ -1197,8 +1197,16 @@ def _apply_one_input(cid: str, content: bytes, filename: str, *, kind: str = "au
     return entry
 
 
-def _remove_input(cid: str, iid: str, actor: dict | None) -> dict:
-    """移除一份輸入檔：回到第一份輸入檔併入前的快照，再依序重新併入其餘檔案（結果確定，不做反向刪欄位）。"""
+class _NoRequest:
+    """沒有 HTTP request 的情境（內部重併）給 cases_from_lot 用的替身：只需要 headers。"""
+
+    def __init__(self) -> None:
+        self.headers: dict[str, str] = {}
+
+
+def _remove_input(cid: str, iid: str, actor: dict | None, request: Request | None = None) -> dict:
+    """移除一份輸入檔：回到第一份輸入檔併入前的快照，再依序重新併入其餘檔案（結果確定，不做反向刪欄位），
+    最後和建案時一樣接上「依地號自動產生」——快照裡沒有推定值，不補的話表4 個別因素會變回空白。"""
     from app import cases as C
     from app.inputs import aggregate_extraction
     rec = C.get_case(cid)
@@ -1232,6 +1240,7 @@ def _remove_input(cid: str, iid: str, actor: dict | None) -> dict:
             replayed.append(_apply_one_input(cid, content, i.get("filename") or "", kind=i.get("kind") or "auto", use_vision="auto", actor=actor, log=False))
         except HTTPException as e:
             failed.append(f"{i.get('filename')}：{e.detail}")
+    _auto_from_lot(cid, request or _NoRequest(), replayed)              # 重併後推定值不見了 → 依地號自動產生補回
     AUD.log(cid, actor, "input_remove", f"{entry.get('filename')}（{entry.get('kind_label')}）；已重新併入其餘 {len(replayed)} 份" + (f"；失敗：{'；'.join(failed)}" if failed else ""))
     return {"record": C.get_case(cid), "removed": entry, "replayed": replayed, "failed": failed}
 
@@ -1358,7 +1367,7 @@ async def cases_from_inputs(request: Request, files: list[UploadFile] = File(...
 
 @app.delete("/api/cases/{cid}/inputs/{iid}")
 def cases_inputs_remove(cid: str, iid: str, request: Request):
-    return _remove_input(cid, iid, AUD.actor_from_headers(request.headers))
+    return _remove_input(cid, iid, AUD.actor_from_headers(request.headers), request)
 
 
 @app.get("/api/cases/{cid}/inputs/{iid}/file")
