@@ -100,3 +100,32 @@ def test_blank_submitted_individual_and_widen_reason_in_notes():
     fs2 = collect_findings(reg, ind, data, res, None, blank)
     dates2 = [f for f in fs2 if f["location"].endswith("交易日期")]
     assert dates2 and all(f["severity"] == "info" and "已敘明" in f["message"] for f in dates2)
+
+
+def test_table4_case_note_row_not_mistaken_for_header():
+    """題目表4 最後一列「全案」備註含「比準地所在區段…」字樣，不能被當成比準地表頭列而跳過。"""
+    from app.adapters.common import AdapterResult
+    from app.adapters.pdf_forms import parse_table4
+    from app.engine.rules import load_ruleset
+
+    note = "1.價格日期調整係參酌平均區段地價表。\n2.比準地所在區段無適當成交案例，故依土地徵收補償市價查估辦法第17條第3項規定，擴大蒐集期間。"
+    rows = [["", "", "", "比準地", "", "", "1", "", "", "", "2", "", "", "", "3", "", "", ""],
+            ["全案", note] + [""] * 16]
+
+    class _T:
+        def extract(self):
+            return rows
+
+    class _TS:
+        def __init__(self):
+            self.tables = [_T()]
+
+    class _P:
+        def find_tables(self):
+            return _TS()
+
+        def get_text(self, _k="text"):
+            return "1110901-99-XXX\n全案\n" + note
+
+    out = parse_table4(_P(), load_ruleset("shulin_residential_individual"), AdapterResult(kind="pdf_forms", data={}))
+    assert "第17條第3項" in (out["notes"].get("case") or "")
