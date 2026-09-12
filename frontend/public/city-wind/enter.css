@@ -1,0 +1,52 @@
+/* 進入系統的入口：接在 style.css 之後載入，只加不改，沿用原站的 --accent / --line / --bg。
+   原始碼在 city-wind-source/city-wind/dist，那份保持原樣不動。 */
+
+/* 頁首右側：把「進入系統」與原本的「精簡動態」收成一組，
+   header 仍維持 wordmark / nav / 動作組 三個子元素，不影響 space-between 版面 */
+.header-actions { display: flex; align-items: center; gap: 14px; }
+
+.enter-link {
+  display: inline-flex; align-items: center; gap: 9px;
+  padding: 10px 18px; border-radius: 30px;
+  font-size: 12px; letter-spacing: .1em; white-space: nowrap;
+  color: var(--bg); background: var(--accent);
+  border: 1px solid var(--accent);
+  transition: background .2s, color .2s;
+}
+.enter-link:hover { background: transparent; color: var(--accent); }
+.enter-link span { font-size: 14px; }
+
+/* 結尾章節的兩個出口並成一列：進入系統（主）與重新觀看（次）。
+   分開直排會把原本的 .replay 擠到頁尾 HUD 上。 */
+.ending-actions {
+  display: flex; align-items: center; gap: 26px; flex-wrap: wrap;
+  margin-top: 18px;
+}
+.ending-actions .replay { padding: 0; gap: 12px; }
+
+.enter-cta {
+  display: inline-flex; align-items: center; gap: 14px;
+  padding: 13px 24px;
+  font-size: 15px; letter-spacing: .08em;
+  color: var(--bg); background: var(--accent);
+  border: 1px solid var(--accent);
+  transition: background .2s, color .2s;
+}
+.enter-cta:hover { background: transparent; color: var(--accent); }
+.enter-cta span { font-size: 18px; }
+.enter-note {
+  font-size: 12px; line-height: 1.8; color: var(--muted);
+  margin: 12px 0 0; max-width: 420px;
+}
+
+@media (max-width: 900px) {
+  .header-actions { gap: 10px; }
+  .enter-link { padding: 9px 14px; font-size: 11px; letter-spacing: .06em; }
+}
+@media (max-width: 600px) {
+  .enter-link { padding: 8px 12px; font-size: 11px; gap: 6px; }
+  .enter-link span { font-size: 12px; }
+  .ending-actions { gap: 16px; margin-top: 12px; }
+  .enter-cta { padding: 11px 18px; font-size: 13px; gap: 10px; }
+  .enter-note { font-size: 11px; margin-top: 8px; }
+}

@@ -14,3 +14,4 @@ docs/demo/recordings/*.gif
 docs/demo/deck_img/kv_169.jpg
 *.doc
 *.DOC
+.gstack/

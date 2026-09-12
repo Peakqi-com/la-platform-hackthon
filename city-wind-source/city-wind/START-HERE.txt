@@ -1,0 +1,26 @@
+城市起風／原始碼使用說明
+
+1. 這是免建置的 Three.js 靜態網站。
+2. 請用本機 HTTP 伺服器開啟 dist/，不要直接雙擊 index.html。
+3. 例如在專案資料夾執行：python3 -m http.server 8000 -d dist
+4. 瀏覽器開啟：http://localhost:8000
+
+本版更新：
+- 六段 scene state、阻尼捲動與 spline cinematic camera。
+- 永久顯示的 #FF7A18 基地輪廓、螢幕像素線寬與地籍 crossfade。
+- PBR 道路、建築、玻璃、金屬、車漆與服裝材質。
+- 月光、48 組可辨識發光路燈、動態鄰近燈池與隨機夜間窗光。
+- 45 位行人、18 種職業、10 種行為、SkinnedMesh 與遠距 impostor。
+- 行人正面朝向修正、人行道淨空、斑馬線號誌與路緣等待。
+- 消除地面／文件陰影條紋，材質 mipmap 與水面抗混疊。
+- 近／中／遠鳥群、低頻率飛機事件、樹木與旗幟微風動畫。
+- HIGH／MEDIUM／LOW 品質與動態解析度。
+
+主要檔案：
+- dist/city.js：城市、車流、人物、河流、地籍線。
+- dist/app.js：單一動畫迴圈與整體系統整合。
+- dist/systems/：camera、state、PBR、lighting、parcel、crowd、birds、aircraft、postprocessing、quality。
+- dist/props.js：文件與估價師場景。
+- dist/style.css：RWD 與畫面排版。
+
+提醒：畫面中的地籍資料與編號均為示意資料。
