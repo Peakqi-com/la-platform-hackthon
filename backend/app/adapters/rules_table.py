@@ -33,7 +33,8 @@ from app.engine.rules import RULES_DIR
 from .common import AdapterResult, char_jaccard, norm_label, norm_text, same_char_multiset, to_number
 
 LEVEL_ORDER = ["優", "稍優", "普通", "稍劣", "劣"]
-LEVEL_RE = r"(稍優|稍劣|普通|優|劣)"
+LEVEL_ORDER_EXT = ["極優", "優", "稍優", "普通", "稍劣", "劣", "極劣"]                 # 樹林表「其他影響因素」七級
+LEVEL_RE = r"(極優|極劣|稍優|稍劣|普通|優|劣)"
 
 # ------------------------------------------------------------------ 內政部項目目錄（附件 24/25 的項目結構，不含數值）
 
@@ -164,19 +165,25 @@ def parse_pdf(src: str | Path | bytes) -> tuple[list[RawItem], dict[str, Any]]:
             cur: RawItem | None = None
             blk = 0
             for r in rows:
-                cells = [_s(c) for c in r] + [""] * (9 - len(r))
-                c0, c1, c2, note = cells[0], cells[1], cells[2], cells[8]
-                if "比凖地" in c2 or "比準地" in c2:
+                ncol = max(9, len(r))
+                cells = [_s(c) for c in r] + [""] * (ncol - len(r))
+                c0, c1, c2 = cells[0], cells[1], cells[2]
+                note = next((c for c in reversed(cells[8:]) if c), "")   # 備註在第 9 欄之後最右邊有字的格（七級表為 11 欄）
+                if re.fullmatch(r"[+\-−]?\d+(?:\.\d+)?", note.strip()):     # 七級表數字列的最右格是修正率，不是備註
+                    note = ""
+                if any(k in c2 for k in ("比凖地", "比準地", "基準", "目標區段")):       # 個別表「比準地／宗地」、區域表「基準區段／目標區段」
                     blk += 1
                     if c0 and "主要項目" not in c0:
                         group = c0
-                    levels = [c for c in cells[3:8] if c in LEVEL_ORDER]
+                    levels = [c for c in cells[3:] if c in LEVEL_ORDER_EXT]
                     cur = RawItem(scope, group, c1, levels, {}, note=note, source_ref=f"PDF p{pno} block{blk}")
                     items.append(cur)
+                    if note:
+                        _absorb_conditions(cur, note)
                     continue
                 if cur is None:
                     continue
-                if c2 in LEVEL_ORDER:
+                if c2 in LEVEL_ORDER_EXT:
                     vals = cells[3:3 + len(cur.levels)]
                     cur.matrix[c2] = {lv: to_number(v) for lv, v in zip(cur.levels, vals)}
                     if to_number(c1) is not None:
@@ -188,13 +195,36 @@ def parse_pdf(src: str | Path | bytes) -> tuple[list[RawItem], dict[str, Any]]:
                     cur.max_pct_declared = to_number(c1)
                 if note:
                     _absorb_conditions(cur, note)
+        _fallback_conditions_from_text(items, text, pno)
     return items, meta
+
+
+def _fallback_conditions_from_text(items: list[RawItem], page_text: str, pno: int) -> None:
+    """備註格跨欄時 find_tables 只抓到第一句，等級條件掉了：從頁面純文字找該句之後的「優：…劣：…」補回。"""
+    flat = unicodedata.normalize("NFKC", page_text).replace("\n", "")
+    for it in items:
+        if it.conditions or not it.note or f"p{pno} " not in it.source_ref:
+            continue
+        head = unicodedata.normalize("NFKC", it.note).replace("\n", "")[:12]
+        i = flat.find(head)
+        if i < 0:
+            continue
+        sents = [m.span() for m in re.finditer(r"以(?!上|下|內|外)[^:：]{4,40}?(?:衡量|制定|計算|判定)", flat)]   # 各項目的說明句
+        prev_end = max([e for s_, e in sents if e <= i], default=0)
+        next_start = min([s_ for s_, e in sents if s_ > i + len(head)], default=len(flat))
+        window = flat[prev_end:next_start]                                   # 說明句前後、到鄰項說明句為止（直排表文字順序會前後散落）
+        if "優:" in window or "優：" in window:
+            _absorb_conditions(it, window)
+            if it.conditions:
+                it.note = (it.note or "") + "（等級條件由頁面文字補回，需確認）"
 
 
 def _absorb_conditions(item: RawItem, text: str) -> None:
     """備註欄文字可能一格塞全部等級（優：…稍優：…），也可能一列一個。切開後填 conditions。"""
     t = unicodedata.normalize("NFKC", text).replace("\n", "")
-    parts = re.split(r"(?<!稍)(?=(?:稍優|稍劣|普通|優|劣)\s*[:：])", t)
+    t = re.sub(r"(?<![\d.])2\s+(\d+(?:\.\d+)?)\s*m\s*(以上|以下|未滿)", r"\1m2\2", t)      # 上標 m² 被拆成「2 600m 以上」
+    t = re.sub(r"(\d)\s*m\s*2(?=\s*(以上|以下|未滿|$|\s))", r"\1m2", t)
+    parts = re.split(r"(?<![稍極])(?=(?:極優|極劣|稍優|稍劣|普通|優|劣)\s*[:：])", t)
     for p in parts:
         m = re.match(r"^" + LEVEL_RE + r"\s*[:：]\s*(.*)$", p.strip())
         if m:
@@ -329,6 +359,10 @@ def parse_condition(text: str) -> dict[str, Any]:
     m = re.match(r"^" + _N + _UNIT_RE + r"以上未滿" + _N + _UNIT_RE, t)
     if m:
         out["ranges"] = [{"min": num(m.group(1), m.group(2)), "max": num(m.group(3), m.group(4))}]
+        return out
+    m = re.match(r"^" + _N + _UNIT_RE + r"以下$", t)                       # 「50m2 以下」：含等於，視同未滿（邊界值極少見，列需確認）
+    if m:
+        out["ranges"] = [{"max": num(m.group(1), m.group(2))}]
         return out
     m = re.match(r"^未滿" + _N + _UNIT_RE + r"(或無)?", t)
     if m:
@@ -467,6 +501,8 @@ def _build_criteria(item: RawItem, cat: CatalogItem | None, result: AdapterResul
                     default = lv
                 else:
                     mapping.setdefault(v, lv)
+        if not mapping:                                                   # 條件全是「其他影響因素極優／優…」這種主觀描述 → 人工判定
+            return {"type": "manual", "conditions": item.conditions}
         crit = {"type": "enum", "map": mapping}
         if default:
             crit["default"] = default
