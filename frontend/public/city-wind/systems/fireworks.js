@@ -33,7 +33,7 @@ export class FireworkSystem{
 
   const mat=new THREE.ShaderMaterial({
    transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,toneMapped:false,
-   uniforms:{uScale:{value:600}},
+   uniforms:{uScale:{value:1000}},
    vertexShader:`attribute vec3 aColor;attribute float aSize;attribute float aAlpha;
     uniform float uScale;varying vec3 vColor;varying float vAlpha;
     void main(){vColor=aColor;vAlpha=aAlpha;vec4 mv=modelViewMatrix*vec4(position,1.);
@@ -72,7 +72,7 @@ export class FireworkSystem{
   const a=new THREE.Color(pair[0]),b=new THREE.Color(pair[1]);
   this.rockets.push({x,y:1.6,z,vy:15+this.rnd()*7,t:0,peak:1.05+this.rnd()*.5,a,b});
   const i=this.free();
-  if(i>=0)this.spawn(i,x,1.6,z,0,0,0,a.r,a.g,a.b,.05,.5,0,1,false);
+  if(i>=0)this.spawn(i,x,1.6,z,0,0,0,a.r,a.g,a.b,.05,.8,0,1,false);
  }
 
  explode(x,y,z,a,b){
@@ -81,10 +81,10 @@ export class FireworkSystem{
    const i=this.free();if(i<0)break;
    // 球面均勻取向，速度帶點隨機才不會像標準球
    const u=this.rnd()*2-1,th=this.rnd()*Math.PI*2,s=Math.sqrt(1-u*u);
-   const sp=7.5+this.rnd()*6.5;
+   const sp=12+this.rnd()*9;
    const c=k%2?a:b;                                   // 兩種顏色一起放
    this.spawn(i,x,y,z,s*Math.cos(th)*sp,u*sp,s*Math.sin(th)*sp,c.r,c.g,c.b,
-              1.9+this.rnd()*1.5,.42+this.rnd()*.2,-5.2,.955,false);
+              2.3+this.rnd()*1.7,.95+this.rnd()*.45,-5.2,.955,false);
   }
   this.bursts.push({x,y,z,r:(a.r+b.r)*.5,g:(a.g+b.g)*.5,b:(a.b+b.b)*.5,age:0,life:2.6});
  }
@@ -111,7 +111,7 @@ export class FireworkSystem{
    else{
     // 升空時的尾焰
     const i=this.free();
-    if(i>=0)this.spawn(i,k.x+(this.rnd()-.5)*.25,k.y,k.z+(this.rnd()-.5)*.25,0,-1.5,0,1,.82,.5,.36,.28,-2,.9,false);
+    if(i>=0)this.spawn(i,k.x+(this.rnd()-.5)*.3,k.y,k.z+(this.rnd()-.5)*.3,0,-1.5,0,1,.82,.5,.4,.55,-2,.9,false);
    }
   }
 
@@ -122,7 +122,7 @@ export class FireworkSystem{
    if(q.age>=q.life){
     // 火花燒完後，有機會留下一點很小的餘燼慢慢飄落
     if(!q.ember&&this.rnd()<.34){
-     q.age=0;q.life=2.2+this.rnd()*1.6;q.ember=true;q.baseSize=.14+this.rnd()*.1;
+     q.age=0;q.life=2.2+this.rnd()*1.6;q.ember=true;q.baseSize=.3+this.rnd()*.18;
      q.vx*=.12;q.vy=-.6-this.rnd()*.8;q.vz*=.12;q.grav=-1.5;q.drag=.985;
     }else{q.live=false;this.alpha[i]=0;continue;}
    }

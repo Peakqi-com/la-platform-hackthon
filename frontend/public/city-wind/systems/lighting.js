@@ -10,8 +10,8 @@ function radialTexture(size=64){
 
 export class TimeOfDaySystem{
  update(sceneProgress){
-  const day=clamp(sceneProgress/4.18,0,1),night=smooth(.63,.98,day),sunHeight=Math.sin(clamp((day+.08)/.96,0,1)*Math.PI)*106-8;
-  return {day,night,sunHeight,sunPosition:new THREE.Vector3(lerp(-102,116,day),sunHeight,-92+day*48),moonPosition:new THREE.Vector3(86,74,-104),morning:smooth(0,.2,day)*(1-smooth(.34,.48,day)),sunset:smooth(.63,.8,day)*(1-smooth(.92,1,day))};
+  const day=clamp(sceneProgress/4.18,0,1),night=smooth(.63,.98,day),sunHeight=Math.sin(clamp((day+.08)/.96,0,1)*Math.PI)*58-4;
+  return {day,night,sunHeight,sunPosition:new THREE.Vector3(lerp(-56,104,day),sunHeight,-74+day*44),moonPosition:new THREE.Vector3(-64,6,-88),morning:smooth(0,.2,day)*(1-smooth(.34,.48,day)),sunset:smooth(.63,.8,day)*(1-smooth(.92,1,day))};
  }
 }
 
@@ -41,9 +41,9 @@ export class LightingSystem{
   this.scene=scene;this.renderer=renderer;this.materials=materials;this.quality=quality;
   this.hemi=new THREE.HemisphereLight(0xd8e9e4,0x294846,2.5);scene.add(this.hemi);
   this.sunLight=new THREE.DirectionalLight(0xffead0,3.8);this.sunLight.castShadow=true;this.sunLight.shadow.mapSize.set(quality.settings.shadowMap,quality.settings.shadowMap);this.sunLight.shadow.camera.left=-82;this.sunLight.shadow.camera.right=82;this.sunLight.shadow.camera.top=80;this.sunLight.shadow.camera.bottom=-80;this.sunLight.shadow.camera.near=18;this.sunLight.shadow.camera.far=250;this.sunLight.shadow.bias=.00035;this.sunLight.shadow.normalBias=.13;this.sunLight.shadow.radius=quality.level==='HIGH'?2:1;scene.add(this.sunLight);
-  this.moonLight=new THREE.DirectionalLight(0x91aee3,.1);this.moonLight.position.set(86,74,-104);scene.add(this.moonLight);
+  this.moonLight=new THREE.DirectionalLight(0x91aee3,.1);this.moonLight.position.set(-64,52,-88);scene.add(this.moonLight);
   this.fill=new THREE.DirectionalLight(0x8cb8bd,1.8);this.fill.position.set(70,35,-40);scene.add(this.fill);
-  this.sun=this.createCelestial(0xffd195,2.4,15,.62);this.moon=this.createCelestial(0xb8c9ea,1.9,9,.26);scene.add(this.sun,this.moon);
+  this.sun=this.createCelestial(0xffd195,5,26,.6);this.moon=this.createMoon(5,26,.38);scene.add(this.sun,this.moon);
   const starGeo=new THREE.BufferGeometry(),starData=[];let seed=4821;for(let i=0;i<270;i++){seed=(seed*1664525+1013904223)>>>0;const a=seed/4294967296*Math.PI*2;seed=(seed*1664525+1013904223)>>>0;const r=170+seed/4294967296*90;seed=(seed*1664525+1013904223)>>>0;starData.push(Math.cos(a)*r,55+seed/4294967296*145,Math.sin(a)*r);}starGeo.setAttribute('position',new THREE.Float32BufferAttribute(starData,3));this.stars=new THREE.Points(starGeo,new THREE.PointsMaterial({color:0xcfe2e3,size:.7,transparent:true,opacity:0,depthWrite:false,fog:false}));scene.add(this.stars);
   materials.createEnvironment(renderer,scene);materials.setAnisotropy(Math.min(8,renderer.capabilities.getMaxAnisotropy()));this.streetLights=new StreetLightManager(scene,city,quality);
  }
@@ -51,10 +51,65 @@ export class LightingSystem{
   const root=new THREE.Group(),core=new THREE.Mesh(new THREE.SphereGeometry(radius,24,16),new THREE.MeshBasicMaterial({color,fog:false,transparent:true}));root.add(core);
   const data=new Uint8Array(64*64*4);for(let y=0;y<64;y++)for(let x=0;x<64;x++){const d=Math.hypot(x-31.5,y-31.5)/31.5,a=Math.max(0,1-d),i=(y*64+x)*4;data[i]=255;data[i+1]=210;data[i+2]=155;data[i+3]=Math.round(a*a*glowOpacity*255);}const tex=new THREE.DataTexture(data,64,64,THREE.RGBAFormat);tex.colorSpace=THREE.SRGBColorSpace;tex.needsUpdate=true;const glow=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false,fog:false,blending:THREE.AdditiveBlending}));glow.scale.set(glowSize,glowSize,1);root.add(glow);root.userData={core,glow};return root;
  }
+
+ // 月亮：表面有月海與隕石坑，正面站一隻搗藥的兔子（中秋彩蛋）。
+ // 兔子與坑都掛在一個朝向鏡頭的群組上，不管相機怎麼動都看得到正面。
+ createMoon(radius,glowSize,glowOpacity){
+  const root=new THREE.Group();
+  const body=new THREE.Mesh(new THREE.SphereGeometry(radius,32,24),new THREE.MeshBasicMaterial({color:0xdfe4f0,fog:false,transparent:true}));
+  root.add(body);
+
+  const face=new THREE.Group();root.add(face);
+  const sea=new THREE.MeshBasicMaterial({color:0xaab3c8,fog:false,transparent:true,opacity:.55,depthWrite:false});
+  const crater=new THREE.MeshBasicMaterial({color:0xb9c1d4,fog:false,transparent:true,opacity:.45,depthWrite:false});
+  let sd=4711;const rnd=()=>{sd=(sd*1664525+1013904223)>>>0;return sd/4294967296;};
+  // 月海：幾塊大的深色區
+  for(const [ax,ay,ar] of [[-.34,.28,.40],[.22,.36,.30],[-.10,-.30,.34],[.40,-.14,.22]]){
+   const d=new THREE.Mesh(new THREE.CircleGeometry(radius*ar,20),sea);
+   d.position.set(ax*radius,ay*radius,radius*.97);face.add(d);
+  }
+  // 隕石坑：散佈的小圓
+  for(let i=0;i<16;i++){
+   const a=rnd()*Math.PI*2,r=Math.sqrt(rnd())*.82;
+   const d=new THREE.Mesh(new THREE.CircleGeometry(radius*(.035+rnd()*.07),12),crater);
+   d.position.set(Math.cos(a)*r*radius,Math.sin(a)*r*radius,radius*.98);face.add(d);
+  }
+
+  // 搗藥的兔子（剪影）
+  const ink=new THREE.MeshBasicMaterial({color:0x5d6782,fog:false,transparent:true,opacity:.72,depthWrite:false});
+  const bunny=new THREE.Group();bunny.position.set(radius*.06,-radius*.12,radius*.99);face.add(bunny);
+  const u=radius*.13;
+  const part=(w,h,x,y,rot=0)=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),ink);m.position.set(x,y,0);m.rotation.z=rot;bunny.add(m);return m;};
+  part(u*1.15,u*1.5,0,0);                      // 身體
+  part(u*.8,u*.8,u*.12,u*1.15);                // 頭
+  part(u*.26,u*1.0,-u*.08,u*1.85,.16);         // 耳
+  part(u*.26,u*1.0,u*.3,u*1.9,-.12);           // 耳
+  const arm=part(u*.24,u*1.0,u*.55,u*1.0,-.5); // 手臂（連著杵）
+  const pestle=new THREE.Group();pestle.position.set(u*.62,u*1.15,0);bunny.add(pestle);
+  const stick=new THREE.Mesh(new THREE.PlaneGeometry(u*.16,u*1.5),ink);stick.position.set(0,-u*.55,0);pestle.add(stick);
+  const headP=new THREE.Mesh(new THREE.PlaneGeometry(u*.42,u*.34),ink);headP.position.set(0,-u*1.25,0);pestle.add(headP);
+  part(u*1.0,u*.5,u*.72,-u*.75);               // 臼
+
+  const data=new Uint8Array(64*64*4);
+  for(let y=0;y<64;y++)for(let x=0;x<64;x++){const d=Math.hypot(x-31.5,y-31.5)/31.5,a=Math.max(0,1-d),i=(y*64+x)*4;data[i]=205;data[i+1]=220;data[i+2]=255;data[i+3]=Math.round(a*a*glowOpacity*255);}
+  const tex=new THREE.DataTexture(data,64,64,THREE.RGBAFormat);tex.colorSpace=THREE.SRGBColorSpace;tex.needsUpdate=true;
+  const glow=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false,fog:false,blending:THREE.AdditiveBlending}));
+  glow.scale.set(glowSize,glowSize,1);root.add(glow);
+  root.userData={core:body,glow,face,pestle,arm,bunny};
+  return root;
+ }
+
  update(elapsed,time,state,camera){
   const {day,night,sunHeight,sunPosition,moonPosition}=time;this.sun.position.copy(sunPosition);this.sun.visible=sunHeight>-6;this.moon.position.copy(moonPosition);this.moon.visible=night>.08;
+  if(this.moon.userData.face&&camera){
+   // 月面永遠朝向鏡頭，兔子才不會轉到背面去
+   this.moon.userData.face.quaternion.copy(camera.quaternion);
+   const swing=Math.sin(elapsed*3.2);
+   this.moon.userData.pestle.rotation.z=-.35+Math.max(0,swing)*.95;   // 舉起再落下
+   this.moon.userData.arm.rotation.z=-.5+Math.max(0,swing)*.5;
+  }
   this.sunLight.position.copy(sunPosition);this.sunLight.intensity=state.sunIntensity*lerp(3.4,.25,night)*(1+Math.sin(day*Math.PI)*.36);this.sunLight.color.set(day<.55?0xffe0b2:0xffa36a);
-  this.moonLight.intensity=state.moonIntensity*1.05;this.fill.intensity=lerp(1.75,.42,night);this.fill.color.set(night>.45?0x668bb7:0x8cb8bd);this.hemi.intensity=lerp(2.55,.68,night);this.hemi.color.set(night>.45?0x6f8fc4:0xd8edf0);this.hemi.groundColor.set(night>.45?0x10192a:0x35524c);
+  this.moonLight.intensity=state.moonIntensity*1.85;this.moonLight.color.set(0xa9c2ef);this.fill.intensity=lerp(1.75,.42,night);this.fill.color.set(night>.45?0x668bb7:0x8cb8bd);this.hemi.intensity=lerp(2.55,.68,night);this.hemi.color.set(night>.45?0x6f8fc4:0xd8edf0);this.hemi.groundColor.set(night>.45?0x10192a:0x35524c);
   this.stars.material.opacity=smooth(.7,.97,day)*.82;this.sun.userData.glow.material.opacity=(1-night)*(.58+Math.abs(day-.5)*.26);this.moon.userData.glow.material.opacity=night*.32;
   const sky=new THREE.Color();if(day<.48)sky.lerpColors(new THREE.Color(0x3f5d60),new THREE.Color(0x75999f),day/.48);else if(day<.76)sky.lerpColors(new THREE.Color(0x75999f),new THREE.Color(0x594454),(day-.48)/.28);else sky.lerpColors(new THREE.Color(0x594454),new THREE.Color(0x071319),(day-.76)/.24);
   this.renderer.setClearColor(sky);this.scene.fog.color.copy(sky).multiplyScalar(.58);this.scene.fog.density=state.fogDensity;this.renderer.toneMappingExposure=state.exposure;this.scene.environmentIntensity=lerp(.72,.34,night);this.materials.update(elapsed,night);this.streetLights.update(camera,night,state.worldOpacity);

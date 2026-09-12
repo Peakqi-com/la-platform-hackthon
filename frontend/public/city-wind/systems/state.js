@@ -31,14 +31,29 @@ export class SceneStateMachine{
 
 export class ScrollController{
  constructor(sections,{reduced=()=>false}={}){
-  this.sections=sections;this.reduced=reduced;this.offsets=[];this.progress=0;this.target=0;this.velocity=0;this.viewport={width:innerWidth,height:innerHeight};
+  this.sections=sections;this.reduced=reduced;this.offsets=[];this.progress=0;this.target=0;this.velocity=0;this.lastTick=performance.now();this.viewport={width:innerWidth,height:innerHeight};
   this.measure=this.measure.bind(this);this.read=this.read.bind(this);addEventListener('scroll',this.read,{passive:true});addEventListener('resize',this.measure,{passive:true});this.measure();
  }
  measure(){this.viewport.width=innerWidth;this.viewport.height=innerHeight;this.offsets=this.sections.map(s=>({top:s.offsetTop,height:s.offsetHeight}));this.read();}
  read(){const y=scrollY;let i=0;while(i<this.offsets.length-1&&y>=this.offsets[i+1].top)i++;const o=this.offsets[i];this.target=i+clamp((y-o.top)/Math.max(1,o.height),0,1);}
  update(dt){
   if(this.reduced()){this.progress=this.target;this.velocity=0;return this.progress;}
-  const step=Math.min(dt,.05),error=this.target-this.progress;this.velocity+=error*step*46;this.velocity*=Math.exp(-step*11.5);this.velocity=clamp(this.velocity,-2.4,2.4);this.progress+=this.velocity*step;
+  // 依真實經過時間分段積分。舊版每幀只推進 min(dt,.05)，幀率一低（或第一次
+  // 編譯著色器卡住）場景就會遠遠落後捲動位置，看起來像卡死，要捲到底再捲回來
+  // 才追得上。分段之後追趕速度只跟時間有關，和幀率無關。
+  // 用自己的時鐘：app.js 把 dt 夾在 0.08 秒（那是給動畫用的），
+  // 拿來追趕捲動會讓低幀率時永遠追不上。這裡取兩者較大值。
+  const now=performance.now();
+  const real=(now-(this.lastTick||now))/1000;this.lastTick=now;
+  let remaining=Math.min(Math.max(dt,real),.6);   // 上限 0.6 秒，分頁切回來才不會暴衝
+  while(remaining>0){
+   const step=Math.min(remaining,.02);remaining-=step;
+   const error=this.target-this.progress;
+   this.velocity+=error*step*46;this.velocity*=Math.exp(-step*11.5);
+   this.velocity=clamp(this.velocity,-6,6);
+   this.progress+=this.velocity*step;
+  }
+  const error=this.target-this.progress;
   if(Math.abs(error)<.00008&&Math.abs(this.velocity)<.00008){this.progress=this.target;this.velocity=0;}
   return this.progress;
  }

@@ -33,16 +33,6 @@ export function buildCity(materialLibrary) {
     float sparkle=smoothstep(.94-gaa,1.,glitter)*path*gFade;
     vec3 sun=mix(vec3(1.,.63,.30),vec3(.62,.77,1.),night);
     vec3 c=mix(deep,shallow,.42+vWave*1.1)+bands*vec3(.07,.15,.15)+sun*(path*.23+sparkle*.72);
-    float fish=0.;
-    for(int i=0;i<6;i++){
-     float fi=float(i);
-     float lane=fract(sin(fi*12.9898)*43758.5453);
-     float t=uTime*(.055+fi*.011)+fi*1.7;
-     vec2 fp=vec2(.18+.64*lane+sin(t*1.6+fi*2.1)*.045, fract(t*.085+fi*.17));
-     vec2 d=(vUv-fp)*vec2(96.,132.);
-     fish+=exp(-dot(d,d)*1.35);
-    }
-    c=mix(c,c*vec3(.34,.46,.50),clamp(fish,0.,1.)*(.5-night*.24));
     if(uFireK>.001){
      vec2 fd=vUv-uFireAt;
      float ripple=.5+.5*sin(vUv.y*36.-uTime*2.4);
@@ -143,7 +133,7 @@ export function buildCity(materialLibrary) {
  const roundTower=mesh(buildingShells,new THREE.CylinderGeometry(3.2,4.1,18,24),'teal',39.5,9.5,-18.5);for(let y=3;y<18;y+=2.2){const ring=mesh(buildingDetails,new THREE.TorusGeometry(3.4-y*.018,.1,6,24),'gold',39.5,y+.5,-18.5);ring.rotation.x=Math.PI/2;}const crown=mesh(buildingDetails,new THREE.ConeGeometry(3.5,2.4,24),'terracotta',39.5,19.7,-18.5);crown.rotation.y=Math.PI/8;
  for(let i=0;i<4;i++){const hallX=34+i*3.6;box(buildingShells,hallX,3.3,23.5,3.3,5.5,8,i%2?'brick':'sand');const saw=mesh(buildingDetails,new THREE.ConeGeometry(2.25,2.1,4),'slate',hallX,7,23.5);saw.rotation.y=Math.PI/4;}
  box(buildingShells,-51,4.1,15,5.4,7.2,8,'mustard');for(let y=3;y<8;y+=1.5)box(buildingDetails,-51,y,19.06,5.7,.11,.1,'gold');const clock=mesh(buildingDetails,new THREE.CylinderGeometry(1.25,1.45,5,12),'brick',-51,10.2,15);const clockFace=mesh(buildingDetails,new THREE.CircleGeometry(.72,24),new THREE.MeshBasicMaterial({color:0xf0e3c5}),-51,10.55,16.28);clockFace.rotation.y=0;box(buildingDetails,-51,13.4,15,.12,2.1,.12,'gold');
- const cars=[],carLights=[];
+ const cars=[],carLights=[];let lastTime=0;
  function roundedLoop(x1,z1,x2,z2,y=.49,r=1.3){const path=new THREE.CurvePath(),v=(x,z)=>new THREE.Vector3(x,y,z);path.add(new THREE.LineCurve3(v(x1+r,z1),v(x2-r,z1)));path.add(new THREE.QuadraticBezierCurve3(v(x2-r,z1),v(x2,z1),v(x2,z1+r)));path.add(new THREE.LineCurve3(v(x2,z1+r),v(x2,z2-r)));path.add(new THREE.QuadraticBezierCurve3(v(x2,z2-r),v(x2,z2),v(x2-r,z2)));path.add(new THREE.LineCurve3(v(x2-r,z2),v(x1+r,z2)));path.add(new THREE.QuadraticBezierCurve3(v(x1+r,z2),v(x1,z2),v(x1,z2-r)));path.add(new THREE.LineCurve3(v(x1,z2-r),v(x1,z1+r)));path.add(new THREE.QuadraticBezierCurve3(v(x1,z1+r),v(x1,z1),v(x1+r,z1)));path.autoClose=true;return path;}
  const routes=[roundedLoop(-13,-29,50,34),roundedLoop(8,-29,29,13),roundedLoop(29,-8,50,34),roundedLoop(-13,-8,8,13),roundedLoop(8,13,50,34)];
  const vehicleColors=['red','carBlue','mustard','carGreen','ivory','terracotta','teal','plum','sand'];
@@ -169,13 +159,20 @@ export function buildCity(materialLibrary) {
    mesh(g,new THREE.SphereGeometry(.07,8,6),tailMat,-len*.5-.015,.44,z);
   }
   carLights.push({mat:headMat,base:.1,gain:1.05*bulb},{mat:tailMat,base:.12,gain:.86*bulb},{mat:haloMat,base:0,gain:.3*bulb});
-  if(type!==4){const lightGeo=new THREE.BufferGeometry();lightGeo.setAttribute('position',new THREE.Float32BufferAttribute([len*.45,-.275,-.28,len*.45,-.275,.28,len*.45+4.2,-.275,1.05,len*.45+4.2,-.275,-1.05],3));lightGeo.setIndex([0,1,2,0,2,3]);const footprintMat=new THREE.MeshBasicMaterial({color:0xffd49a,transparent:true,opacity:0,depthWrite:false,blending:THREE.AdditiveBlending,toneMapped:false,side:THREE.DoubleSide});g.add(new THREE.Mesh(lightGeo,footprintMat));carLights.push({mat:footprintMat,base:0,gain:.16*bulb});}
+  g.userData.lights={head:headMat,halo:haloMat,tail:tailMat,bulb};
+  if(type!==4){const lightGeo=new THREE.BufferGeometry();lightGeo.setAttribute('position',new THREE.Float32BufferAttribute([len*.45,-.275,-.28,len*.45,-.275,.28,len*.45+4.2,-.275,1.05,len*.45+4.2,-.275,-1.05],3));lightGeo.setIndex([0,1,2,0,2,3]);const footprintMat=new THREE.MeshBasicMaterial({color:0xffd49a,transparent:true,opacity:0,depthWrite:false,blending:THREE.AdditiveBlending,toneMapped:false,side:THREE.DoubleSide});g.add(new THREE.Mesh(lightGeo,footprintMat));carLights.push({mat:footprintMat,base:0,gain:.16*bulb});g.userData.lights.foot=footprintMat;}
   return g;
  }
  for(let i=0;i<27;i++){
   const type=i%9===0?3:i%7===0?4:i%5===0?2:i%4===0?1:0,g=vehicle(type,vehicleColors[i%vehicleColors.length]);terrain.add(g);
-  cars.push({g,route:routes[i%routes.length],offset:random(),speed:(.008+random()*.008)*(i%3===0?-1:1),lane:(i%2?-.72:.72)});
+  const route=routes[i%routes.length],dir=i%3===0?-1:1;
+  cars.push({g,route,dir,lane:(i%2?-.72:.72),u:random(),baseSpeed:.008+random()*.008,v:0,len:Math.max(1,route.getLength()),gap:999,
+             key:(i%routes.length)+'|'+(i%2?-.72:.72)+'|'+dir});
  }
+ // 同一條路線、同一車道、同方向的車編成一組，起點均分，開場就不會疊在一起
+ const laneGroups=new Map();
+ for(const car of cars){if(!laneGroups.has(car.key))laneGroups.set(car.key,[]);laneGroups.get(car.key).push(car);}
+ for(const group of laneGroups.values())group.forEach((c,k)=>{c.u=(k/group.length+k*.011)%1;});
  // 百工百業：不同職業、服裝、工具與步態，沿街廓人行道移動。
  const workers=[],professions=['營造工程','護理照護','餐飲主廚','物流配送','測量人員','商務上班','環境清潔','花藝工作','消防救護','影像攝影','咖啡職人','藝術創作','園藝養護','機械維修','學生研究','市場攤商','道路工程','郵務服務'];
  const walkRoutes=[roundedLoop(-10,-26,5,-11,.29,.8),roundedLoop(11,-26,26,-11,.29,.8),roundedLoop(32,-26,47,-11,.29,.8),roundedLoop(-10,-5,5,10,.29,.8),roundedLoop(11,-5,26,10,.29,.8),roundedLoop(32,-5,47,10,.29,.8),roundedLoop(11,16,26,31,.29,.8),roundedLoop(32,16,47,31,.29,.8),roundedLoop(-47,-37,-45,37,.29,.45)];
@@ -223,7 +220,33 @@ export function buildCity(materialLibrary) {
  }
  function animate(time,night=0){
   waterMaterial.uniforms.uTime.value=time;waterMaterial.uniforms.uDay.value=night;
-  for(const car of cars){const u=((car.offset+time*car.speed)%1+1)%1,p=car.route.getPointAt(u),tan=car.route.getTangentAt(u).normalize(),side=new THREE.Vector3(-tan.z,0,tan.x);car.g.position.copy(p).addScaledVector(side,car.lane);car.g.rotation.y=-Math.atan2(tan.z,tan.x);}
+  // 車流：同車道依與前車的距離調整速度，不再互相穿過。
+ const dt=Math.min(.05,Math.max(0,time-lastTime));lastTime=time;
+ for(const group of laneGroups.values()){
+  const n=group.length;
+  if(n===1){group[0].v=group[0].baseSpeed;group[0].gap=999;continue;}
+  const sorted=group.slice().sort((a,b)=>a.u-b.u);
+  for(let k=0;k<n;k++){
+   const c=sorted[k],ahead=sorted[c.dir>0?(k+1)%n:(k-1+n)%n];
+   let du=(ahead.u-c.u)*c.dir;du=((du%1)+1)%1;
+   const gap=du*c.len;c.gap=gap;
+   // 距離 3.4 公尺內幾乎停住，9 公尺以外全速，中間平滑過渡
+   c.v=c.baseSpeed*Math.min(1,Math.max(0,(gap-3.4)/5.6));
+  }
+ }
+ for(const car of cars){
+  car.u=((car.u+car.v*car.dir*dt)%1+1)%1;
+  const p=car.route.getPointAt(car.u),tan=car.route.getTangentAt(car.u).normalize(),side=new THREE.Vector3(-tan.z,0,tan.x);
+  car.g.position.copy(p).addScaledVector(side,car.lane);car.g.rotation.y=-Math.atan2(tan.z,tan.x);
+  // 車燈照到前車時變亮：距離愈近，光斑與光暈愈強
+  const L=car.g.userData.lights;
+  if(L){
+   const hit=Math.min(1,Math.max(0,1-(car.gap-2.2)/9));
+   L.halo.opacity=night*.3*L.bulb*(1+hit*1.6);
+   if(L.foot)L.foot.opacity=night*.16*L.bulb*(1+hit*2.1);
+   L.head.opacity=.1+night*1.05*L.bulb*(1+hit*.35);
+  }
+ }
   for(const light of carLights)light.mat.opacity=light.base+night*light.gain;
   for(const light of nightGlow)light.mat.opacity=light.base+night*light.gain;
  }

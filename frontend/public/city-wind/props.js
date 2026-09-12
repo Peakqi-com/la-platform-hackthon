@@ -67,11 +67,17 @@ export function buildAppraiser(materialLibrary){
  const halo=m(new THREE.SphereGeometry(.86,16,12),haloMat,0,0,0,bulbPivot);halo.castShadow=false;
  const capM=m(new THREE.CylinderGeometry(.15,.17,.22,10),gold,0,-.4,0,bulbPivot);capM.castShadow=false;
  // 打在臉上的光源
- const faceLight=new THREE.PointLight(0xffd79a,0,5.2,2);faceLight.position.set(-1.5,7.0,.6);root.add(faceLight);
+ // 光源不能掛在會被 visible=false 的群組底下：three.js 只計算可見物件底下的燈，
+ // 燈數一變就會讓場上所有材質重新編譯著色器，畫面就會卡住好幾百毫秒。
+ // 改成由 app.js 掛到場景、永遠存在，只調 intensity；位置用 anchor 每幀同步。
+ const faceAnchor=new THREE.Object3D();faceAnchor.position.set(-1.5,7.0,.6);root.add(faceAnchor);
+ const faceLight=new THREE.PointLight(0xffd79a,0,9,2);
 
  const sstep=(a,b,v)=>{const t=Math.min(1,Math.max(0,(v-a)/(b-a)));return t*t*(3-2*t);};
  const CYCLE=8.2;
+ root.userData.faceLight=faceLight;root.userData.faceAnchor=faceAnchor;
  root.userData.update=(t,visible)=>{
+  faceAnchor.getWorldPosition(faceLight.position);
   if(!visible){faceLight.intensity=0;return;}
   const c=((t%CYCLE)+CYCLE)%CYCLE;
   // 燈泡：0.6 秒快速亮起，停留到 3.4 秒後淡出

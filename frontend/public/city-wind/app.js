@@ -17,7 +17,7 @@ const parcelTag=document.querySelector('#parcel-tag'),valuation=document.querySe
 const media=matchMedia('(prefers-reduced-motion: reduce)');let reduced=media.matches,manualMotion=false,active=-1;
 
 function showChapter(value,pageProgress,mobile){
- const index=Math.min(4,Math.floor(value+.04));if(index!==active){active=index;chapters.forEach((chapter,i)=>{chapter.classList.toggle('active',i===index);chapter.setAttribute('aria-hidden',i===index?'false':'true');chapter.inert=i!==index;});links.forEach((link,i)=>{link.classList.toggle('active',i===index);if(i===index)link.setAttribute('aria-current','step');else link.removeAttribute('aria-current');});counter.textContent=`0${index+1} — 05`;}
+ const index=Math.min(4,Math.floor(value+.04));if(index!==active){active=index;chapters.forEach((chapter,i)=>{chapter.classList.toggle('active',i===index);chapter.setAttribute('aria-hidden',i===index?'false':'true');chapter.inert=i!==index;});links.forEach((link,i)=>{link.classList.toggle('active',i===index);if(i===index)link.setAttribute('aria-current','step');else link.removeAttribute('aria-current');});counter.textContent=`0${index+1} — 05`;document.documentElement.classList.toggle('at-ending',index===4);}
  const local=value-index,fadeIn=index===0||reduced?1:smooth(-.02,.18,local),fadeOut=index===4||reduced?1:1-smooth(.8,.96,local),alpha=fadeIn*fadeOut,shift=reduced?0:(1-fadeIn)*15-(1-fadeOut)*12;
  chapters.forEach((chapter,i)=>{chapter.style.opacity=i===index?alpha:0;});chapters[index].style.transform=mobile?`translateY(${shift}px)`:`translateY(calc(-46% + ${shift}px))`;progressBar.style.width=`${pageProgress*100}%`;
  const val=smooth(3.05,3.24,value)*(1-smooth(3.76,3.96,value));valuation.style.opacity=val;valuation.style.visibility=val>.01?'visible':'hidden';valuation.style.setProperty('--reveal',smooth(3.18,3.65,value));
@@ -38,12 +38,20 @@ try{
  const materials=new MaterialLibrary(),city=buildCity(materials);scene.add(city.root);city.parcels.forEach((parcel,i)=>parcel.id=parcel.selected?'0128':String(201+i).padStart(4,'0'));
  const survey=buildSurvey(city.parcels);city.root.add(survey.root);const cadastral=new CadastralLayer(survey),targetParcel=city.parcels.find(parcel=>parcel.selected),parcelOverlay=new ParcelOverlay(targetParcel);city.root.add(parcelOverlay.root);
  const fireworks=new FireworkSystem(scene,quality);
- const wind=buildWind();scene.add(wind.root);const paper=buildDocument(materials);scene.add(paper.root);paper.root.visible=false;const appraiser=buildAppraiser(materials);scene.add(appraiser);appraiser.visible=false;
+ const wind=buildWind();scene.add(wind.root);const paper=buildDocument(materials);scene.add(paper.root);paper.root.visible=false;const appraiser=buildAppraiser(materials);scene.add(appraiser);scene.add(appraiser.userData.faceLight);appraiser.visible=false;
  const desk=new THREE.Group(),tabletop=new THREE.Mesh(new THREE.BoxGeometry(34,.6,25),materials.materials.roof);tabletop.position.set(23,-.3,3);tabletop.receiveShadow=true;desk.add(tabletop);for(const x of [8,38])for(const z of [-7,13]){const leg=new THREE.Mesh(new THREE.CylinderGeometry(.2,.2,7,12),materials.materials.trim);leg.position.set(x,-4,z);desk.add(leg);}scene.add(desk);
  // Existing labels remain attached to the cadastral plane and fade with it.
  for(const parcel of city.parcels){const canvas=document.createElement('canvas');canvas.width=512;canvas.height=256;const ctx=canvas.getContext('2d');ctx.fillStyle=parcel.selected?'#ffe2b7':'#c6e4cc';ctx.textAlign='center';ctx.font='500 54px sans-serif';ctx.fillText(parcel.id,256,128);ctx.font='21px sans-serif';ctx.fillText(parcel.selected?'起風段 / 選定宗地':'宗地示意',256,178);const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;const label=new THREE.Mesh(new THREE.PlaneGeometry(6.5,3.25),new THREE.MeshBasicMaterial({map:texture,transparent:true,opacity:0,depthWrite:false}));label.rotation.x=-Math.PI/2;label.position.set(parcel.x,.7,parcel.z);label.renderOrder=802;survey.root.add(label);survey.labels.push(label);}
 
  const scroll=new ScrollController(sections,{reduced:()=>reduced}),stateMachine=new SceneStateMachine(),cameraDirector=new CameraDirector(camera),timeOfDay=new TimeOfDaySystem();
+ // 開場就把整個場景的著色器編譯完（含第三、四章才出現的文件與估價師）。
+ // 不先編譯的話，第一次捲到那一段會當場編譯，造成明顯的卡頓甚至掉影格。
+ function warmup(){
+  const paperWas=paper.root.visible,appraiserWas=appraiser.visible,deskWas=desk.visible;
+  paper.root.visible=true;appraiser.visible=true;desk.visible=true;
+  try{renderer.compile(scene,camera);}catch(e){console.warn('warmup skipped',e);}
+  paper.root.visible=paperWas;appraiser.visible=appraiserWas;desk.visible=deskWas;
+ }
  const lighting=new LightingSystem(scene,renderer,materials,city,quality),crowd=new CrowdSystem(city,materials,quality),birds=new BirdSystem(scene,quality),aircraft=new AircraftSystem(scene,materials),environment=new EnvironmentSystem(scene,city,materials),post=new PostProcessingSystem(renderer,quality);
  const source=new THREE.WebGLRenderTarget(1,1,{depthBuffer:true});source.texture.colorSpace=THREE.SRGBColorSpace;const magnifier=buildMagnifier(source.texture);magnifier.lensMat.fragmentShader=magnifier.lensMat.fragmentShader.replace('gl_FragColor=vec4(c,1.);','gl_FragColor=vec4(c,1.);\n#include <colorspace_fragment>\n');
 
@@ -77,7 +85,7 @@ try{
 
   const tagOpacity=smooth(1.25,1.45,sceneProgress)*(1-smooth(1.78,2.02,sceneProgress));parcelTag.style.opacity=tagOpacity;parcelTag.style.left=`${clamp((projectedParcel.x*.5+.5)*width+(mobile?-85:70),width*(mobile?.08:.55),width-210)}px`;parcelTag.style.top=`${clamp((-projectedParcel.y*.5+.5)*height+(mobile?110:145),height*.4,height-155)}px`;parcelTag.style.right='auto';
   const timeLabel=day<.2?'清晨':day<.5?'日間':day<.76?'午後':day<.9?'黃昏':'夜晚';modelNote.textContent=`${timeLabel} · ${['河岸街廓','起風段 0128','土地資料紀錄','基地現勘','土地與生活'][active]}`;
-  if(firstFrame){firstFrame=false;loader.classList.add('done');}if(quality.update(dt))resize();
+  if(firstFrame){firstFrame=false;warmup();loader.classList.add('done');}if(quality.update(dt))resize();
  }
 
  renderer.domElement.addEventListener('webglcontextlost',event=>{event.preventDefault();paused=true;document.querySelector('#fallback').hidden=false;});renderer.domElement.addEventListener('webglcontextrestored',()=>{paused=false;lastFrame=performance.now();document.querySelector('#fallback').hidden=true;resize();});

@@ -77,11 +77,23 @@ export class MaterialLibrary{
   this.facadeNormal=facadeNormal();
   for(const key of ['ivory','terracotta','mustard','blue','teal','plum','sand','concrete','brick'])
    this.materials[key].normalMap=this.facadeNormal,this.materials[key].normalScale.set(.55,.55),this.materials[key].needsUpdate=true;
-  this.windowMaterials=[];const temperatures=[0xffb36b,0xffc783,0xffd79b,0xffe5c7];
-  temperatures.forEach((color,t)=>{for(let phase=0;phase<2;phase++){
-   const m=pbr(t<2?0x273e43:0x334b50,.18,.08,{emissive:color,emissiveIntensity:.08,envMapIntensity:1.35});
-   m.userData={temperature:t,phase:t*.73+phase*.41,toggle:phase===1};this.windowMaterials.push(m);
-  }});
+  // 窗光分三種：steady 固定、blink 慢慢明滅（有人進出／看電視）、party 彩色跳動。
+  // 多數仍是暖白的家用燈，少數彩色，才像真的夜景而不是聖誕樹。
+  this.windowMaterials=[];
+  const warm=[0xffb36b,0xffc783,0xffd79b,0xffe5c7];
+  const party=[0xff5f9e,0x62d7ff,0x9d7bff,0x6bff9e,0xffd23f];
+  let wi=0;
+  const addWindow=(color,kind,temp)=>{
+   const m=pbr(temp<2?0x273e43:0x334b50,.18,.08,{emissive:color,emissiveIntensity:.08,envMapIntensity:1.35});
+   m.userData={temperature:temp,phase:wi*.63+(wi%3)*.29,kind,seed:(wi*7919%1000)/1000};wi++;
+   this.windowMaterials.push(m);return m;
+  };
+  // 暖白：每個色溫各兩盞固定、一盞慢明滅
+  warm.forEach((color,t)=>{addWindow(color,'steady',t);addWindow(color,'steady',t);addWindow(color,'blink',t);});
+  // 電視的冷光閃動
+  addWindow(0xbfd9ff,'tv',3);addWindow(0xd6e4ff,'tv',3);
+  // 派對彩燈，佔比刻意壓低
+  party.forEach((color,i)=>addWindow(color,'party',i%2+2));
   this.patchFoliage(this.materials.leaf);this.patchFoliage(this.materials.leaf2);
  }
  patchFoliage(material){
@@ -117,7 +129,22 @@ export class MaterialLibrary{
  update(elapsed,night){
   this.wind.time.value=elapsed;this.materials.road.roughness=THREE.MathUtils.lerp(.84,.43,night);this.materials.road.envMapIntensity=THREE.MathUtils.lerp(.14,.34,night);
   this.materials.roadMark.emissiveIntensity=night*.19;this.materials.lamp.emissiveIntensity=.12+night*4.8;
-  for(const m of this.windowMaterials){const wave=Math.sin(elapsed*.045+m.userData.phase*4.7),slow=m.userData.toggle ? .18+.82*THREE.MathUtils.smoothstep(wave,-.24,.18) : .9+.1*wave;m.emissiveIntensity=night*(1.25+m.userData.temperature*.13)*slow;}
+  for(const m of this.windowMaterials){
+   const u=m.userData;let level;
+   if(u.kind==='steady'){
+    level=.92+.08*Math.sin(elapsed*.05+u.phase*4.7);                       // 幾乎不變，只有極慢的呼吸
+   }else if(u.kind==='blink'){
+    const wave=Math.sin(elapsed*.13+u.phase*4.7);
+    level=.14+.86*THREE.MathUtils.smoothstep(wave,-.26,.2);                // 慢慢亮起又慢慢暗下
+   }else if(u.kind==='tv'){
+    const f=Math.sin(elapsed*6.1+u.phase*9)*Math.sin(elapsed*2.7+u.phase*3.3);
+    level=.55+.45*f*f;                                                     // 畫面切換的不規則閃動
+   }else{
+    const beat=Math.sin(elapsed*3.4+u.phase*5.5);
+    level=.3+.7*Math.max(0,beat)*(.6+.4*Math.sin(elapsed*1.7+u.seed*6.28));// 派對：跟著節拍跳
+   }
+   m.emissiveIntensity=night*(1.25+u.temperature*.13)*level;
+  }
  }
  setAnisotropy(value){for(const t of [this.asphaltColor,this.asphaltRoughness,this.asphaltNormal,this.facadeNormal])t.anisotropy=value;}
 }

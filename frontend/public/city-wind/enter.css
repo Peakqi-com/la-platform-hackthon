@@ -50,3 +50,128 @@
   .enter-cta { padding: 11px 18px; font-size: 13px; gap: 10px; }
   .enter-note { font-size: 11px; margin-top: 8px; }
 }
+
+/* ── 載入動畫：估價師拿著板夾一路跑過測量樁 ──────────────────────
+   只動 transform 與 opacity。主執行緒在編譯著色器時會卡住，
+   但這兩種屬性由合成器負責，動畫不會跟著停。 */
+.loading {
+  position: fixed; z-index: 10; left: 0; right: 0; top: 50%;
+  transform: translateY(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: 18px;
+  color: var(--muted); transition: opacity .45s ease;
+}
+.loading.done { opacity: 0; pointer-events: none; }
+.ld-stage { position: relative; width: min(260px, 62vw); height: 58px; }
+
+/* 測量樁：由右往左流過，做出前進感 */
+.ld-ticks {
+  position: absolute; left: -20%; right: -20%; bottom: 9px; height: 12px;
+  background-image: linear-gradient(var(--line), var(--line));
+  background-size: 26px 8px; background-repeat: repeat-x; background-position: 0 100%;
+  opacity: .5; animation: ld-scroll 1.05s linear infinite;
+}
+@keyframes ld-scroll { to { transform: translateX(-26px); } }
+
+/* 地面線與進度：來回掃，不顯示數字 */
+.ld-track { position: absolute; left: 0; right: 0; bottom: 8px; height: 1px; background: var(--line); overflow: hidden; }
+.ld-track i {
+  position: absolute; inset: 0; display: block; background: var(--accent);
+  transform-origin: left center; animation: ld-sweep 1.9s cubic-bezier(.65,0,.35,1) infinite;
+}
+@keyframes ld-sweep {
+  0%   { transform: scaleX(0);   opacity: 1; }
+  55%  { transform: scaleX(1);   opacity: 1; }
+  75%  { transform: scaleX(1);   opacity: .25; }
+  100% { transform: scaleX(1);   opacity: 0; }
+}
+
+/* 跑步的人 */
+.ld-runner {
+  position: absolute; bottom: 9px; left: 0; width: 22px; height: 34px;
+  animation: ld-run 1.9s cubic-bezier(.65,0,.35,1) infinite, ld-bob .22s ease-in-out infinite alternate;
+}
+@keyframes ld-run { 0% { transform: translateX(0); } 55%,100% { transform: translateX(calc(min(260px,62vw) - 22px)); } }
+@keyframes ld-bob { to { transform: translateY(-2px); } }
+.ld-runner i { position: absolute; display: block; background: var(--accent); }
+.ld-head { width: 9px; height: 9px; border-radius: 50%; left: 5px; top: 0; }
+.ld-body { width: 4px; height: 14px; left: 8px; top: 9px; border-radius: 2px; }
+.ld-arm  { width: 9px; height: 3px; left: 11px; top: 12px; border-radius: 2px; transform-origin: left center;
+           animation: ld-arm .22s ease-in-out infinite alternate; }
+@keyframes ld-arm { from { transform: rotate(-16deg); } to { transform: rotate(14deg); } }
+/* 手上的板夾：這是估價師不是路人 */
+.ld-board { width: 8px; height: 10px; left: 18px; top: 9px; border-radius: 1px; background: var(--fg); opacity: .9;
+            animation: ld-arm .22s ease-in-out infinite alternate; transform-origin: left center; }
+.ld-leg  { width: 3px; height: 12px; top: 22px; border-radius: 2px; transform-origin: top center; }
+.ld-leg-a { left: 8px; animation: ld-step .22s ease-in-out infinite alternate; }
+.ld-leg-b { left: 11px; animation: ld-step .22s ease-in-out infinite alternate-reverse; }
+@keyframes ld-step { from { transform: rotate(-24deg); } to { transform: rotate(26deg); } }
+
+.ld-text { margin: 0; font-size: 13px; letter-spacing: .16em; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ld-ticks, .ld-track i, .ld-runner, .ld-arm, .ld-board, .ld-leg { animation: none !important; }
+  .ld-track i { transform: scaleX(.4); }
+}
+@media (max-width: 600px) {
+  .ld-stage { height: 52px; }
+  .ld-text { font-size: 12px; }
+}
+
+/* ── 結尾的主協辦單位 ────────────────────────────────────────────
+   只在第五章（夜景）出現，浮在頁尾 HUD 上方。
+   logo 檔放進 logos/ 就會自動顯示，沒有檔案時只留白字，版面不會破。 */
+.credits {
+  position: fixed; left: 0; right: 0; bottom: 70px; z-index: 11;
+  display: flex; justify-content: flex-end;
+  /* 讓開左邊的章節文字欄（left:7vw、width:40vw），不然會疊在 CTA 上 */
+  padding: 0 4.6vw 0 50vw;
+  opacity: 0; visibility: hidden; transition: opacity .5s ease;
+  pointer-events: none;
+}
+/* 結尾這一屏把裝飾性的場景註記讓開，空間留給主協辦 */
+html.at-ending .model-note { opacity: 0; transition: opacity .4s ease; }
+html.at-ending .credits { opacity: 1; visibility: visible; }
+.cr-row {
+  display: flex; align-items: center; justify-content: flex-end;
+  flex-wrap: wrap; gap: 10px 30px; max-width: 100%;
+}
+.cr-group { display: flex; align-items: center; gap: 9px; white-space: nowrap; }
+.cr-label {
+  font-size: 11px; letter-spacing: .12em; color: var(--muted);
+  white-space: nowrap; padding-right: 3px;
+}
+.cr-unit { font-size: 12px; letter-spacing: .06em; color: var(--fg); white-space: nowrap; }
+.cr-sep { width: 1px; height: 26px; background: var(--line); }
+
+/* 我們這一組的代表單位：字一律白色，比其他單位大一級 */
+.cr-own { gap: 12px; }
+.cr-name { display: flex; flex-direction: column; gap: 2px; }
+.cr-name b { font-size: 14px; font-weight: 700; letter-spacing: .06em; color: #fff; white-space: nowrap; }
+
+/* logo 槽：背景圖，沒有檔案就什麼都不顯示，不會出現破圖 */
+.cr-mark {
+  display: block; width: 30px; height: 30px; flex: none;
+  background: center / contain no-repeat;
+}
+.cr-own .cr-mark { width: 40px; height: 40px; }
+.cr-mark[data-logo="land"]      { background-image: url("./logos/land.png"); }
+.cr-mark[data-logo="ntpc"]      { background-image: url("./logos/ntpc.png"); }
+.cr-mark[data-logo="youth"]     { background-image: url("./logos/youth.png"); }
+.cr-mark[data-logo="digitimes"] { background-image: url("./logos/digitimes.png"); }
+.cr-mark[data-logo="netron"]    { background-image: url("./logos/netron.png"); }
+.cr-mark[data-logo="aws"]       { background-image: url("./logos/aws.png"); }
+/* 深底上的白色標誌：單色標誌用這個轉白；彩色標誌（地政局）保留原色 */
+.cr-mark[data-logo="ntpc"], .cr-mark[data-logo="youth"],
+.cr-mark[data-logo="digitimes"], .cr-mark[data-logo="netron"],
+.cr-mark[data-logo="aws"] { filter: brightness(0) invert(1); opacity: .92; }
+
+@media (max-width: 900px) {
+  .credits { bottom: 62px; padding-left: 54vw; }
+  .cr-row { gap: 8px 16px; }
+  .cr-name b { font-size: 13px; }
+  .cr-mark { width: 24px; height: 24px; }
+  .cr-own .cr-mark { width: 32px; height: 32px; }
+}
+@media (max-width: 600px) {
+  .credits { display: none; }   /* 手機版空間不足，結尾章節本身已有單位名稱 */
+}
