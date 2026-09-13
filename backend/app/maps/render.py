@@ -24,10 +24,12 @@ PRINT_W_MM = 277.0     # A4 橫式可印寬；比例尺依「圖寬 px 印成 27
 TILE_URL = "https://wmts.nlsc.gov.tw/wmts/{layer}/default/GoogleMapsCompatible/{z}/{y}/{x}"
 TILE_LAYERS = ("EMAP", "LANDSECT")     # 電子地圖底圖、段籍圖（段界與段名，透明疊圖）
 TILE_DIR = Path(os.environ.get("TILE_CACHE") or Path(__file__).resolve().parents[3] / "data" / "tiles")
+_BUNDLED_FONT = str(Path(__file__).resolve().parents[1] / "fonts" / "wqy-microhei.ttc")   # 隨程式附的文泉驛微米黑（PDF 也用它）：EC2 沒裝任何中文字型時的保底
 FONT_CANDIDATES = [os.environ.get("MAP_FONT") or "", "/System/Library/Fonts/PingFang.ttc", "/System/Library/Fonts/STHeiti Light.ttc",
                    "/System/Library/Fonts/Hiragino Sans GB.ttc", "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
                    "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc", "/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc",
-                   "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc", "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc"]
+                   "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc", "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
+                   _BUNDLED_FONT]   # 系統都沒有時才用內建字型（本機維持 PingFang，雲端用內建）
 
 
 def _font(size: int):
