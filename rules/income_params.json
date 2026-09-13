@@ -1,0 +1,26 @@
+{
+ "$schema_note": "收益法（直接資本化法）參數預設值。每項 value 為系統預設，range 為依據文件所載區間，source 為出處；check=true 表示依據未給單一值、系統自訂，需估價師確認。案件 data.income.params 同名鍵可覆寫。法源總則：查估辦法 §14（依不動產估價技術規則第三章第二節）、技術規則 §28～§47、全聯會第五號公報〈收益法之直接資本化法〉（98.02.24）、作業手冊 p.37～41 收益法調查估價表填寫說明。",
+ "deposit_months": {"value": 3, "range": [2, 3], "source": "作業手冊 p.39 (五)3：押租金宜視當地習慣，以月租金乘以 2 或 3 個月"},
+ "idle_months": {"value": 1.0, "source": "第五號公報 三(二)：閒置及其他原因之收入損失應考慮市場空置率、裝修期、免租期、招商期；公報未給數值，系統預設每年 1 個月（範本例 1.2 個月）", "check": true},
+ "management_pct_of_gross": {"value": 1.0, "range": [0.5, 2.0], "source": "第五號公報 三(四)5：管理費以年總收入之 0.5%～2.0% 為原則；作業手冊 p.40 (六)6"},
+ "insurance_pct_of_building_cost": {"value": 0.1, "range": [0.05, 0.2], "source": "第五號公報 三(四)4：保險費以建物成本價格之 0.05%～0.2% 計算；作業手冊 p.40 (六)3"},
+ "maintenance_pct_of_construction": {"value": 0.2, "range": [0.1, 0.3], "source": "第五號公報 三(四)6：每年維修費以營造施工費之 0.1%～0.3% 為原則；作業手冊 p.40 (六)4"},
+ "replacement_pct_of_construction": {"value": 1.0, "range": [0.5, 1.5], "source": "第五號公報 三(四)7：住宅或辦公大樓得以營造施工費之 0.5%～1.5% 計算；作業手冊 p.40 (六)5；技術規則 §39"},
+ "land_value_tax_rate_pct": {"value": 1.0, "source": "土地稅法 §16 地價稅基本稅率千分之十；第五號公報 三(四)1 依申報地價計算、不考量總歸戶；累進稅率未計，需確認", "check": true},
+ "declared_to_announced_ratio": {"value": 0.8, "source": "平均地權條例 §16：未申報地價者以公告地價 80% 為申報地價"},
+ "cap_rate_premium_land_pct": {"value": 1.0, "source": "技術規則 §43 第1款風險溢酬法：以銀行定期存款利率等為基準，就流通性、風險性、增值性及管理難易程度加減；溢酬為系統預設（範本例：定存 1.36% → 土地 2.5%），需估價師決定並敘明理由", "check": true},
+ "cap_rate_premium_building_pct": {"value": 2.0, "source": "同上；作業手冊 p.41 (七)2：建物風險高於土地，建物收益資本化率宜高於土地收益資本化率（範本例：建物 3.5%）", "check": true},
+ "cost_approach": {
+  "source": "收益法調查估價表附表─成本法調查估價表（手冊 p.41 (六)7）；技術規則 §48～§67；全聯會第四號公報（113.12.11）",
+  "design_pct": {"value": 2.5, "source": "規劃設計費：範本附表例 2.5%（營造施工費之比例）；技術規則 §59", "check": true},
+  "advertising_sales_pct": {"value": 5.0, "range": [3, 7], "source": "第四號公報 二、廣告費、銷售費率 3%～7%（取中）；技術規則 §61"},
+  "management_pct": {"value": 2.25, "range": [1.5, 3], "source": "第四號公報 二、管理費率 1.5%～3%（取中）；技術規則 §61"},
+  "tax_pct": {"value": 0.85, "range": [0.5, 1.2], "source": "第四號公報 二、稅捐及其他負擔 0.5%～1.2%（取中）；技術規則 §61"},
+  "developer_profit_pct": {"value": 12.0, "source": "開發或建築利潤率：範本附表例 12%；應依第四號公報開發或建築利潤率表確認；技術規則 §62", "check": true},
+  "own_fund_ratio": {"value": 0.4, "source": "資本利息綜合利率：範本附表例自有資金 40%、借貸 40%、預售收入 20%；技術規則 §63", "check": true},
+  "loan_ratio": {"value": 0.4, "source": "同上", "check": true},
+  "presale_ratio": {"value": 0.2, "source": "同上（預售收入利率 0）", "check": true},
+  "installment_factor": {"value": 0.5, "source": "分期投入資本數額及年數調整：範本附表例 0.5；技術規則 §63", "check": true},
+  "construction_years": {"value": 2.0, "source": "建築工期：系統預設 2 年（範本例 8 層 2.8 年），需依建物規模確認", "check": true}
+ }
+}
