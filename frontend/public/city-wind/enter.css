@@ -151,3 +151,12 @@ html.at-ending .credits { opacity: 1; visibility: visible; }
 @media (max-width: 600px) {
   .credits { display: none; }   /* 手機版空間不足，結尾章節本身已有單位名稱 */
 }
+
+/* ── 城市轉進系統之前的最後一幕：一陣風吹過城市 ─────────────────────
+   #gust 是一段空白的捲動距離（接在第五章之後、系統功能之前）；app.js 依它的位置切換 html.at-gust，
+   故事的固定文字讓開，只留城市，並在固定全螢幕的 #gust-canvas 上畫風。
+   畫布在 3D 城市之上、系統功能之下（z-index 7 < .features 的 8），系統那一段蓋上來時自然把風蓋掉，交給它自己的背景風。 */
+.gust-gap { height: 100svh; pointer-events: none; }
+#gust-canvas { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 7; pointer-events: none; display: none; }
+html.at-gust .chapter, html.at-gust .hud, html.at-gust .valuation, html.at-gust .model-note, html.at-gust .parcel-tag, html.at-gust .credits {
+  opacity: 0 !important; visibility: hidden !important; transition: opacity .45s ease, visibility 0s .45s; }

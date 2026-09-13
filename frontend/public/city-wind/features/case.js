@@ -48,7 +48,14 @@ export function initCase(el) {
     const x = pc.ctx, W = pc.w; pc.clear();
     let prog;
     if (replayT != null) { prog = clamp((S.t - replayT) / 8, 0, 1); if (S.t - replayT > 9) replayT = null; }
-    else prog = S.reduced ? (p > .22 ? 1 : 0) : smooth(.1, .4, p);
+    else {
+      // 整段完全蓋住畫面（段落頂端捲到畫面頂端）才從最左邊起跑；流程列往上移到畫面約兩成高時跑完（仍在頁首下方看得到）。
+      // 原本用段落剛露出畫面就開始算的進度（p），上一段還佔著半個畫面時人已經跑到一半。
+      const secTop = el.getBoundingClientRect().top, cover = -secTop, pipeAt = pipe.getBoundingClientRect().top - secTop;
+      const span = clamp(pipeAt - S.vh * .2, S.vh * .25, S.vh * .75);
+      prog = S.reduced ? (cover >= 0 ? 1 : 0) : smooth(0, span, cover);
+      void p;
+    }
     const xs = lis.map(li => centerIn(li, pipe).x), y = 44, rx = lerp(xs[0], xs[xs.length - 1], prog);
     x.strokeStyle = PAL.line; x.lineWidth = 2; x.beginPath(); x.moveTo(xs[0], y); x.lineTo(xs[xs.length - 1], y); x.stroke();
     x.strokeStyle = PAL.gold; x.beginPath(); x.moveTo(xs[0], y); x.lineTo(rx, y); x.stroke();

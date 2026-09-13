@@ -37,17 +37,23 @@ if (host) {
   watchReveals(host);
   watchVisibility();
 
-  let fTop = 0, fBottom = 0;
+  // 結尾（f-end）把城市帶回來：深色底只蓋到結尾之前（--f-end-h，給 features.css 用），
+  // 結尾接近時恢復 3D 繪製（拿掉 city-covered），城市也從上沉的位置回到原位（--f-lift 歸零）。
+  const endEl = document.getElementById('f-end');
+  let fTop = 0, fBottom = 0, endTop = Infinity;
   function mode() {
-    const y = scrollY, vh = innerHeight, rel = fTop - y;
+    const y = scrollY, vh = innerHeight, rel = fTop - y, endRel = endTop - y;
+    const back = clamp((vh * 1.1 - endRel) / (vh * .95), 0, 1);   // 0：結尾還在下面；1：結尾已捲到畫面上方
     setNear(rel < vh * 1.1 && fBottom - y > 0);
     root.classList.toggle('f-near', rel < vh * .55);
     root.classList.toggle('f-in', rel < vh * .3 && fBottom - y > vh * .4);
-    root.classList.toggle('city-covered', rel <= -vh * .72);
-    root.style.setProperty('--f-lift', String(Math.round(clamp(vh * .55 - rel, 0, vh) * .16)));
+    root.classList.toggle('city-covered', rel <= -vh * .72 && endRel > vh * 1.15);
+    root.style.setProperty('--f-lift', String(Math.round(clamp(vh * .55 - rel, 0, vh) * .16 * (1 - back))));
   }
   function measureAll() {
     const b = host.getBoundingClientRect(); fTop = b.top + scrollY; fBottom = fTop + host.offsetHeight;
+    endTop = endEl ? endEl.getBoundingClientRect().top + scrollY : Infinity;
+    host.style.setProperty('--f-end-h', endEl ? `${Math.max(0, Math.round(fBottom - endTop))}px` : '0px');
     measure(); mode();
   }
   addEventListener('scroll', mode, { passive: true });

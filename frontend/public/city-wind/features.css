@@ -8,8 +8,12 @@
   --panel: #0c1a1b; --panel-2: #10262a; --ink-2: #cdd8d2;
   --ok: #9fd3ad; --warn: #e9c46a; --err: #ef8a6f; --meas: #7fc8cf;
   --hdr: 94px;
-  /* 上緣透明、往下漸成實底：城市從這裡沉到系統功能後面 */
-  background: linear-gradient(180deg, rgba(9,19,19,0) 0, rgba(9,19,19,.74) 34svh, var(--bg) 70svh);
+  /* 上緣透明、往下漸成實底：城市從這裡沉到系統功能後面。
+     結尾（f-end 以下，高度 --f-end-h 由 main.js 量）不用實底，改成由實底淡到半透明，讓 3D 城市從標語後面透出來；
+     頁尾主協辦（.f-credits）自己有實底。--f-end-h 沒量到時是 0，等於原本的整片漸層。 */
+  background:
+    linear-gradient(180deg, var(--bg) 0, rgba(9,19,19,.5) 60svh, rgba(9,19,19,.5) 100%) left bottom / 100% var(--f-end-h, 0px) no-repeat,
+    linear-gradient(180deg, rgba(9,19,19,0) 0, rgba(9,19,19,.74) 34svh, var(--bg) 70svh) left top / 100% calc(100% - var(--f-end-h, 0px)) no-repeat;
 }
 .features h3 { font-size: 18px; line-height: 1.5; margin: 0 0 6px; font-weight: 700; letter-spacing: .02em; }
 .features .mono, .features .num { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; }

@@ -226,7 +226,10 @@ export function initFuture(el) {
       txt(x, i ? 'ABCDEF'[i - 1] : '∑', cx + 7, ground - 14, 9, i === cur ? PAL.bg : PAL.gold);
     });
     const moving = Math.abs(off - last) > .3; if (moving) walkT += S.dt; last = off;   // 停在站上時估價師也停步
-    runner(x, W * .1, ground, S.reduced ? 0 : (moving ? walkT : S.t), moving && !S.reduced, PAL.gold);
+    // 估價師跟著整段的水平進度，從畫面最左邊走到最右邊（到最後一站剛好走到右邊）；停站時一起停步
+    const lastSt = stations[stations.length - 1], lastOff = clamp(lastSt.offsetLeft + lastSt.offsetWidth / 2 - S.vw * .5, 0, travel);
+    const walkX = lerp(W * .05, W * .95, lastOff > 0 ? clamp(off / lastOff, 0, 1) : 0);
+    runner(x, walkX, ground, S.reduced ? 0 : (moving ? walkT : S.t), moving && !S.reduced, PAL.gold);
   }
   function drawNear(o) {
     const x = near.ctx, W = near.w, H = near.h; near.clear(); if (S.reduced) return;

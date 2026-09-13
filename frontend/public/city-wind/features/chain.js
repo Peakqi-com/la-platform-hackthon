@@ -98,6 +98,9 @@ export function initChain(el) {
     resize() { layoutNodes(); mid.resize(); far.resize(); measurePath(); },
     enter() { layoutNodes(); measurePath(); showCard(null, ''); },
     update(s) {
+      // 每一幀重新量節點中心：下方說明卡換內容時高度會變，節點區跟著被壓矮、第二排往上移。
+      // 只在進場時量一次的話，線會停在舊位置，下排的線就跑到方塊底邊。
+      measurePath();
       const p = s.ps, next = p < .3 ? 0 : p < .66 ? 1 : 2;
       if (next !== step) { step = next; steps.forEach((st, i) => st.classList.toggle('on', i === step)); }
       const phase0 = 1 - smooth(.22, .34, p), fwd = S.reduced ? (p >= .3 ? 1 : 0) : smooth(.3, .6, p), rev = S.reduced ? (p >= .66 ? 1 : 0) : smooth(.68, .93, p);

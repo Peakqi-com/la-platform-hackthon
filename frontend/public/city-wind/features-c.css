@@ -65,6 +65,10 @@
 html.f-rail-off .f-rail { opacity: 0; visibility: hidden; transition: opacity .4s ease, visibility 0s .4s; }
 .f-end-canvas { z-index: 0; }
 .f-end-inner { position: relative; z-index: 1; max-width: 860px; text-align: center; }
+/* 結尾背景是透出來的 3D 城市（煙火、窗光很亮）：文字後面墊一圈柔和的暗影，字才讀得清楚；
+   不往上延伸，免得壓暗上方由風聚成的標誌 */
+.f-end-inner::before { content: ''; position: absolute; z-index: -1; inset: 0 -16%; pointer-events: none;
+  background: radial-gradient(closest-side, rgba(9,19,19,.8), rgba(9,19,19,.55) 62%, rgba(9,19,19,0)); }
 .f-end .eyebrow { justify-content: center; }
 .f-end h2 { font-size: clamp(30px, 3vw, 52px); }
 .f-end .ending-actions { justify-content: center; margin-top: 26px; }
