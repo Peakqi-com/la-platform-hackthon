@@ -12,9 +12,9 @@ import {PostProcessingSystem} from './systems/postprocessing.js';
 
 const clamp=THREE.MathUtils.clamp,lerp=THREE.MathUtils.lerp;
 const sections=[...document.querySelectorAll('.scene-section')],chapters=[...document.querySelectorAll('.chapter')],links=[...document.querySelectorAll('nav a')];
-const motion=document.querySelector('#motion'),loader=document.querySelector('#loading'),counter=document.querySelector('#counter'),progressBar=document.querySelector('#progress');
+const loader=document.querySelector('#loading'),counter=document.querySelector('#counter'),progressBar=document.querySelector('#progress');
 const parcelTag=document.querySelector('#parcel-tag'),valuation=document.querySelector('#valuation'),modelNote=document.querySelector('#model-note');
-const media=matchMedia('(prefers-reduced-motion: reduce)');let reduced=media.matches,manualMotion=false,active=-1;
+const media=matchMedia('(prefers-reduced-motion: reduce)');let reduced=media.matches,active=-1;
 
 function showChapter(value,pageProgress,mobile){
  const index=Math.min(4,Math.floor(value+.04));if(index!==active){active=index;chapters.forEach((chapter,i)=>{chapter.classList.toggle('active',i===index);chapter.setAttribute('aria-hidden',i===index?'false':'true');chapter.inert=i!==index;});links.forEach((link,i)=>{link.classList.toggle('active',i===index);if(i===index)link.setAttribute('aria-current','step');else link.removeAttribute('aria-current');});counter.textContent=`0${index+1} — 05`;document.documentElement.classList.toggle('at-ending',index===4);}
@@ -23,9 +23,9 @@ function showChapter(value,pageProgress,mobile){
  const val=smooth(3.05,3.24,value)*(1-smooth(3.76,3.96,value));valuation.style.opacity=val;valuation.style.visibility=val>.01?'visible':'hidden';valuation.style.setProperty('--reveal',smooth(3.18,3.65,value));
 }
 
-motion.setAttribute('aria-pressed',String(reduced));motion.textContent=reduced?'恢復動態':'精簡動態';
-function applyMotion(value){reduced=value;motion.setAttribute('aria-pressed',String(value));motion.textContent=value?'恢復動態':'精簡動態';document.documentElement.style.scrollBehavior=value?'auto':'smooth';}
-motion.addEventListener('click',()=>{manualMotion=true;applyMotion(!reduced);});media.addEventListener('change',event=>{if(!manualMotion)applyMotion(event.matches);});
+// 精簡動態只跟隨系統的「減少動態效果」設定；頁首的手動切換鍵已移除。
+function applyMotion(value){reduced=value;document.documentElement.style.scrollBehavior=value?'auto':'smooth';}
+media.addEventListener('change',event=>applyMotion(event.matches));
 // 點導覽或任何錨點時，不要停在區段頂端：那裡 fadeIn 只有 3%，文字幾乎看不見，會被誤會成卡住。
 // 落在區段 34% 處，fadeIn（.18 到 1）與 fadeOut（.8 才開始）都在完全不透明的區間。
 const CHAPTER_ANCHOR=.34;
@@ -45,25 +45,34 @@ try{
 
  const scroll=new ScrollController(sections,{reduced:()=>reduced}),stateMachine=new SceneStateMachine(),cameraDirector=new CameraDirector(camera),timeOfDay=new TimeOfDaySystem();
  // 開場暖機：把之後才會出現的組態全部先編譯、先上傳，完成前載入畫面一直顯示。
- // 第一次捲一遍會卡、第二遍才順，是因為 three.js 第一次畫到某個「光源數量＋物件」組合時
+ // 第一次捲一遍會卡、第二遍才順，是因為 three.js 第一次畫到某個「光源數量＋物件＋畫到哪裡」組合時
  // 才編譯對應的著色器並快取：
  //  1) 路燈白天隱藏、入夜才亮，光源數量一變，全場有光照的材質都要重編，這是最大的一次停頓；
  //  2) 文件、估價師、碎片、月亮、煙火、地籍圖層、放大鏡開場都是隱藏的，第一次出現才編譯；
- //  3) compile 只編譯著色器，貼圖要另外 initTexture 才會先上傳。
+ //  3) 畫進離屏目標（後製、放大鏡）時不做色調映射、輸出線性色彩，跟直接畫到畫面是兩個不同的著色器版本。
+ //     HIGH／MEDIUM 有後製，主場景每幀都先畫進 post.target，暖機必須綁同一個目標再編譯。
+ //     之前沒綁，編好的全是用不到的版本，估價師一出現、路燈一亮就當場重編，第一次捲到「價值」會卡住；
+ //  4) compile 只編譯著色器，貼圖要另外 initTexture 才會先上傳；
+ //     著色器第一次使用時的檢查、幾何上傳、路燈陰影貼圖，要真的畫過一次才會做掉。
  // 白天與夜晚兩種路燈組態各編譯一次；compileAsync 平行編譯，不卡主執行緒（載入動畫照跑）。
  async function warmup(){
   const saved=[],magSaved=[];
-  scene.traverse(o=>saved.push([o,o.visible]));magnifier.scene.traverse(o=>magSaved.push([o,o.visible]));
+  scene.traverse(o=>saved.push([o,o.visible,o.frustumCulled]));magnifier.scene.traverse(o=>magSaved.push([o,o.visible]));
   scene.traverse(o=>{if(!o.isLight)o.visible=true;});magnifier.scene.traverse(o=>{o.visible=true;});
   const spots=lighting.streetLights.spots,qs=quality.settings;
   // 夜晚的路燈組態要與 StreetLightManager.update 完全一致（數量與投影數），快取鍵才會相同
   const setSpots=on=>spots.forEach((sl,i)=>{sl.light.visible=on&&i<qs.activeLights;sl.light.castShadow=i<qs.shadowLights;});
-  const compile=(sc,cam)=>renderer.compileAsync?renderer.compileAsync(sc,cam):Promise.resolve(renderer.compile(sc,cam));
+  // 主場景實際畫進哪裡：有後製是 post.target，沒有就是畫面（null）
+  const mainTarget=qs.post?post.target:null;
+  const compile=(sc,cam,target)=>{renderer.setRenderTarget(target);const job=renderer.compileAsync?renderer.compileAsync(sc,cam):Promise.resolve(renderer.compile(sc,cam));renderer.setRenderTarget(null);return job;};
   try{
    const jobs=[];
-   setSpots(true);jobs.push(compile(scene,camera));    // compileAsync 在呼叫當下就列舉材質，所以可以接著切組態
-   setSpots(false);jobs.push(compile(scene,camera));
-   jobs.push(compile(magnifier.scene,magnifier.camera));
+   // compileAsync 在呼叫當下就決定版本並送出編譯，所以可以接著切組態
+   setSpots(true);jobs.push(compile(scene,camera,mainTarget));
+   setSpots(false);jobs.push(compile(scene,camera,mainTarget));
+   // 放大鏡（地籍那一章，白天）把主場景畫進離屏的 source；沒有後製時那是另一個版本
+   if(!mainTarget)jobs.push(compile(scene,camera,source));
+   jobs.push(compile(magnifier.scene,magnifier.camera,null));
    if(renderer.initTexture){
     const seen=new Set();
     const up=v=>{if(v&&v.isTexture&&!v.isRenderTargetTexture&&!seen.has(v)){seen.add(v);try{renderer.initTexture(v);}catch(e){}}};
@@ -72,8 +81,12 @@ try{
    }
    // 最多等 10 秒，少數驅動不回報完成時也不會卡死在載入畫面
    await Promise.race([Promise.all(jobs),new Promise(r=>setTimeout(r,10000))]);
+   // 離屏實際畫一次（夜晚、白天各一次），畫面上看不到；關掉視錐剔除，鏡頭外的物件也要真的畫到
+   scene.traverse(o=>{o.frustumCulled=false;});
+   for(const on of [true,false]){setSpots(on);spots.forEach(sl=>{sl.light.intensity=sl.light.visible?1:0;});renderer.setRenderTarget(mainTarget||source);renderer.render(scene,camera);}
   }catch(e){console.warn('warmup skipped',e);}
-  for(const [o,v] of saved)o.visible=v;for(const [o,v] of magSaved)o.visible=v;
+  renderer.setRenderTarget(null);
+  for(const [o,v,f] of saved){o.visible=v;o.frustumCulled=f;}for(const [o,v] of magSaved)o.visible=v;
  }
  const lighting=new LightingSystem(scene,renderer,materials,city,quality),crowd=new CrowdSystem(city,materials,quality),birds=new BirdSystem(scene,quality),aircraft=new AircraftSystem(scene,materials),environment=new EnvironmentSystem(scene,city,materials),post=new PostProcessingSystem(renderer,quality);
  const source=new THREE.WebGLRenderTarget(1,1,{depthBuffer:true});source.texture.colorSpace=THREE.SRGBColorSpace;const magnifier=buildMagnifier(source.texture);magnifier.lensMat.fragmentShader=magnifier.lensMat.fragmentShader.replace('gl_FragColor=vec4(c,1.);','gl_FragColor=vec4(c,1.);\n#include <colorspace_fragment>\n');
@@ -96,7 +109,7 @@ try{
   const parcelGate=smooth(.96,1.18,rawProgress)*(1-smooth(1.86,2.04,rawProgress));
   parcelOverlay.update({...state,parcelVisibility:state.parcelVisibility*parcelGate},elapsed);
   paper.root.visible=documentPhase>.002&&returnPhase<.999;paper.root.position.set(18.5,lerp(.7,8.5,documentPhase)-valuePhase*1.5,2.5);paper.root.rotation.x=lerp(-Math.PI/2,-.48,documentPhase)-valuePhase*.35;paper.root.rotation.z=-.035*documentPhase;paper.root.scale.setScalar(lerp(.7,.87,documentPhase)*(reduced?(1-returnPhase):1));if(!reduced)paper.disintegrate(returnPhase,elapsed);paper.draw(smooth(2.08,2.76,sceneProgress));
-  const write=smooth(2.16,2.69,sceneProgress);paper.pencil.position.set(3+Math.sin(write*15)*2.8,7-write*11,.5);paper.pencil.rotation.z=-.6+Math.sin(write*20)*.025;appraiser.visible=valuePhase>.01&&returnPhase<.99;appraiser.scale.setScalar(1.35*valuePhase*(1-returnPhase));appraiser.userData.update?.(elapsed,appraiser.visible&&!reduced&&rawProgress>=2.96&&rawProgress<3.96);desk.visible=documentPhase>.4&&returnPhase<.8;desk.scale.setScalar(documentPhase*(1-returnPhase));
+  const write=smooth(2.16,2.69,sceneProgress),hand=reduced?0:1,lift=smooth(.55,1,Math.sin(elapsed*2.3)),stroke=1-lift*.6;/* 筆在紙上時一直有細小的書寫動作：快的小筆畫、慢慢漂移，每隔一陣子提筆一下；捲動停下來也看得出在寫字 */paper.pencil.position.set(3+Math.sin(write*15)*2.8+hand*(stroke*(Math.sin(elapsed*13.7)*.16+Math.sin(elapsed*31.3)*.05)+Math.sin(elapsed*1.3)*.22),7-write*11+hand*(stroke*Math.sin(elapsed*18.9+.8)*.1+Math.sin(elapsed*.9+2)*.14),.5+hand*lift*.3);paper.pencil.rotation.z=-.6+Math.sin(write*20)*.025+hand*Math.sin(elapsed*9.1)*.035;paper.pencil.rotation.x=hand*Math.sin(elapsed*5.3+.4)*.04;appraiser.visible=valuePhase>.01&&returnPhase<.99;appraiser.scale.setScalar(1.35*valuePhase*(1-returnPhase));appraiser.userData.update?.(elapsed,appraiser.visible&&!reduced&&rawProgress>=2.96&&rawProgress<3.96);desk.visible=documentPhase>.4&&returnPhase<.8;desk.scale.setScalar(documentPhase*(1-returnPhase));
   wind.root.visible=documentPhase<.9||returnPhase>.1;wind.root.children.forEach(object=>{if(object.material?.transparent)object.material.opacity=(object.geometry.type==='TubeGeometry'?.2:1)*(1-documentPhase+returnPhase)*state.worldOpacity;});wind.update(elapsed,reduced);
   const animationTime=reduced?sceneProgress*.7:elapsed;city.animate(animationTime,night);crowd.update(animationTime,dt,camera,state,reduced);birds.update(animationTime,time,state,environment.windDirection,reduced);aircraft.update(animationTime,time,state,reduced);environment.update(animationTime,state,reduced);city.waterMaterial.uniforms.uSunX.value=.5+Math.sin(day*Math.PI*1.35-.5)*.3;
   // 河邊煙火，夜晚才放；水面的倒影顏色跟著當下那朵走。

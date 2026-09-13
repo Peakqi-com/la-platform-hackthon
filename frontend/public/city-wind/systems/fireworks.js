@@ -22,6 +22,7 @@ export class FireworkSystem{
   this.alpha=new Float32Array(MAX_PARTICLES);
   this.sharp=new Float32Array(MAX_PARTICLES);
   this.linePos=new Float32Array(MAX_PARTICLES*6);this.lineCol=new Float32Array(MAX_PARTICLES*8);
+  this.tail=new Float32Array(MAX_PARTICLES*3);   // 拖尾尾端，追著火花跑
   this.p=[];                                    // 粒子狀態
   for(let i=0;i<MAX_PARTICLES;i++)this.p.push({live:false,vx:0,vy:0,vz:0,age:0,life:1,drag:.96,grav:0,ember:false,baseSize:1,streak:false});
 
@@ -72,6 +73,7 @@ export class FireworkSystem{
  spawn(i,x,y,z,vx,vy,vz,cr,cg,cb,life,baseSize,grav,drag,ember){
   const q=this.p[i];q.live=true;q.vx=vx;q.vy=vy;q.vz=vz;q.age=0;q.life=life;q.grav=grav;q.drag=drag;q.ember=ember;q.baseSize=baseSize;
   this.position[i*3]=x;this.position[i*3+1]=y;this.position[i*3+2]=z;
+  this.tail[i*3]=x;this.tail[i*3+1]=y;this.tail[i*3+2]=z;
   this.color[i*3]=cr;this.color[i*3+1]=cg;this.color[i*3+2]=cb;
   this.size[i]=baseSize;this.alpha[i]=1;this.sharp[i]=1;q.streak=false;
  }
@@ -96,7 +98,7 @@ export class FireworkSystem{
    const sp=33+this.rnd()*20;
    const c=k%2?a:b;                                   // 兩種顏色一起放
    this.spawn(i,x,y,z,s*Math.cos(th)*sp,u*sp,s*Math.sin(th)*sp,c.r,c.g,c.b,
-              2.3+this.rnd()*1.7,.95+this.rnd()*.45,-5.2,.955,false);this.p[i].streak=true;
+              2.7+this.rnd()*1.8,.95+this.rnd()*.45,-5.2,.955,false);this.p[i].streak=true;
   }
   this.bursts.push({x,y,z,r:(a.r+b.r)*.5,g:(a.g+b.g)*.5,b:(a.b+b.b)*.5,age:0,life:2.6});
  }
@@ -155,14 +157,19 @@ export class FireworkSystem{
    this.position[i*3]+=q.vx*step;this.position[i*3+1]+=q.vy*step;this.position[i*3+2]+=q.vz*step;
    const x=this.position[i*3],y=this.position[i*3+1],z=this.position[i*3+2];
    const t=q.age/q.life;
-   const fade=q.ember?(1-t)*(1-t):Math.pow(1-t,1.7)*(.55+.45*Math.exp(-t*2.2));
+   // 亮度先維持一段（清楚的階段要夠亮才看得出線條），之後才平滑地暗下去
+   const fade=q.ember?(1-t)*(1-t):(1-sd(.22,1,t))*(.8+.2*Math.exp(-t*6));
    this.alpha[i]=fade;
    if(q.ember){this.sharp[i]=.85;this.size[i]=q.baseSize;}
-   else{this.sharp[i]=1-sd(.08,.5,t);this.size[i]=q.baseSize*(.45+.85*sd(.04,.55,t))*(1-.2*sd(.6,1,t));}
-   const la=(q.streak&&!q.ember)?(1-sd(.1,.34,t))*fade:0;
+   else{this.sharp[i]=1-sd(.3,.72,t);this.size[i]=q.baseSize*(.45+.85*sd(.28,.75,t))*(1-.2*sd(.75,1,t));}
+   // 拖尾的尾端以固定速率追著火花跑：剛炸開時火花快、尾端跟不上，拉出長長的放射線；
+   // 火花被空氣拖慢後尾端逐漸追上，線自然縮短，不是一根根固定長度的棒子
+   const T=i*3,kf=1-Math.exp(-2.2*step);
+   this.tail[T]+=(x-this.tail[T])*kf;this.tail[T+1]+=(y-this.tail[T+1])*kf;this.tail[T+2]+=(z-this.tail[T+2])*kf;
+   const la=(q.streak&&!q.ember)?(1-sd(.3,.62,t))*fade:0;
    if(la>.002){
     this.linePos[L]=x;this.linePos[L+1]=y;this.linePos[L+2]=z;
-    this.linePos[L+3]=x-q.vx*.12;this.linePos[L+4]=y-q.vy*.12;this.linePos[L+5]=z-q.vz*.12;
+    this.linePos[L+3]=this.tail[T];this.linePos[L+4]=this.tail[T+1];this.linePos[L+5]=this.tail[T+2];
     const cr=this.color[i*3],cg=this.color[i*3+1],cb=this.color[i*3+2];
     this.lineCol[C]=Math.min(1,cr*1.4);this.lineCol[C+1]=Math.min(1,cg*1.4);this.lineCol[C+2]=Math.min(1,cb*1.4);this.lineCol[C+3]=la;
     this.lineCol[C+4]=cr;this.lineCol[C+5]=cg;this.lineCol[C+6]=cb;this.lineCol[C+7]=0;

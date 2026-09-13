@@ -200,9 +200,10 @@ export function buildCity(materialLibrary) {
  }
  for(let i=0;i<27;i++){
   const type=i%9===0?3:i%7===0?4:i%5===0?2:i%4===0?1:0,g=vehicle(type,vehicleColors[i%vehicleColors.length]);terrain.add(g);
-  const route=routes[i%routes.length],dir=i%3===0?-1:1;
-  cars.push({g,route,dir,lane:(i%2?-.72:.72),u:random(),baseSpeed:.008+random()*.008,v:0,len:Math.max(1,route.getLength()),gap:999,
-             key:(i%routes.length)+'|'+(i%2?-.72:.72)+'|'+dir});
+  // 靠右行駛：車道由行駛方向決定（順著路線切線走的在右側 +0.72，反向的在 -0.72），對向車不會擠在同一條車道
+  const route=routes[i%routes.length],dir=i%3===0?-1:1,lane=.72*dir;
+  cars.push({g,route,dir,lane,u:random(),baseSpeed:.008+random()*.008,v:0,len:Math.max(1,route.getLength()),gap:999,
+             key:(i%routes.length)+'|'+dir});
  }
  // 同一條路線、同一車道、同方向的車編成一組，起點均分，開場就不會疊在一起
  const laneGroups=new Map();
@@ -272,7 +273,8 @@ export function buildCity(materialLibrary) {
  for(const car of cars){
   car.u=((car.u+car.v*car.dir*dt)%1+1)%1;
   const p=car.route.getPointAt(car.u),tan=car.route.getTangentAt(car.u).normalize(),side=new THREE.Vector3(-tan.z,0,tan.x);
-  car.g.position.copy(p).addScaledVector(side,car.lane);car.g.rotation.y=-Math.atan2(tan.z,tan.x);
+  // 車頭朝行進方向：反向行駛（dir=-1）的車要轉 180°，否則車頭燈在後面、看起來是倒著開
+  car.g.position.copy(p).addScaledVector(side,car.lane);car.g.rotation.y=-Math.atan2(tan.z*car.dir,tan.x*car.dir);
   // 車燈照到前車時變亮：距離愈近，光斑與光暈愈強
   const L=car.g.userData.lights;
   if(L){
