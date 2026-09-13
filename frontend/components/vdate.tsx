@@ -9,6 +9,9 @@ export function vdateHint(v: unknown) {
   return <div className="text-[11px] text-amber-800 mt-0.5">估價基準日 {s.slice(0, 3)}.{s.slice(3, 5)}.{s.slice(5)} 不是 3 月 1 日或 9 月 1 日（查估辦法 §17 第 2 項），可能誤植，請確認。</div>;
 }
 
+/* 新增案件的預設估價基準日：決賽題目為 114 年 3 月 1 日 */
+export const DEFAULT_VDATE = "1140301";
+
 /* 最近一個已到的基準日（民國 7 碼）：今天在 9/1 之後 → 今年 0901；3/1～8/31 → 今年 0301；否則去年 0901 */
 export function latestVdate(now = new Date()): string {
   const y = now.getFullYear() - 1911, m = now.getMonth() + 1;

@@ -265,12 +265,13 @@ def detect_kind(filename: str, content: bytes) -> str:
 
 
 @app.post("/api/adapt")
-async def adapt(file: UploadFile = File(...), kind: str = Form("auto"), land_use: str | None = Form(None),  # noqa: B008
+# 上傳類端點一律用同步 def（FastAPI 自動丟執行緒池）：PDF 解析與影像辨識會阻塞，若寫成 async def 會把整個事件迴圈卡住，所有請求一起排隊（2026-09-13 會場實際發生）。
+def adapt(file: UploadFile = File(...), kind: str = Form("auto"), land_use: str | None = Form(None),  # noqa: B008
                 use_vision: str = Form("auto"), id_prefix: str | None = Form(None)):
     """上傳 → AdapterResult {kind, data, missing_fields, warnings, confidence}。缺欄位不猜，列在 missing_fields 讓 UI 補。"""
     if kind not in ADAPT_KINDS:
         raise HTTPException(400, f"kind 須為 {ADAPT_KINDS}")
-    content = await file.read()
+    content = file.file.read()
     if not content:
         raise HTTPException(400, "空檔案")
     k = detect_kind(file.filename, content) if kind == "auto" else kind
@@ -284,6 +285,12 @@ async def adapt(file: UploadFile = File(...), kind: str = Form("auto"), land_use
         elif k == "rules_table":
             from app.adapters.rules_table import read_rules_table
             res = read_rules_table(content, filename=file.filename, land_use=land_use, id_prefix=id_prefix)
+        elif k == "official_xlsx":
+            # 地政局正式範本（表3／表4／表5 xlsx）是輸出用；pymupdf 會把它展開成幾十頁無文字層的「掃描件」逐頁送影像辨識（會場實測一份 69 頁、半小時以上），直接略過
+            from app.adapters.common import AdapterResult
+            res = AdapterResult(kind="official_xlsx", data={})
+            res.warn("地政局正式範本（表3／表4／表5 xlsx）由系統依核算結果填寫，不作為輸入解析，已略過；請上傳送審書表 PDF、宗地清冊或買賣實例，填好的範本到「輸出」頁下載")
+            res = res.finalize()
         else:
             res = _read_pdf_forms_cached(content, file.filename, use_vision)
     except HTTPException:
@@ -1312,7 +1319,7 @@ def _auto_from_lot(cid: str, request: Request, results: list[dict]) -> None:
 
 
 @app.post("/api/cases/{cid}/inputs")
-async def cases_inputs_add(cid: str, request: Request, files: list[UploadFile] = File(...), kind: str = Form("auto"), use_vision: str = Form("auto")):   # noqa: B008
+def cases_inputs_add(cid: str, request: Request, files: list[UploadFile] = File(...), kind: str = Form("auto"), use_vision: str = Form("auto")):   # noqa: B008
     """一次加入多份輸入檔到同一案件（書表 PDF、清冊、實例、基準表、地籍圖、區段圖）；依種類順序併入：書表 → 基準表 → 清冊 → 實例 → 地籍圖 → 區段圖。每份各回一筆結果，失敗的不影響其他份。"""
     from app import cases as C
     if not C.get_case(cid):
@@ -1320,7 +1327,7 @@ async def cases_inputs_add(cid: str, request: Request, files: list[UploadFile] =
     actor = AUD.actor_from_headers(request.headers)
     items = []
     for f in files:
-        content = await f.read()
+        content = f.file.read()
         try:
             k = _detect_input_kind(f.filename or "", content) if kind == "auto" else kind
         except HTTPException as e:
@@ -1343,7 +1350,7 @@ async def cases_inputs_add(cid: str, request: Request, files: list[UploadFile] =
 
 
 @app.post("/api/cases/from_inputs")
-async def cases_from_inputs(request: Request, files: list[UploadFile] = File(...), name: str | None = Form(None), case_no: str = Form(""),   # noqa: B008
+def cases_from_inputs(request: Request, files: list[UploadFile] = File(...), name: str | None = Form(None), case_no: str = Form(""),   # noqa: B008
                             valuation_date: str = Form(""), district: str = Form(""), land_use: str = Form(""), section_id: str = Form(""),
                             use_vision: str = Form("auto")):
     """從多份輸入檔建立一個案件：先建空案（案號等以表單值起頭，書表 PDF 會補上），再依種類順序把每份檔併入。沒有書表 PDF 時必須給案號與估價基準日。"""
@@ -1351,7 +1358,7 @@ async def cases_from_inputs(request: Request, files: list[UploadFile] = File(...
     actor = AUD.actor_from_headers(request.headers)
     items = []
     for f in files:
-        content = await f.read()
+        content = f.file.read()
         try:
             k = _detect_input_kind(f.filename or "", content)
         except HTTPException as e:
@@ -1428,12 +1435,12 @@ def cases_inputs_file(cid: str, iid: str):
 
 
 @app.post("/api/cases/{cid}/import")
-async def cases_import(cid: str, request: Request, file: UploadFile = File(...), kind: str = Form("auto")):   # noqa: B008
+def cases_import(cid: str, request: Request, file: UploadFile = File(...), kind: str = Form("auto")):   # noqa: B008
     """單檔匯入（宗地與實例分頁、補上送審書表用）：走同一套輸入檔流程，回傳格式相容舊版（matched／unmatched／changes）。"""
     from app import cases as C
     if not C.get_case(cid):
         raise HTTPException(404, "沒有這個案件")
-    content = await file.read()
+    content = file.file.read()
     entry = _apply_one_input(cid, content, file.filename or "", kind=kind, use_vision="auto", actor=AUD.actor_from_headers(request.headers))
     rec = C.get_case(cid)
     if entry.get("skipped"):
@@ -1579,14 +1586,14 @@ def _apply_cadastre(rec: dict, content: bytes, filename: str, section_field: str
 
 
 @app.post("/api/cases/{cid}/cadastre")
-async def cases_cadastre(cid: str, request: Request, file: UploadFile = File(...), section_field: str = Form(""), lot_field: str = Form(""),   # noqa: B008
+def cases_cadastre(cid: str, request: Request, file: UploadFile = File(...), section_field: str = Form(""), lot_field: str = Form(""),   # noqa: B008
                          src_epsg: int = Form(3826)):
     """匯入地籍圖檔（GeoJSON、KML／GML（國土測繪中心地籍圖 API MAP_001／MAP_002 回傳格式）、或含 .shp/.dbf/.shx 的 zip，預設 TWD97 EPSG:3826）：存成本案地籍圖層（三張圖畫出每筆界線與地號），並用它補比準地與比較標的的真實幾何。"""
     from app import cases as C
     rec = C.get_case(cid)
     if not rec:
         raise HTTPException(404, "沒有這個案件")
-    content = await file.read()
+    content = file.file.read()
     r = _apply_cadastre(rec, content, file.filename or "", section_field, lot_field, src_epsg)
     AUD.log(cid, AUD.actor_from_headers(request.headers), "import", f"{file.filename}（地籍圖 {r['n']} 筆）：對到 {len(r['matched'])} 筆宗地" + (f"；對不到 {'、'.join(r['unmatched'])}" if r["unmatched"] else ""))
     return r
@@ -1641,13 +1648,13 @@ def _apply_section_map(rec: dict, content: bytes, filename: str, id_field: str =
 
 
 @app.post("/api/cases/{cid}/sections_map")
-async def cases_sections_map(cid: str, request: Request, file: UploadFile = File(...), id_field: str = Form(""), src_epsg: int = Form(3826)):   # noqa: B008
+def cases_sections_map(cid: str, request: Request, file: UploadFile = File(...), id_field: str = Form(""), src_epsg: int = Form(3826)):   # noqa: B008
     """匯入地價區段圖（GeoJSON／KML／GML／Shapefile zip）：依區段編號對到本案區段，寫入正式範圍多邊形（來源「地價區段圖」）；整份圖存為圖層，鄰近區段也畫在圖上。"""
     from app import cases as C
     rec = C.get_case(cid)
     if not rec:
         raise HTTPException(404, "沒有這個案件")
-    content = await file.read()
+    content = file.file.read()
     r = _apply_section_map(rec, content, file.filename or "", id_field, src_epsg)
     AUD.log(cid, AUD.actor_from_headers(request.headers), "import", f"{file.filename}（地價區段圖 {r['n']} 區段）：對到 {'、'.join(r['matched']) or '無'}" + (f"；對不到 {'、'.join(r['unmatched'])}" if r["unmatched"] else ""))
     return r
