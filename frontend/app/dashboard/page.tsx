@@ -6,7 +6,7 @@ import { useCase } from "@/components/CaseContext";
 import PageHeader from "@/components/PageHeader";
 import { IOBadge } from "@/components/IO";
 import { Btn, Card, Help, Modal } from "@/components/ui";
-import { latestVdate, VDateSelect } from "@/components/vdate";
+import { DEFAULT_VDATE, VDateSelect } from "@/components/vdate";
 import { InputBadges, InputDetail } from "@/components/Inputs";
 import { api, Any, fmtMoney, INPUT_KIND_LABEL, InputResult, LOW_CONF, STATUS_LABEL } from "@/lib/api";
 
@@ -23,7 +23,7 @@ type NewMethod = "upload" | "lot" | "example";
 export default function Dashboard() {
   const router = useRouter();
   const { rec, loadDemo, loading, error, cases, loadCase, refreshList } = useCase();
-  const [nc, setNc] = useState({ case_no: "", valuation_date: latestVdate(), district: "新北市金山區", land_use: "商業用地", section_id: "", range_desc: "", subject_parcel_id: "" });
+  const [nc, setNc] = useState({ case_no: "", valuation_date: DEFAULT_VDATE, district: "新北市金山區", land_use: "商業用地", section_id: "", range_desc: "", subject_parcel_id: "" });
   const [autoFill, setAutoFill] = useState(true);      // 建立後立即依地號產生（含實價登錄比較標的）
   const [lots, setLots] = useState<{ section: string; lot: string; parcel_id: string; district?: string | null }[]>([]);   // 預載地籍圖的地號清單（比準地下拉，依鄉鎮市區篩）
   const [manualLot, setManualLot] = useState(false);       // 地籍圖沒有的地號：改手動輸入
@@ -49,7 +49,7 @@ export default function Dashboard() {
   const [batchMsg, setBatchMsg] = useState<string | null>(null);
   const [umode, setUmode] = useState<"one" | "each" | "existing">("one");
   const [targetCase, setTargetCase] = useState("");
-  const [nf, setNf] = useState({ case_no: "", valuation_date: latestVdate(), district: "新北市金山區" });   // 沒有書表 PDF 時建案要的基本資料
+  const [nf, setNf] = useState({ case_no: "", valuation_date: DEFAULT_VDATE, district: "新北市金山區" });   // 沒有書表 PDF 時建案要的基本資料
   function previewOf(u: Upload, r: Any): Upload["preview"] {
     const d = r.data || {};
     const base = { filename: u.filename, kind: r.kind, kind_label: INPUT_KIND_LABEL[r.kind] || r.kind, missing: r.missing_fields || [], warnings: r.warnings || [], confidence: r.confidence || {}, data: d, pages: d.pages || [], summary: "" };
