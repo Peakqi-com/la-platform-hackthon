@@ -1,6 +1,128 @@
 import * as THREE from './three.module.min.js';
 import {MaterialLibrary} from './systems/materials.js';
 
+// @@traffic-begin
+// 車流控制器：不依賴 DOM。frontend/scripts/trafficsim.mjs 會把這一段原封不動抽出來做長時間模擬，
+// 改這裡或改車的路線之後都要重跑：重疊必須是 0，也不能有車停超過 30 秒。
+// 目標是絕不相撞。每台車只控制自己的油門：
+//  1) 沿自己的車道往前掃 14 m（用實際畫出來的車身：中心沿路線、車身沿切線），前方有任何車的車身
+//     （不分路線、方向）就在 0.8 m 外停住，6 m 內依距離減速；
+//  2) 和其他車道交叉或匯入的衝突區：已在區內的車先過；都還沒進去時離入口近的先過，一樣近編號小的先過；
+//     前車很慢而出口放不下整台車就不進去，停車時車身也不壓在衝突區裡（不堵路口）；
+//  3) 後車逼近到 6 m 內，前車在自己前方允許的範圍內加速，最多 1.7 倍；
+//  4) 減速立即生效、加速有上限（1.2 m/s²）；每幀位移遠小於安全距離，不會一步跨進別的車。
+// 車道偏移：兩條對向車道相隔 2 m。原本 .72（相隔 1.44）時，廂型車轉彎車頭沿切線伸出約 0.4 m，
+// 會伸進對向車道，兩台對向右轉的車互相把對方當成前車而一起停住。
+const TRAFFIC_LANE=1;
+function createTraffic(routes,specs){
+ const STEP=.25,LOOK=14,LOOKZ=9,SAFE=.8,SLOW=6,MARGIN=.15,BOOST=.7,ACCEL=1.2,CLR=1.34,LANE=TRAFFIC_LANE;
+ const wrap=(x,L)=>x-Math.floor(x/L)*L,within=(x,a,len,L)=>wrap(x-a,L)<=len;
+ const lanes=new Map();
+ function laneOf(ri,dir){
+  const key=ri+'|'+dir;let ln=lanes.get(key);if(ln)return ln;
+  const route=routes[ri],L=route.getLength(),N=Math.max(16,Math.round(L/STEP)),step=L/N;
+  const px=new Float32Array(N),pz=new Float32Array(N),fx=new Float32Array(N),fz=new Float32Array(N);
+  for(let k=0;k<N;k++){
+   const u=wrap((dir>0?k*step:L-k*step)/L,1),p=route.getPointAt(u),t=route.getTangentAt(u).normalize();
+   px[k]=p.x-t.z*LANE*dir;pz[k]=p.z+t.x*LANE*dir;fx[k]=t.x*dir;fz[k]=t.z*dir;
+  }
+  ln={key,L,N,step,px,pz,fx,fz,zones:[],cars:[]};lanes.set(key,ln);return ln;
+ }
+ function at(ln,s,o){
+  const f=wrap(s,ln.L)/ln.step,k=Math.floor(f)%ln.N,k2=(k+1)%ln.N,t=f-Math.floor(f);
+  o.x=ln.px[k]+(ln.px[k2]-ln.px[k])*t;o.z=ln.pz[k]+(ln.pz[k2]-ln.pz[k])*t;
+  const fx=ln.fx[k]+(ln.fx[k2]-ln.fx[k])*t,fz=ln.fz[k]+(ln.fz[k2]-ln.fz[k])*t,n=Math.hypot(fx,fz)||1;o.fx=fx/n;o.fz=fz/n;return o;
+ }
+ function ptSeg(px,pz,ax,az,bx,bz){const dx=bx-ax,dz=bz-az,l2=dx*dx+dz*dz;let t=l2>0?((px-ax)*dx+(pz-az)*dz)/l2:0;t=t<0?0:t>1?1:t;return Math.hypot(ax+dx*t-px,az+dz*t-pz);}
+ // 兩台車身（沿車頭方向的線段）最短距離，交叉時為 0
+ function bodyDist(c,o){
+  const ax=c.x-c.fx*c.hl,az=c.z-c.fz*c.hl,bx=c.x+c.fx*c.hl,bz=c.z+c.fz*c.hl,cx=o.x-o.fx*o.hl,cz=o.z-o.fz*o.hl,dx=o.x+o.fx*o.hl,dz=o.z+o.fz*o.hl;
+  const d1=(dx-cx)*(az-cz)-(dz-cz)*(ax-cx),d2=(dx-cx)*(bz-cz)-(dz-cz)*(bx-cx),d3=(bx-ax)*(cz-az)-(bz-az)*(cx-ax),d4=(bx-ax)*(dz-az)-(bz-az)*(dx-ax);
+  if(d1*d2<0&&d3*d4<0)return 0;
+  return Math.min(ptSeg(ax,az,cx,cz,dx,dz),ptSeg(bx,bz,cx,cz,dx,dz),ptSeg(cx,cz,ax,az,bx,bz),ptSeg(dx,dz,ax,az,bx,bz));
+ }
+ const cars=specs.map((sp,i)=>{const ln=laneOf(sp.ri,sp.dir),c={i,ln,len:sp.len,hl:sp.len/2,hw:sp.w/2,vmax:sp.vmax,v:0,s:wrap(sp.s,ln.L),x:0,z:0,fx:1,fz:0,gap:LOOK,stop:LOOK,prevStop:LOOK,blocker:null,press:0};ln.cars.push(c);return c;});
+ // 衝突區：兩條車道中心線靠近到 CLR 以內、且行進方向不同（交叉或匯入）的路段
+ const laneArr=[...lanes.values()];
+ function runs(idx,N){
+  const out=[];let st=idx[0],pr=idx[0];
+  for(let n=1;n<idx.length;n++){if(idx[n]-pr>2){out.push([st,pr]);st=idx[n];}pr=idx[n];}
+  out.push([st,pr]);
+  if(out.length>1&&out[0][0]<=2&&out[out.length-1][1]>=N-3){const last=out.pop();out[0]=[last[0],out[0][1]+N];}
+  return out;
+ }
+ for(let a=0;a<laneArr.length;a++)for(let b=a+1;b<laneArr.length;b++){
+  const A=laneArr[a],B=laneArr[b],grid=new Map(),cell=1.5,pairs=[];
+  for(let j=0;j<B.N;j++){const key=Math.floor(B.px[j]/cell)+','+Math.floor(B.pz[j]/cell);let g=grid.get(key);if(!g)grid.set(key,g=[]);g.push(j);}
+  for(let i=0;i<A.N;i++){
+   const gx=Math.floor(A.px[i]/cell),gz=Math.floor(A.pz[i]/cell);
+   for(let ox=-1;ox<=1;ox++)for(let oz=-1;oz<=1;oz++){const g=grid.get((gx+ox)+','+(gz+oz));if(!g)continue;
+    for(const j of g){const ex=B.px[j]-A.px[i],ez=B.pz[j]-A.pz[i];if(ex*ex+ez*ez<CLR*CLR&&A.fx[i]*B.fx[j]+A.fz[i]*B.fz[j]<.7)pairs.push([i,j]);}}
+  }
+  if(!pairs.length)continue;
+  for(const ir of runs([...new Set(pairs.map(p=>p[0]))].sort((x,y)=>x-y),A.N)){
+   const js=[...new Set(pairs.filter(p=>wrap(p[0]-ir[0],A.N)<=ir[1]-ir[0]).map(p=>p[1]))].sort((x,y)=>x-y);
+   for(const jr of runs(js,B.N)){
+    const z={a0:ir[0]*A.step,alen:(ir[1]-ir[0]+1)*A.step,other:B,b0:jr[0]*B.step,blen:(jr[1]-jr[0]+1)*B.step};
+    A.zones.push(z);B.zones.push({a0:z.b0,alen:z.blen,other:A,b0:z.a0,blen:z.alen});
+   }
+  }
+ }
+ // 開場位置：依序放，跟已放好的車太近就往前挪，保證一開始沒有重疊
+ for(let n=0;n<cars.length;n++){const c=cars[n];
+  for(let k=0;k<800;k++){at(c.ln,c.s,c);let ok=true;for(let m=0;m<n;m++)if(bodyDist(c,cars[m])<c.hw+cars[m].hw+1){ok=false;break;}if(ok)break;c.s=wrap(c.s+.5,c.ln.L);}
+ }
+ const Q={x:0,z:0,fx:0,fz:0};
+ function update(dt){
+  if(!(dt>0))return;
+  for(const c of cars)at(c.ln,c.s,c);
+  // 1) 前方掃描：未來的車頭（中心沿路線前進 d、車頭沿切線伸出半個車長）碰到任何車身，就是前方距離
+  for(const c of cars){
+   c.gap=LOOK;c.blocker=null;
+   const near=[];for(const o of cars)if(o!==c&&Math.abs(o.x-c.x)+Math.abs(o.z-c.z)<LOOK+c.len+o.len+2)near.push(o);
+   if(!near.length)continue;
+   scan:for(let d=0;d<=LOOK;d+=.5){
+    at(c.ln,c.s+d,Q);const qx=Q.x+Q.fx*c.hl,qz=Q.z+Q.fz*c.hl;
+    for(const o of near)if(ptSeg(qx,qz,o.x-o.fx*o.hl,o.z-o.fz*o.hl,o.x+o.fx*o.hl,o.z+o.fz*o.hl)<c.hw+o.hw+MARGIN){c.gap=d;c.blocker=o;break scan;}
+   }
+  }
+  // 2) 衝突區讓車，停車時不壓在衝突區裡
+  for(const c of cars){
+   const ln=c.ln,L=ln.L,front=c.s+c.hl,rear=c.s-c.hl,slowAhead=c.blocker&&c.blocker.v<.5*c.blocker.vmax;
+   let stop=c.gap,gave=false;const ahead=[];
+   for(const z of ln.zones){
+    if(within(rear,z.a0,z.alen,L)||within(z.a0,rear,c.len,L))continue;      // 車身已在區內：不讓，趕快通過
+    const dA=wrap(z.a0-front,L);if(dA>LOOK)continue;ahead.push(z,dA);
+    if(dA>LOOKZ)continue;
+    let give=false;
+    for(const o of z.other.cars){
+     const oL=z.other.L,oRear=o.s-o.hl;
+     if(within(oRear,z.b0,z.blen,oL)||within(z.b0,oRear,o.len,oL)){give=true;break;}   // 對方已在區內
+     const dB=wrap(z.b0-(o.s+o.hl),oL);
+     if(dB<=LOOKZ&&o.prevStop>dB+.01&&(dB<dA-.05||(Math.abs(dB-dA)<=.05&&o.i<c.i))){give=true;break;}   // 對方會先到
+    }
+    if(!give&&slowAhead&&c.gap<dA+z.alen+c.len+SAFE)give=true;                // 前車很慢、出口放不下整台車：不進去
+    if(give&&dA<stop){stop=dA;gave=true;}
+   }
+   if(gave||slowAhead)for(let it=0;it<6;it++){let moved=false;
+    for(let n=0;n<ahead.length;n+=2){const z=ahead[n],dA=ahead[n+1];if(dA<stop-SAFE&&dA+z.alen>stop-SAFE-c.len){stop=dA;moved=true;}}
+    if(!moved)break;}
+   c.stop=stop;
+  }
+  // 3) 後車逼近：被當成前車的那台加速
+  for(const c of cars)c.press=0;
+  for(const o of cars)if(o.blocker){const p=Math.min(1,Math.max(0,(SLOW-o.gap)/(SLOW-SAFE)));if(p>o.blocker.press)o.blocker.press=p;}
+  // 4) 油門：減速立即、加速有上限
+  for(const c of cars){
+   const limit=c.vmax*(1+BOOST)*Math.min(1,Math.max(0,(c.stop-SAFE)/(SLOW-SAFE))),want=Math.min(c.vmax*(1+BOOST*c.press),limit);
+   c.v=want<c.v?want:Math.min(want,c.v+ACCEL*dt);c.prevStop=c.stop;
+  }
+  for(const c of cars)c.s=wrap(c.s+c.v*dt,c.ln.L);
+ }
+ return {cars,update,at,bodyDist,lanes};
+}
+// @@traffic-end
+
 // All scene geometry is original. Distances are illustrative local units.
 export function buildCity(materialLibrary) {
  const library=materialLibrary||new MaterialLibrary(),materials=library.materials;
@@ -170,7 +292,7 @@ export function buildCity(materialLibrary) {
  box(buildingShells,-51,4.1,15,5.4,7.2,8,'mustard');for(let y=3;y<8;y+=1.5)box(buildingDetails,-51,y,19.06,5.7,.11,.1,'gold');const clock=mesh(buildingDetails,new THREE.CylinderGeometry(1.25,1.45,5,12),'brick',-51,10.2,15);const clockFace=mesh(buildingDetails,new THREE.CircleGeometry(.72,24),new THREE.MeshBasicMaterial({color:0xf0e3c5}),-51,10.55,16.28);clockFace.rotation.y=0;box(buildingDetails,-51,13.4,15,.12,2.1,.12,'gold');
  const cars=[],carLights=[];let lastTime=0;
  function roundedLoop(x1,z1,x2,z2,y=.49,r=1.3){const path=new THREE.CurvePath(),v=(x,z)=>new THREE.Vector3(x,y,z);path.add(new THREE.LineCurve3(v(x1+r,z1),v(x2-r,z1)));path.add(new THREE.QuadraticBezierCurve3(v(x2-r,z1),v(x2,z1),v(x2,z1+r)));path.add(new THREE.LineCurve3(v(x2,z1+r),v(x2,z2-r)));path.add(new THREE.QuadraticBezierCurve3(v(x2,z2-r),v(x2,z2),v(x2-r,z2)));path.add(new THREE.LineCurve3(v(x2-r,z2),v(x1+r,z2)));path.add(new THREE.QuadraticBezierCurve3(v(x1+r,z2),v(x1,z2),v(x1,z2-r)));path.add(new THREE.LineCurve3(v(x1,z2-r),v(x1,z1+r)));path.add(new THREE.QuadraticBezierCurve3(v(x1,z1+r),v(x1,z1),v(x1+r,z1)));path.autoClose=true;return path;}
- const routes=[roundedLoop(-13,-29,50,34),roundedLoop(8,-29,29,13),roundedLoop(29,-8,50,34),roundedLoop(-13,-8,8,13),roundedLoop(8,13,50,34)];
+ const routes=[roundedLoop(-13,-29,50,34,.49,3),roundedLoop(8,-29,29,13,.49,3),roundedLoop(29,-8,50,34,.49,3),roundedLoop(-13,-8,8,13,.49,3),roundedLoop(8,13,50,34,.49,3)];
  const vehicleColors=['red','carBlue','mustard','carGreen','ivory','terracotta','teal','plum','sand'];
  function vehicle(type,color){
   const g=new THREE.Group(),body=materials[color];
@@ -195,20 +317,23 @@ export function buildCity(materialLibrary) {
   }
   carLights.push({mat:headMat,base:.1,gain:1.05*bulb},{mat:tailMat,base:.12,gain:.86*bulb},{mat:haloMat,base:0,gain:.3*bulb});
   g.userData.lights={head:headMat,halo:haloMat,tail:tailMat,bulb};
-  if(type!==4){const lightGeo=new THREE.BufferGeometry();lightGeo.setAttribute('position',new THREE.Float32BufferAttribute([len*.45,-.275,-.28,len*.45,-.275,.28,len*.45+4.2,-.275,1.05,len*.45+4.2,-.275,-1.05],3));lightGeo.setIndex([0,1,2,0,2,3]);const footprintMat=new THREE.MeshBasicMaterial({color:0xffd49a,transparent:true,opacity:0,depthWrite:false,blending:THREE.AdditiveBlending,toneMapped:false,side:THREE.DoubleSide});g.add(new THREE.Mesh(lightGeo,footprintMat));carLights.push({mat:footprintMat,base:0,gain:.16*bulb});g.userData.lights.foot=footprintMat;}
+  if(type!==4){const lightGeo=new THREE.BufferGeometry();lightGeo.setAttribute('position',new THREE.Float32BufferAttribute([len*.45,-.19,-.28,len*.45,-.19,.28,len*.45+4.2,-.19,1.05,len*.45+4.2,-.19,-1.05],3));lightGeo.setIndex([0,1,2,0,2,3]);/* 路面光斑放在世界高度 .30：原本 .215 剛好等於南北向標線頂、又比東西向路面低 5 mm，遠鏡頭下夜裡會跟路面 z-fighting 亂閃 */const footprintMat=new THREE.MeshBasicMaterial({color:0xffd49a,transparent:true,opacity:0,depthWrite:false,blending:THREE.AdditiveBlending,toneMapped:false,side:THREE.DoubleSide,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-4});g.add(new THREE.Mesh(lightGeo,footprintMat));carLights.push({mat:footprintMat,base:0,gain:.16*bulb});g.userData.lights.foot=footprintMat;}
   return g;
  }
  for(let i=0;i<27;i++){
   const type=i%9===0?3:i%7===0?4:i%5===0?2:i%4===0?1:0,g=vehicle(type,vehicleColors[i%vehicleColors.length]);terrain.add(g);
-  // 靠右行駛：車道由行駛方向決定（順著路線切線走的在右側 +0.72，反向的在 -0.72），對向車不會擠在同一條車道
-  const route=routes[i%routes.length],dir=i%3===0?-1:1,lane=.72*dir;
-  cars.push({g,route,dir,lane,u:random(),baseSpeed:.008+random()*.008,v:0,len:Math.max(1,route.getLength()),gap:999,
+  // 靠右行駛：車道偏移由行駛方向決定（順著路線切線走的在右側、反向的在左側），對向車道相隔 2 m
+  const route=routes[i%routes.length],dir=i%3===0?-1:1;
+  cars.push({g,i,type,route,dir,lane:TRAFFIC_LANE*dir,u:random(),baseSpeed:.008+random()*.008,len:Math.max(1,route.getLength()),
              key:(i%routes.length)+'|'+dir});
  }
  // 同一條路線、同一車道、同方向的車編成一組，起點均分，開場就不會疊在一起
  const laneGroups=new Map();
  for(const car of cars){if(!laneGroups.has(car.key))laneGroups.set(car.key,[]);laneGroups.get(car.key).push(car);}
  for(const group of laneGroups.values())group.forEach((c,k)=>{c.u=(k/group.length+k*.011)%1;});
+ // 車流控制器（檔案最上方 @@traffic 區段）：絕不相撞、靠近減速、後車逼近時前車加速
+ const VEH_W=[.98,.98,.98,1.04,.5],VEH_L=[1.7,2.55,2.15,3.25,.85];
+ const traffic=createTraffic(routes,cars.map(c=>({ri:routes.indexOf(c.route),dir:c.dir,len:VEH_L[c.type],w:VEH_W[c.type],vmax:c.baseSpeed*c.len,s:(c.dir>0?c.u:1-c.u)*c.len})));
  // 百工百業：不同職業、服裝、工具與步態，沿街廓人行道移動。
  const workers=[],professions=['營造工程','護理照護','餐飲主廚','物流配送','測量人員','商務上班','環境清潔','花藝工作','消防救護','影像攝影','咖啡職人','藝術創作','園藝養護','機械維修','學生研究','市場攤商','道路工程','郵務服務'];
  const walkRoutes=[roundedLoop(-10,-26,5,-11,.29,.8),roundedLoop(11,-26,26,-11,.29,.8),roundedLoop(32,-26,47,-11,.29,.8),roundedLoop(-10,-5,5,10,.29,.8),roundedLoop(11,-5,26,10,.29,.8),roundedLoop(32,-5,47,10,.29,.8),roundedLoop(11,16,26,31,.29,.8),roundedLoop(32,16,47,31,.29,.8),roundedLoop(-47,-37,-45,37,.29,.45)];
@@ -256,34 +381,18 @@ export function buildCity(materialLibrary) {
  }
  function animate(time,night=0){
   waterMaterial.uniforms.uTime.value=time;waterMaterial.uniforms.uDay.value=night;
-  // 車流：同車道依與前車的距離調整速度，不再互相穿過。
+  // 車流：每台車的速度交給控制器（檔案最上方 @@traffic 區段），這裡只負責把車擺到位置上
  const dt=Math.min(.05,Math.max(0,time-lastTime));lastTime=time;
- for(const group of laneGroups.values()){
-  const n=group.length;
-  if(n===1){group[0].v=group[0].baseSpeed;group[0].gap=999;continue;}
-  const sorted=group.slice().sort((a,b)=>a.u-b.u);
-  for(let k=0;k<n;k++){
-   const c=sorted[k],ahead=sorted[c.dir>0?(k+1)%n:(k-1+n)%n];
-   let du=(ahead.u-c.u)*c.dir;du=((du%1)+1)%1;
-   const gap=du*c.len;c.gap=gap;
-   // 距離 3.4 公尺內幾乎停住，9 公尺以外全速，中間平滑過渡
-   c.v=c.baseSpeed*Math.min(1,Math.max(0,(gap-3.4)/5.6));
-  }
- }
- for(const car of cars){
-  car.u=((car.u+car.v*car.dir*dt)%1+1)%1;
+ traffic.update(dt);
+ for(let n=0;n<cars.length;n++){
+  const car=cars[n],t=traffic.cars[n],L=t.ln.L;
+  car.u=car.dir>0?t.s/L:((L-t.s)/L)%1;
   const p=car.route.getPointAt(car.u),tan=car.route.getTangentAt(car.u).normalize(),side=new THREE.Vector3(-tan.z,0,tan.x);
   // 車頭朝行進方向：反向行駛（dir=-1）的車要轉 180°，否則車頭燈在後面、看起來是倒著開
   car.g.position.copy(p).addScaledVector(side,car.lane);car.g.rotation.y=-Math.atan2(tan.z*car.dir,tan.x*car.dir);
-  // 車燈照到前車時變亮：距離愈近，光斑與光暈愈強
-  const L=car.g.userData.lights;
-  if(L){
-   const hit=Math.min(1,Math.max(0,1-(car.gap-2.2)/9));
-   L.halo.opacity=night*.3*L.bulb*(1+hit*1.6);
-   if(L.foot)L.foot.opacity=night*.16*L.bulb*(1+hit*2.1);
-   L.head.opacity=.1+night*1.05*L.bulb*(1+hit*.35);
-  }
  }
+  // 車燈亮度固定：只隨 night，不隨與前車的距離變。舊版「照到前車變亮」那段每幀都被下面這行蓋掉，已移除；
+  // 不要再加回來——亮度跟著車距跳動，夜裡看起來就是在閃。
   for(const light of carLights)light.mat.opacity=light.base+night*light.gain;
   for(const light of nightGlow)light.mat.opacity=light.base+night*light.gain;
   ledMat.uniforms.uTime.value=time;ledMat.uniforms.uNight.value=night;
