@@ -39,18 +39,27 @@
 /* 結尾 */
 .f-end { min-height: 100svh; display: grid; place-items: center; padding: 26svh 7vw 16svh; overflow: hidden; }
 /* 頁尾：出題、主辦、協辦與技術支持單位（原本浮在第五章夜景上，改放整頁最後）。
-   沿用 enter.css 的 .cr-* 樣式與 logo 槽；logo 檔放進 logos/ 就會顯示，沒有檔案只留文字。 */
-.f-credits { position: relative; z-index: 1; padding: 7svh 7vw calc(6svh + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--bg); }
-.f-credits .cr-row { margin: 0 auto; max-width: 1100px; gap: 22px 40px; }
-.f-credits .cr-group { flex-wrap: wrap; row-gap: 8px; }
-.f-credits .cr-label { font-size: 12px; }
-.f-credits .cr-unit { font-size: 14px; }
-.f-credits .cr-name b { font-size: 16px; }
-.f-credits-note { margin: 26px 0 0; text-align: center; font-size: 12px; color: #7f918a; letter-spacing: .08em; }
+   logo 是 frontend/scripts/make_logos.py 產生的去背 PNG：字已轉白、彩色部分保留原色，這裡不加濾鏡。
+   每張 logo 的留白與長寬比不同，高度個別調到看起來一樣大；--lh 在窄螢幕整體縮小。字一律白色。 */
+.f-credits { --lh: 1; position: relative; z-index: 1; padding: 7svh 7vw calc(6svh + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--bg); }
+.f-credits .cr-row { margin: 0 auto; max-width: 1240px; align-items: stretch; gap: 28px 40px; }
+.f-credits .cr-group { flex-direction: column; align-items: flex-start; gap: 14px; white-space: normal; }
+.f-credits .cr-label { font-size: 13px; letter-spacing: .14em; color: #fff; padding: 0; }
+.f-credits .cr-logos { display: flex; align-items: center; flex-wrap: wrap; gap: 16px 24px; min-height: calc(var(--lh) * 60px); }
+.f-credits .cr-logo { display: block; width: auto; height: calc(var(--lh) * 40px); }
+.f-credits .cr-logo[data-logo="land"]      { height: calc(var(--lh) * 60px); }
+.f-credits .cr-logo[data-logo="ntpc"]      { height: calc(var(--lh) * 42px); }
+.f-credits .cr-logo[data-logo="youth"]     { height: calc(var(--lh) * 34px); }
+.f-credits .cr-logo[data-logo="digitimes"] { height: calc(var(--lh) * 20px); }
+.f-credits .cr-sep { height: auto; }
+.f-credits-note { margin: 34px 0 0; text-align: center; font-size: 12px; color: #fff; letter-spacing: .08em; }
+.f-credits-note span { display: inline-block; }   /* 窄螢幕在「·」處斷行，不讓最後一個字單獨掉下去 */
+@media (max-width: 1360px) { .f-credits { --lh: .88; } }
 @media (max-width: 600px) {
-  .f-credits .cr-row { flex-direction: column; align-items: flex-start; gap: 16px; }
+  .f-credits { --lh: .78; }
+  .f-credits .cr-row { flex-direction: column; align-items: flex-start; gap: 26px; }
   .f-credits .cr-sep { display: none; }
-  .f-credits .cr-group { white-space: normal; }
+  .f-credits-note { text-align: left; }
 }
 /* 未來應用那一段有自己的站點列，左側章節導覽讓開，免得壓在移動的卡片上 */
 html.f-rail-off .f-rail { opacity: 0; visibility: hidden; transition: opacity .4s ease, visibility 0s .4s; }

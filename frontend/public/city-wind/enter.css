@@ -141,37 +141,12 @@ html.at-ending .credits { opacity: 1; visibility: visible; }
   font-size: 11px; letter-spacing: .12em; color: var(--muted);
   white-space: nowrap; padding-right: 3px;
 }
-.cr-unit { font-size: 12px; letter-spacing: .06em; color: var(--fg); white-space: nowrap; }
 .cr-sep { width: 1px; height: 26px; background: var(--line); }
-
-/* 我們這一組的代表單位：字一律白色，比其他單位大一級 */
-.cr-own { gap: 12px; }
-.cr-name { display: flex; flex-direction: column; gap: 2px; }
-.cr-name b { font-size: 14px; font-weight: 700; letter-spacing: .06em; color: #fff; white-space: nowrap; }
-
-/* logo 槽：背景圖，沒有檔案就什麼都不顯示，不會出現破圖 */
-.cr-mark {
-  display: block; width: 30px; height: 30px; flex: none;
-  background: center / contain no-repeat;
-}
-.cr-own .cr-mark { width: 40px; height: 40px; }
-.cr-mark[data-logo="land"]      { background-image: url("./logos/land.png"); }
-.cr-mark[data-logo="ntpc"]      { background-image: url("./logos/ntpc.png"); }
-.cr-mark[data-logo="youth"]     { background-image: url("./logos/youth.png"); }
-.cr-mark[data-logo="digitimes"] { background-image: url("./logos/digitimes.png"); }
-.cr-mark[data-logo="netron"]    { background-image: url("./logos/netron.png"); }
-.cr-mark[data-logo="aws"]       { background-image: url("./logos/aws.png"); }
-/* 深底上的白色標誌：單色標誌用這個轉白；彩色標誌（地政局）保留原色 */
-.cr-mark[data-logo="ntpc"], .cr-mark[data-logo="youth"],
-.cr-mark[data-logo="digitimes"], .cr-mark[data-logo="netron"],
-.cr-mark[data-logo="aws"] { filter: brightness(0) invert(1); opacity: .92; }
+/* logo 本身見 features-c.css 的 .f-credits（去背 PNG，logos/ 由 frontend/scripts/make_logos.py 產生） */
 
 @media (max-width: 900px) {
   .credits { bottom: 62px; padding-left: 30vw; }
   .cr-row { gap: 8px 16px; }
-  .cr-name b { font-size: 13px; }
-  .cr-mark { width: 24px; height: 24px; }
-  .cr-own .cr-mark { width: 32px; height: 32px; }
 }
 @media (max-width: 600px) {
   .credits { display: none; }   /* 手機版空間不足，結尾章節本身已有單位名稱 */
