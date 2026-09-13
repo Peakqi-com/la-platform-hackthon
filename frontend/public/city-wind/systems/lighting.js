@@ -193,7 +193,7 @@ export class LightingSystem{
   mu.faceMat.opacity=moonFade;mu.glow.material.opacity=moonFade*.34;
   if(camera){
    // 太陽清晨在左上、正午升到最高、夕陽落回同一塊天空；月亮接著出現在那裡
-   this.placeDisc(this.sun,camera,.40+Math.sin(day*Math.PI)*.10,.30-Math.sin(Math.min(1,day/.8)*Math.PI)*.15+smooth(.62,.86,day)*.06,300);
+   this.placeDisc(this.sun,camera,.40+Math.sin(day*Math.PI)*.10,.30-Math.sin(Math.min(1,day/.8)*Math.PI)*.10+smooth(.62,.86,day)*.06,300);   // 正午最高點壓在頁首下方
    this.placeDisc(this.moon,camera,.42,.25,260);
   }else{this.sun.position.copy(sunPosition);this.moon.position.copy(moonPosition);}
   if(this.moon.visible&&camera){

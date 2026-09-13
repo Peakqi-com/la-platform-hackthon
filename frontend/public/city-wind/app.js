@@ -44,13 +44,36 @@ try{
  for(const parcel of city.parcels){const canvas=document.createElement('canvas');canvas.width=512;canvas.height=256;const ctx=canvas.getContext('2d');ctx.fillStyle=parcel.selected?'#ffe2b7':'#c6e4cc';ctx.textAlign='center';ctx.font='500 54px sans-serif';ctx.fillText(parcel.id,256,128);ctx.font='21px sans-serif';ctx.fillText(parcel.selected?'起風段 / 選定宗地':'宗地示意',256,178);const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;const label=new THREE.Mesh(new THREE.PlaneGeometry(6.5,3.25),new THREE.MeshBasicMaterial({map:texture,transparent:true,opacity:0,depthWrite:false}));label.rotation.x=-Math.PI/2;label.position.set(parcel.x,.7,parcel.z);label.renderOrder=802;survey.root.add(label);survey.labels.push(label);}
 
  const scroll=new ScrollController(sections,{reduced:()=>reduced}),stateMachine=new SceneStateMachine(),cameraDirector=new CameraDirector(camera),timeOfDay=new TimeOfDaySystem();
- // 開場就把整個場景的著色器編譯完（含第三、四章才出現的文件與估價師）。
- // 不先編譯的話，第一次捲到那一段會當場編譯，造成明顯的卡頓甚至掉影格。
- function warmup(){
-  const paperWas=paper.root.visible,appraiserWas=appraiser.visible,deskWas=desk.visible,fragWas=paper.frag.visible;
-  paper.root.visible=true;appraiser.visible=true;desk.visible=true;paper.frag.visible=true;
-  try{renderer.compile(scene,camera);}catch(e){console.warn('warmup skipped',e);}
-  paper.root.visible=paperWas;appraiser.visible=appraiserWas;desk.visible=deskWas;paper.frag.visible=fragWas;
+ // 開場暖機：把之後才會出現的組態全部先編譯、先上傳，完成前載入畫面一直顯示。
+ // 第一次捲一遍會卡、第二遍才順，是因為 three.js 第一次畫到某個「光源數量＋物件」組合時
+ // 才編譯對應的著色器並快取：
+ //  1) 路燈白天隱藏、入夜才亮，光源數量一變，全場有光照的材質都要重編，這是最大的一次停頓；
+ //  2) 文件、估價師、碎片、月亮、煙火、地籍圖層、放大鏡開場都是隱藏的，第一次出現才編譯；
+ //  3) compile 只編譯著色器，貼圖要另外 initTexture 才會先上傳。
+ // 白天與夜晚兩種路燈組態各編譯一次；compileAsync 平行編譯，不卡主執行緒（載入動畫照跑）。
+ async function warmup(){
+  const saved=[],magSaved=[];
+  scene.traverse(o=>saved.push([o,o.visible]));magnifier.scene.traverse(o=>magSaved.push([o,o.visible]));
+  scene.traverse(o=>{if(!o.isLight)o.visible=true;});magnifier.scene.traverse(o=>{o.visible=true;});
+  const spots=lighting.streetLights.spots,qs=quality.settings;
+  // 夜晚的路燈組態要與 StreetLightManager.update 完全一致（數量與投影數），快取鍵才會相同
+  const setSpots=on=>spots.forEach((sl,i)=>{sl.light.visible=on&&i<qs.activeLights;sl.light.castShadow=i<qs.shadowLights;});
+  const compile=(sc,cam)=>renderer.compileAsync?renderer.compileAsync(sc,cam):Promise.resolve(renderer.compile(sc,cam));
+  try{
+   const jobs=[];
+   setSpots(true);jobs.push(compile(scene,camera));    // compileAsync 在呼叫當下就列舉材質，所以可以接著切組態
+   setSpots(false);jobs.push(compile(scene,camera));
+   jobs.push(compile(magnifier.scene,magnifier.camera));
+   if(renderer.initTexture){
+    const seen=new Set();
+    const up=v=>{if(v&&v.isTexture&&!v.isRenderTargetTexture&&!seen.has(v)){seen.add(v);try{renderer.initTexture(v);}catch(e){}}};
+    const grab=o=>{const ms=o.material?(Array.isArray(o.material)?o.material:[o.material]):[];for(const m of ms){for(const k in m)up(m[k]);if(m.uniforms)for(const u of Object.values(m.uniforms))up(u&&u.value);}};
+    scene.traverse(grab);magnifier.scene.traverse(grab);
+   }
+   // 最多等 10 秒，少數驅動不回報完成時也不會卡死在載入畫面
+   await Promise.race([Promise.all(jobs),new Promise(r=>setTimeout(r,10000))]);
+  }catch(e){console.warn('warmup skipped',e);}
+  for(const [o,v] of saved)o.visible=v;for(const [o,v] of magSaved)o.visible=v;
  }
  const lighting=new LightingSystem(scene,renderer,materials,city,quality),crowd=new CrowdSystem(city,materials,quality),birds=new BirdSystem(scene,quality),aircraft=new AircraftSystem(scene,materials),environment=new EnvironmentSystem(scene,city,materials),post=new PostProcessingSystem(renderer,quality);
  const source=new THREE.WebGLRenderTarget(1,1,{depthBuffer:true});source.texture.colorSpace=THREE.SRGBColorSpace;const magnifier=buildMagnifier(source.texture);magnifier.lensMat.fragmentShader=magnifier.lensMat.fragmentShader.replace('gl_FragColor=vec4(c,1.);','gl_FragColor=vec4(c,1.);\n#include <colorspace_fragment>\n');
@@ -61,18 +84,23 @@ try{
 
  const projectedParcel=new THREE.Vector3();
  function render(now){
-  const elapsed=now*.001,dt=clamp((now-lastFrame)/1000,0,.08);lastFrame=now;const rawProgress=scroll.update(dt),sceneProgress=reduced?[0,.96,2.5,3.5,4.2][Math.min(4,Math.floor(rawProgress))]:rawProgress,state=stateMachine.sample(sceneProgress);showChapter(rawProgress,scroll.pageProgress,mobile);
+  const elapsed=now*.001,dt=clamp((now-lastFrame)/1000,0,.08);lastFrame=now;if(quality.update(dt))resize();/* 改畫布尺寸會清空畫布，必須在繪製之前做，否則那一幀整片黑 */const rawProgress=scroll.update(dt),sceneProgress=reduced?[0,.96,2.5,3.5,4.2][Math.min(4,Math.floor(rawProgress))]:rawProgress,state=stateMachine.sample(sceneProgress);showChapter(rawProgress,scroll.pageProgress,mobile);
   cameraDirector.update(sceneProgress,state,dt,scroll.velocity,reduced);
   const documentPhase=smooth(1.86,2.23,sceneProgress),valuePhase=smooth(2.88,3.22,sceneProgress),returnPhase=smooth(3.83,4.16,sceneProgress),shrink=lerp(1,.2,documentPhase)*(1-returnPhase)+returnPhase,flatten=1-state.worldOpacity;
   city.root.scale.setScalar(shrink);city.root.position.set(18.5*(1-shrink),lerp(0,.1,documentPhase),2.5*(1-shrink));city.buildings.scale.y=lerp(1,.09,flatten);city.greenery.scale.y=lerp(1,.06,flatten);city.buildingDetails.scale.y=lerp(.72,1,state.buildingLOD);city.buildingDetails.position.y=lerp(-.3,0,state.buildingLOD);city.buildingDetails.visible=quality.level!=='LOW'||state.buildingLOD>.34;scene.updateMatrixWorld();
   const time=timeOfDay.update(sceneProgress),lightingState=lighting.update(elapsed,time,state,camera),{day,night}=lightingState;
-  cadastral.update(state,smooth(.72,1.55,sceneProgress));parcelOverlay.update(state,elapsed);
+  cadastral.update(state,smooth(.72,1.55,sceneProgress));
+  // 橘色宗地框只屬於「地籍」這一章：進入地籍時淡入，捲到「紀錄」之前淡出。
+  // 各場景狀態原本都把 parcelVisibility 設成 1，所以城市、紀錄、價值、夜景都看得到它。
+  // 用 rawProgress 判斷章節：精簡動態模式下 sceneProgress 在第二章被夾成 .96，用它會把框整個藏掉。
+  const parcelGate=smooth(.96,1.18,rawProgress)*(1-smooth(1.86,2.04,rawProgress));
+  parcelOverlay.update({...state,parcelVisibility:state.parcelVisibility*parcelGate},elapsed);
   paper.root.visible=documentPhase>.002&&returnPhase<.999;paper.root.position.set(18.5,lerp(.7,8.5,documentPhase)-valuePhase*1.5,2.5);paper.root.rotation.x=lerp(-Math.PI/2,-.48,documentPhase)-valuePhase*.35;paper.root.rotation.z=-.035*documentPhase;paper.root.scale.setScalar(lerp(.7,.87,documentPhase)*(reduced?(1-returnPhase):1));if(!reduced)paper.disintegrate(returnPhase,elapsed);paper.draw(smooth(2.08,2.76,sceneProgress));
-  const write=smooth(2.16,2.69,sceneProgress);paper.pencil.position.set(3+Math.sin(write*15)*2.8,7-write*11,.5);paper.pencil.rotation.z=-.6+Math.sin(write*20)*.025;appraiser.visible=valuePhase>.01&&returnPhase<.99;appraiser.scale.setScalar(1.35*valuePhase*(1-returnPhase));appraiser.userData.update?.(elapsed,appraiser.visible&&!reduced);desk.visible=documentPhase>.4&&returnPhase<.8;desk.scale.setScalar(documentPhase*(1-returnPhase));
+  const write=smooth(2.16,2.69,sceneProgress);paper.pencil.position.set(3+Math.sin(write*15)*2.8,7-write*11,.5);paper.pencil.rotation.z=-.6+Math.sin(write*20)*.025;appraiser.visible=valuePhase>.01&&returnPhase<.99;appraiser.scale.setScalar(1.35*valuePhase*(1-returnPhase));appraiser.userData.update?.(elapsed,appraiser.visible&&!reduced&&rawProgress>=2.96&&rawProgress<3.96);desk.visible=documentPhase>.4&&returnPhase<.8;desk.scale.setScalar(documentPhase*(1-returnPhase));
   wind.root.visible=documentPhase<.9||returnPhase>.1;wind.root.children.forEach(object=>{if(object.material?.transparent)object.material.opacity=(object.geometry.type==='TubeGeometry'?.2:1)*(1-documentPhase+returnPhase)*state.worldOpacity;});wind.update(elapsed,reduced);
   const animationTime=reduced?sceneProgress*.7:elapsed;city.animate(animationTime,night);crowd.update(animationTime,dt,camera,state,reduced);birds.update(animationTime,time,state,environment.windDirection,reduced);aircraft.update(animationTime,time,state,reduced);environment.update(animationTime,state,reduced);city.waterMaterial.uniforms.uSunX.value=.5+Math.sin(day*Math.PI*1.35-.5)*.3;
   // 河邊煙火，夜晚才放；水面的倒影顏色跟著當下那朵走。
-  fireworks.update(dt,night,state.worldOpacity);
+  fireworks.update(dt,night,state.worldOpacity,smooth(3.9,4.1,rawProgress)>.5);   // 只在「連結」發射；天色一亮就全部熄掉
   const wu=city.waterMaterial.uniforms;
   wu.uFire.value.set(fireworks.glow.r,fireworks.glow.g,fireworks.glow.b);
   wu.uFireK.value=fireworks.glow.strength*.85;
@@ -85,11 +113,11 @@ try{
 
   const tagOpacity=smooth(1.25,1.45,sceneProgress)*(1-smooth(1.78,2.02,sceneProgress));parcelTag.style.opacity=tagOpacity;parcelTag.style.left=`${clamp((projectedParcel.x*.5+.5)*width+(mobile?-85:70),width*(mobile?.08:.55),width-210)}px`;parcelTag.style.top=`${clamp((-projectedParcel.y*.5+.5)*height+(mobile?110:145),height*.4,height-155)}px`;parcelTag.style.right='auto';
   const timeLabel=day<.2?'清晨':day<.5?'日間':day<.76?'午後':day<.9?'黃昏':'夜晚';modelNote.textContent=`${timeLabel} · ${['河岸街廓','起風段 0128','土地資料紀錄','基地現勘','土地與生活'][active]}`;
-  if(firstFrame){firstFrame=false;warmup();loader.classList.add('done');}if(quality.update(dt))resize();
+  if(firstFrame){firstFrame=false;loader.classList.add('done');}
  }
 
  renderer.domElement.addEventListener('webglcontextlost',event=>{event.preventDefault();paused=true;document.querySelector('#fallback').hidden=false;});renderer.domElement.addEventListener('webglcontextrestored',()=>{paused=false;lastFrame=performance.now();document.querySelector('#fallback').hidden=true;resize();});
- document.addEventListener('visibilitychange',()=>{paused=document.hidden;lastFrame=performance.now();});function frame(now){requestAnimationFrame(frame);if(paused)return;render(now);}requestAnimationFrame(frame);
+ document.addEventListener('visibilitychange',()=>{paused=document.hidden;lastFrame=performance.now();});function frame(now){requestAnimationFrame(frame);if(paused)return;render(now);}warmup().finally(()=>requestAnimationFrame(frame));
 }catch(error){
  loader.classList.add('done');document.querySelector('#fallback').hidden=false;console.error('3D scene unavailable',error);const scroll=new ScrollController(sections,{reduced:()=>true});function fallbackFrame(){showChapter(scroll.target,scroll.pageProgress,innerWidth<=600);requestAnimationFrame(fallbackFrame);}requestAnimationFrame(fallbackFrame);
 }

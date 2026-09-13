@@ -134,33 +134,36 @@ export function buildAppraiser(materialLibrary){
  const faceLight=new THREE.PointLight(0xffd79a,0,9,2);
 
  const sstep=(a,b,v)=>{const t=Math.min(1,Math.max(0,(v-a)/(b-a)));return t*t*(3-2*t);};
- const CYCLE=7.0;
  let appearAt=null;
  root.userData.faceLight=faceLight;root.userData.faceAnchor=faceAnchor;
- root.userData.update=(t,visible)=>{
+ // 初始狀態：燈泡暗、手放下、不搖晃
+ const resetPose=()=>{bulbMat.opacity=0;haloMat.opacity=0;bulbPivot.scale.setScalar(.82);bulbPivot.position.y=7.55;
+  rightArm.rotation.set(0,0,0);thumb.visible=false;thumb.rotation.z=.35;
+  root.rotation.z=0;root.rotation.y=-.5;root.position.y=1;faceLight.intensity=0;};
+ root.userData.update=(t,active)=>{
   faceAnchor.getWorldPosition(faceLight.position);
-  if(!visible){faceLight.intensity=0;appearAt=null;return;}
-  // 從他長出來的那一刻起算：一出現就靈光一閃，而不是等全頁時鐘轉到那一段
+  // 離開「價值」這一章（往下到連結、往上到紀錄）才回到初始的暗燈狀態；再進來會重新靈光一閃
+  if(!active){if(appearAt!==null)resetPose();appearAt=null;return;}
   if(appearAt===null)appearAt=t;
-  const c=(t-appearAt)%CYCLE;
-  // 燈泡：出現後 0.25 秒開始亮，停留到 3.4 秒後淡出
-  const on=sstep(.25,.6,c)*(1-sstep(3.4,4.2,c));
-  // 亮起瞬間多一個短暫的過亮，做出「一閃」
-  const spark=Math.max(0,1-Math.abs(c-.6)/.38);
-  const glow=Math.min(1,on+spark*.55);
+  const c=t-appearAt;
+  // 燈泡：出現後 0.25 秒亮起，之後一直亮著，只有很慢的呼吸
+  const on=sstep(.25,.6,c);
+  const spark=Math.max(0,1-Math.abs(c-.6)/.38);     // 亮起瞬間的「一閃」
+  const glow=Math.min(1,on*(.9+.1*Math.sin(t*2.3))+spark*.55);
   bulbMat.opacity=glow*.96;haloMat.opacity=glow*.42;
   bulbPivot.scale.setScalar(.82+glow*.26+spark*.1);
   bulbPivot.position.y=7.55+Math.sin(t*1.7)*.06*on;
   faceLight.intensity=glow*7.5;
-  // 比大拇指：1.5 秒舉起，停到 3.6 秒放下
-  const up=sstep(.85,1.4,c)*(1-sstep(3.3,3.9,c));
+  // 比大拇指：0.85 秒舉起，之後一直比著
+  const up=sstep(.85,1.4,c);
   rightArm.rotation.x=-up*1.42;rightArm.rotation.z=up*.3;
   thumb.visible=up>.12;thumb.rotation.z=.35-up*.3;
-  // 舉起後的輕微搖晃
+  // 舉起後一直輕微搖晃
   const sway=up*Math.sin(t*3.1)*.055;
   root.rotation.z=sway;root.rotation.y=-.5+sway*.6+Math.sin(t*.8)*.02;
   root.position.y=1+Math.sin(t*1.25)*.035;
  };
+ resetPose();
 
  root.scale.setScalar(1.35);return root;
 }
