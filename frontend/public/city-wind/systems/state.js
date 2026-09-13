@@ -57,7 +57,9 @@ export class ScrollController{
   if(Math.abs(error)<.00008&&Math.abs(this.velocity)<.00008){this.progress=this.target;this.velocity=0;}
   return this.progress;
  }
- get pageProgress(){return clamp(scrollY/Math.max(1,document.documentElement.scrollHeight-innerHeight),0,1);}
+ // 頁尾進度條只算五章故事：後面接了系統功能，若用整頁高度，第五章只會走到三成多。
+ // 沒有後續內容時，最後一章底端就是頁面底端，結果與舊版相同。
+ get pageProgress(){const last=this.offsets[this.offsets.length-1],end=last?last.top+last.height:document.documentElement.scrollHeight;return clamp(scrollY/Math.max(1,end-innerHeight),0,1);}
  destroy(){removeEventListener('scroll',this.read);removeEventListener('resize',this.measure);}
 }
 

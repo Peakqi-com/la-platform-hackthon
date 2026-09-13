@@ -1,8 +1,8 @@
 <!doctype html>
-<html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#091313"><title>城市起風｜看見土地的故事</title><meta name="description" content="沿著一陣風，走進城市、描繪地籍、記錄權利，看見土地與生活的連結。"><link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23091313'/%3E%3Cpath d='M7 24V14h5v10m3 0V7h5v17m3 0V12h3' fill='none' stroke='%23e3ac78' stroke-width='2'/%3E%3C/svg%3E"><link rel="stylesheet" href="/city-wind/style.css"><link rel="stylesheet" href="/city-wind/enter.css"></head>
+<html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#091313"><title>城市起風｜看見土地的故事</title><meta name="description" content="沿著一陣風，走進城市、描繪地籍、記錄權利，看見土地與生活的連結。"><link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23091313'/%3E%3Cpath d='M7 24V14h5v10m3 0V7h5v17m3 0V12h3' fill='none' stroke='%23e3ac78' stroke-width='2'/%3E%3C/svg%3E"><link rel="stylesheet" href="/city-wind/style.css"><link rel="stylesheet" href="/city-wind/enter.css"><link rel="stylesheet" href="/city-wind/features.css"><link rel="stylesheet" href="/city-wind/features-a.css"><link rel="stylesheet" href="/city-wind/features-b.css"><link rel="stylesheet" href="/city-wind/features-c.css"><style>/* 系統功能段：載入完成（3D 暖機、字型、樣式表）才整段淡入，載入中不露出未排好的內容 */#features{opacity:0;visibility:hidden}html.f-ready #features{opacity:1;visibility:visible;transition:opacity .8s ease}</style></head>
 <body>
 <a class="skip" href="#city">跳到故事內容</a>
-<header><a class="wordmark" href="#city" aria-label="城市起風，回到開頭"><span class="brand-icon" aria-hidden="true">起</span><span>城市起風<small>CITY IN MOTION</small></span></a><nav aria-label="故事章節"><a href="#city" class="active">城市</a><a href="#land">地籍</a><a href="#record">紀錄</a><a href="#value">價值</a><a href="#together">連結</a></nav><div class="header-actions"><a class="enter-link" href="/dashboard">進入系統 <span aria-hidden="true">→</span></a></div></header>
+<header><a class="wordmark" href="#city" aria-label="城市起風，回到開頭"><span class="brand-icon" aria-hidden="true">起</span><span>城市起風<small>CITY IN MOTION</small></span></a><nav aria-label="故事章節"><a href="#city" class="active">城市</a><a href="#land">地籍</a><a href="#record">紀錄</a><a href="#value">價值</a><a href="#together">連結</a><a href="#f-sources" class="nav-sys">系統</a></nav><div class="header-actions"><a class="enter-link" href="/dashboard">進入系統 <span aria-hidden="true">→</span></a></div></header>
 <div id="stage" aria-hidden="true"><canvas id="world"></canvas><div class="stage-shade"></div><div class="model-note" id="model-note">河岸街廓 · 城市意象</div><div class="parcel-tag" id="parcel-tag"><span>選定宗地</span><strong>起風段 0128</strong><small>示意地籍 · 非實際界址</small></div></div>
 <div class="loading" id="loading" role="status" aria-label="載入中"><div class="ld-stage" aria-hidden="true"><div class="ld-ticks"></div><div class="ld-runner"><i class="ld-board"></i><i class="ld-head"></i><i class="ld-body"></i><i class="ld-arm"></i><i class="ld-leg ld-leg-a"></i><i class="ld-leg ld-leg-b"></i></div><div class="ld-track"><i></i></div></div><p class="ld-text">城市正在甦醒</p></div>
 <main id="story">
@@ -12,8 +12,452 @@
 <section id="value" class="scene-section"><div class="chapter"><p class="eyebrow"><span>04 / 05</span> VALUE, WITH PERSPECTIVE</p><h2>走進現場，<br><em>讀懂土地價值。</em></h2><p class="lead">數字之外，<br>還有環境、生活與專業判斷。</p><p class="support">跟著估價師觀察基地、比對案例，<br>將現場的細節，整理成有依據的分析。</p><div class="details"><span>現場勘察</span><span>案例比較</span><span>估價報告</span></div><p class="disclaimer">比較案例與指數皆為動畫示意，非估價結果。</p></div></section>
 <section id="together" class="scene-section"><div class="chapter ending"><p class="eyebrow"><span>05 / 05</span> CONNECTED BY THE LAND</p><h2>讓每一份用心，<br><em>回到城市裡。</em></h2><p class="lead">從一筆土地，到千萬個日常。</p><div class="agency" id="agency"><p>新北市政府地政局</p><small>LAND ADMINISTRATION DEPARTMENT<br>NEW TAIPEI CITY GOVERNMENT</small></div><div class="ending-actions"><a class="enter-cta" href="/dashboard">進入案件總覽 <span aria-hidden="true">→</span></a><a class="replay" href="#city">重新走進城市 <span>↗</span></a></div><p class="enter-note">土地徵收補償市價查估 · 估價案件審查輔助系統</p><p class="disclaimer">城市起風 · 互動設計概念</p></div></section>
 </main>
+<!-- ── 系統功能：接在城市故事之後（features.css、features/*.js）── -->
+<div id="features" class="features" aria-label="系統功能">
+<div class="f-backdrop" aria-hidden="true"><canvas class="f-amb-far"></canvas><canvas class="f-amb-mid"></canvas></div>
+<div class="f-rail" role="navigation" aria-label="系統功能章節"><div class="f-rail-line"><b></b></div><a href="#f-sources"><i></i><span>00 資料前提</span></a><a href="#f-chain"><i></i><span>01 一條鏈</span></a><a href="#f-entry"><i></i><span>02 三個入口</span></a><a href="#f-map"><i></i><span>03 距離出處</span></a><a href="#f-rules"><i></i><span>04 規則引擎</span></a><a href="#f-review"><i></i><span>05 逐格審查</span></a><a href="#f-case"><i></i><span>06 樹林實案</span></a><a href="#f-output"><i></i><span>07 輸出部署</span></a><a href="#f-future"><i></i><span>08 未來應用</span></a></div>
+
+<section id="f-sources" class="f-sec f-flow f-sources" data-tint="#e3ac78" aria-labelledby="f-sources-h">
+ <div class="f-src-head f-rv">
+  <p class="eyebrow"><span>00 / 08</span> PREMISES BEFORE FEATURES</p>
+  <h2 id="f-sources-h">看系統之前，<br><em>先看它依據什麼。</em></h2>
+  <p class="lead">每一個數字背後，都有一份被引用的資料，<br>和使用它的前提。</p>
+  <p class="support">以下是系統參考的法規、公報、公告與開放資料。先說清楚每一份拿來做什麼、在什麼前提下才成立，再進入功能說明。</p>
+ </div>
+ <div class="f-src-stage">
+  <canvas class="f-layer f-src-canvas" aria-hidden="true"></canvas>
+  <ol class="f-src-list">
+   <li class="f-src l f-rv" data-use="cmp cost income" data-par=".05"><span class="f-src-no">01</span><span class="f-src-kind">法規</span><h3>不動產估價技術規則</h3><p class="f-src-org">全國法規資料庫</p><p><b>前提</b>一般規定；與土地徵收補償市價查估辦法衝突時，依查估辦法。</p><p><b>用在</b>比較法程序（§21）、權重（§27）、建物成本（§48–§67）、含建物實例的土地單價（§98、§100）；收益法條文已對照。</p><p class="f-src-tags"><span>比較法</span><span>建物成本</span><span>收益法</span></p></li>
+   <li class="f-src l f-rv" data-use="cost" data-par=".05" data-delay="1"><span class="f-src-no">02</span><span class="f-src-kind">公報</span><h3>中華民國不動產估價師公會全國聯合會 公報</h3><p class="f-src-org">第四號公報 113.12.11 版（物價基期 113 年 11 月）</p><p><b>前提</b>營造施工費是區間，系統取中位並標「需確認」，估價師可改；公報的營造施工費已含管理費、稅捐、資本利息與利潤，不另加。</p><p><b>用在</b>營造施工費、經濟耐用年數、殘價率 → 含建物實例扣除建物成本。</p><p class="f-src-tags"><span>建物成本</span></p></li>
+   <li class="f-src l f-rv" data-use="cost" data-par=".05" data-delay="2"><span class="f-src-no">03</span><span class="f-src-kind">公告</span><h3>新北市稅捐稽徵處 112 年度房屋標準價格公告</h3><p class="f-src-org">新北市稅捐稽徵處</p><p><b>前提</b>核課房屋稅用的標準單價，不等於市價；只拿來對照構造、用途與單價量級，不直接帶入計算。</p><p><b>用在</b>檢查建物成本推定值是否落在合理量級。</p><p class="f-src-tags"><span>建物成本</span></p></li>
+   <li class="f-src r f-rv" data-use="rate" data-par=".09"><span class="f-src-no">04</span><span class="f-src-kind">開放資料</span><h3>五大銀行存放款利率歷史月資料</h3><p class="f-src-org">政府資料開放平臺</p><p><b>前提</b>依實例交易日期「當月」的利率（作業手冊 p.35）；取月資料，不取年平均。</p><p><b>用在</b>資本利息綜合利率的自有資金與借貸資金利率；收益資本化率的利率基準。</p><p class="f-src-tags"><span>利率</span></p></li>
+   <li class="f-src r f-rv" data-use="rate" data-par=".09" data-delay="1"><span class="f-src-no">05</span><span class="f-src-kind">官方公布</span><h3>中央銀行 五大銀行平均存款利率</h3><p class="f-src-org">中央銀行</p><p><b>前提</b>作業手冊指明「可參考中央銀行網站查詢」；以官方公布值為準，和開放平臺的月資料互相核對。</p><p><b>用在</b>上一項利率的查核來源。</p><p class="f-src-tags"><span>利率</span></p></li>
+   <li class="f-src r f-rv" data-use="income" data-par=".09" data-delay="2"><span class="f-src-no">06</span><span class="f-src-kind">說明</span><h3>新北市樹林地政事務所 租賃實價登錄說明</h3><p class="f-src-org">新北市樹林地政事務所</p><p><b>前提</b>租賃登錄的申報範圍有限，樣本不完整；租金型態分實價登錄、待租、詢問租金（作業手冊 p.37–38）。</p><p><b>用在</b>收益實例月租金＝總租金 ÷ 收益面積。系統不自動計算收益法，列人工填寫。</p><p class="f-src-tags"><span>收益法</span></p></li>
+   <li class="f-src l f-rv" data-use="cmp" data-par=".05" data-delay="3"><span class="f-src-no">07</span><span class="f-src-kind">開放資料</span><h3>內政部不動產交易實價查詢服務網</h3><p class="f-src-org">內政部</p><p><b>前提</b>去識別化公開資料；特殊交易依查估辦法 §7、§8 排除或調整；含建物者須先扣建物成本（§13）。</p><p><b>用在</b>比較標的自動選取：§17 蒐集期間；§19 同區段 → 同鄉鎮 → 鄰近鄉鎮。</p><p class="f-src-tags"><span>比較法</span></p></li>
+  </ol>
+  <ul class="f-src-uses" aria-label="這些資料用在哪裡">
+   <li data-k="cmp"><b>比較法</b><small>實例 → 比較價格</small></li>
+   <li data-k="cost"><b>建物成本</b><small>含建物實例扣除</small></li>
+   <li data-k="rate"><b>利率</b><small>資本利息・資本化率</small></li>
+   <li data-k="income"><b>收益法</b><small>對照參考，列人工填寫</small></li>
+  </ul>
+ </div>
+ <p class="f-src-foot f-rv">核心法源另有：土地徵收補償市價查估辦法、土地徵收補償市價查估作業手冊（p.100–102 官方算例為第二組驗收）、各區評價基準明細表。每條算式的條號與手冊頁碼，都對照在系統的計算依據表。</p>
+</section>
+
+<section id="f-chain" class="f-sec f-pin f-chain" data-tint="#e3ac78" style="--pin:270" aria-labelledby="f-chain-h">
+ <div class="f-sticky">
+  <canvas class="f-layer f-chain-far" aria-hidden="true"></canvas>
+  <div class="f-copy">
+   <p class="eyebrow"><span>01 / 08</span> ONE CHAIN, TWO DIRECTIONS</p>
+   <div class="f-steps">
+    <div class="f-step on" data-step="0">
+     <h2 id="f-chain-h">三張表、上百格，<br><em>一格一格人工核算。</em></h2>
+     <p class="lead">地價區段勘查表、影響地價區域因素分析明細表、比較法調查估價表。</p>
+     <ul class="f-pains"><li><b>01</b>表單眾多，人工逐項比對耗時，容易疏漏。</li><li><b>02</b>區域與個別因素要依不同用地別的基準明細表判定，一致性難維持。</li><li><b>03</b>修正率加總與跨表抄填（如區域因素總修正數），容易算錯、抄錯。</li></ul>
+    </div>
+    <div class="f-step" data-step="1">
+     <h2>把它變成一條鏈，<br><em>正著算。</em></h2>
+     <p class="lead">勘查表事實 → 優劣等級 → 修正率 → 加總 → 跨表抄填。</p>
+     <p class="support">依評價基準明細表判等級、查矩陣、算價格鏈，重算三表三圖。每個等級與修正率，都指得回基準表的某一格。</p>
+    </div>
+    <div class="f-step" data-step="2">
+     <h2>同一條鏈，<br><em>反著審。</em></h2>
+     <p class="lead">估價師填的表和規則算出的表，逐格比對。</p>
+     <p class="support">不一致就逐條指出並引用依據；推定值與範本本身的疑點只標「需確認」，不判錯。</p>
+    </div>
+   </div>
+   <p class="f-hint">把游標移到節點上，看每一步的依據與範本數值。</p>
+  </div>
+  <div class="f-visual f-chain-vis">
+   <canvas class="f-layer f-chain-mid" aria-hidden="true"></canvas>
+   <ol class="f-chain-nodes">
+    <li><button type="button" class="f-node" data-i="0"><b>勘查表事實</b><small>距離、寬度、面積…</small></button></li>
+    <li><button type="button" class="f-node" data-i="1"><b>優劣等級</b><small>基準表判定條件</small></button></li>
+    <li><button type="button" class="f-node" data-i="2"><b>修正率</b><small>矩陣查格</small></button></li>
+    <li><button type="button" class="f-node" data-i="3"><b>小計・總修正數</b><small>手冊 p.49</small></button></li>
+    <li><button type="button" class="f-node" data-i="4"><b>區域因素調整</b><small>帶入比較法調查估價表</small></button></li>
+    <li><button type="button" class="f-node" data-i="5"><b>個別因素差異率</b><small>手冊 p.52</small></button></li>
+    <li><button type="button" class="f-node" data-i="6"><b>試算價格</b><small>辦法 §17、§19</small></button></li>
+    <li><button type="button" class="f-node" data-i="7"><b>權重</b><small>絕對值加總排名</small></button></li>
+    <li><button type="button" class="f-node" data-i="8"><b>比較價格</b><small>手冊 p.53</small></button></li>
+    <li><button type="button" class="f-node" data-i="9"><b>比準地地價</b><small>辦法 §21 尾數</small></button></li>
+   </ol>
+   <div class="f-node-card f-panel" aria-live="polite"></div>
+  </div>
+ </div>
+</section>
+<section id="f-entry" class="f-sec f-flow f-entry" data-tint="#7fc8cf" aria-labelledby="f-entry-h">
+ <div class="f-grid2">
+  <div class="f-rv">
+   <p class="eyebrow"><span>02 / 08</span> ① 輸入資料 · THREE WAYS IN</p>
+   <h2 id="f-entry-h">送什麼都能開始，<br><em>沒送也能先產一版。</em></h2>
+   <p class="lead">三個入口，進到同一套核算。</p>
+   <div class="f-tabs" role="tablist" aria-label="三種入口">
+    <button type="button" role="tab" id="f-tab-a" aria-controls="f-pane-a" aria-selected="true" class="f-tab" data-k="a"><i>A</i>送審書表 PDF</button>
+    <button type="button" role="tab" id="f-tab-b" aria-controls="f-pane-b" aria-selected="false" class="f-tab" data-k="b" tabindex="-1"><i>B</i>年期＋地號</button>
+    <button type="button" role="tab" id="f-tab-c" aria-controls="f-pane-c" aria-selected="false" class="f-tab" data-k="c" tabindex="-1"><i>C</i>範例</button>
+   </div>
+   <div class="f-panes">
+    <div role="tabpanel" id="f-pane-a" aria-labelledby="f-tab-a" class="f-pane"><p>拖進估價單位送來的六頁 PDF：有文字層直接讀，掃描件走影像辨識。</p><p>先預覽再建案：每頁辨識到哪一表、案號、比準地、比較標的件數、缺漏與低信心欄位，一次看清楚。</p><p class="f-stat"><b class="num">99%</b>範本文字層還原<b class="num">0</b>缺漏欄位<b class="num">0</b>低信心欄位</p></div>
+    <div role="tabpanel" id="f-pane-b" aria-labelledby="f-tab-b" class="f-pane" hidden><p>只填五格：案號、估價基準日、鄉鎮市區、比準地地號、用地別。</p><p>約 30 秒依序完成：地籍界線 → 宗地屬性推定 → 區段範圍（路網推估街廓）→ 勘查表 28 欄 → 設施距離 → 實價登錄比較標的 3 件。推定值全部標示，估價師從「改」開始，不是從空白填起。</p><p class="f-stat">沒有地號也行：填區段範圍文字，系統圍出區段，依查估辦法 §18 選比準地。</p></div>
+    <div role="tabpanel" id="f-pane-c" aria-labelledby="f-tab-c" class="f-pane" hidden><ol class="f-cases"><li><b>範例一</b>金山區 P002-00，送審書表填載與系統核算相符</li><li><b>範例二</b>同一案含填載錯誤：5 項不符、1 項需確認</li><li><b>範例三</b>只有年期、區段編號與範圍的勘查表，其餘由圖資推算</li><li><b>範例四</b>樹林區普通住宅用地：四個區段、三筆比較標的</li></ol></div>
+   </div>
+  </div>
+  <div class="f-device f-rv" data-delay="1">
+   <div class="f-device-frame" data-mouse="10">
+    <canvas class="f-layer f-dev-back" aria-hidden="true"></canvas>
+    <canvas class="f-layer f-dev-front" aria-hidden="true"></canvas>
+    <p class="f-device-cap" aria-live="polite">送審書表 PDF · 逐頁辨識</p>
+   </div>
+  </div>
+ </div>
+ <div class="f-fill f-rv">
+  <div class="f-fill-head"><h3>填寫結果清單：每個欄位從哪裡來</h3><p>一鍵建案之後，每一欄都標出狀態、來源與說明。以下是金山區依地號產生的一案。</p></div>
+  <div class="f-fill-bar" role="img" aria-label="資料 4 欄、量測 39 欄、推定 52 欄、空白 12 欄，共 107 欄"><span class="seg data" style="--n:4"><b>4</b></span><span class="seg meas" style="--n:39"><b>39</b></span><span class="seg infer" style="--n:52"><b>52</b></span><span class="seg blank" style="--n:12"><b>12</b></span></div>
+  <ul class="f-fill-legend"><li class="data"><b>資料</b>匯入或送審書表填載</li><li class="meas"><b>量測</b>圖資量出，帶資料集與量測方式</li><li class="infer"><b>推定</b>系統規則推得，標「需確認」</li><li class="blank"><b>空白</b>推不出來，列「需人工填載」</li></ul>
+  <p class="f-note">推定門檻全部公開在系統的計算依據表，讓人能質疑。例：宗地寬度取「最小外接矩形與面前道路平行之邊」；停車方便性看交通局路邊停車格 50 m 內，或面前道路寬 ≥ 8 m（系統門檻，非法規）。</p>
+ </div>
+ <div class="f-uploads f-rv"><span class="f-uploads-k">還能上傳</span><span class="f-chip">宗地個別因素清冊 xlsx</span><span class="f-chip">買賣實例 xlsx</span><span class="f-chip">評價基準明細表 PDF／CSV／JSON</span><span class="f-chip">地籍圖 GeoJSON／KML／GML／SHP zip</span><span class="f-chip">地價區段圖</span><span class="f-chip is-rule">依地號併入・只覆蓋有值欄位・對不到的回報</span></div>
+</section>
+
+<section id="f-map" class="f-sec f-pin f-map" data-tint="#7fc8cf" style="--pin:250" aria-labelledby="f-map-h">
+ <div class="f-sticky">
+  <div class="f-copy">
+   <p class="eyebrow"><span>03 / 08</span> EVERY DISTANCE HAS A SOURCE</p>
+   <div class="f-steps">
+    <div class="f-step on" data-step="0">
+     <h2 id="f-map-h">四層圖資，<br><em>疊成一張圖。</em></h2>
+     <p class="lead">底圖、路網、地籍與區段、設施，事先下載到本機；不靠外部 API 也能量。</p>
+     <ul class="f-layer-list">
+      <li data-l="3"><b>設施</b>OpenStreetMap 95,696 筆設施；中油加油站、路邊停車格、交流道、列管污染源</li>
+      <li data-l="2"><b>地籍與區段</b>地籍圖匯入或開放地籍查詢；區段依路網推估街廓</li>
+      <li data-l="1"><b>路網</b>全新北市路網與步行圖；367 萬筆門牌</li>
+      <li data-l="0"><b>底圖</b>國土測繪中心通用版電子地圖與段籍圖（瓦片快取）</li>
+     </ul>
+    </div>
+    <div class="f-step" data-step="1">
+     <h2>每一筆距離，<br><em>都帶著出處。</em></h2>
+     <p class="lead">資料集、量測方式、起點約定，畫面與書表都看得到。</p>
+     <p class="support">需要通達的設施量步行路線，嫌惡設施量直線（作業手冊 p.24）。點設施看路線。</p>
+     <div class="f-fac">
+      <button type="button" class="f-fac-btn" data-f="0"><b>學校</b><span>金山國小</span><em class="num">114 m</em></button>
+      <button type="button" class="f-fac-btn" data-f="1"><b>市場</b><span>金山市場</span><em class="num">89 m</em></button>
+      <button type="button" class="f-fac-btn" data-f="2"><b>公園</b><span>中山溫泉公園</span><em class="num">201 m</em></button>
+      <button type="button" class="f-fac-btn" data-f="3"><b>站牌</b><span>金山區公所站</span><em class="num">168 m</em></button>
+     </div>
+    </div>
+   </div>
+  </div>
+  <div class="f-visual f-map-vis">
+   <div class="f-map-stack"><div class="f-map-world">
+    <canvas class="f-map-layer" data-l="0" aria-hidden="true"></canvas><canvas class="f-map-layer" data-l="1" aria-hidden="true"></canvas><canvas class="f-map-layer" data-l="2" aria-hidden="true"></canvas><canvas class="f-map-layer" data-l="3" aria-hidden="true"></canvas>
+    <span class="f-map-tag" data-l="0">底圖</span><span class="f-map-tag" data-l="1">路網</span><span class="f-map-tag" data-l="2">地籍與區段</span><span class="f-map-tag" data-l="3">設施與量測</span>
+   </div></div>
+   <div class="f-map-card f-panel" aria-live="polite"></div>
+   <p class="f-map-note">地圖為示意重繪：區段範圍取自系統依路網推估的街廓（金山區 P002-00），路線依實測步行距離繪製。</p>
+  </div>
+ </div>
+</section>
+<section id="f-rules" class="f-sec f-flow f-rules" data-tint="#e3ac78" aria-labelledby="f-rules-h">
+ <canvas class="f-layer f-sheets" aria-hidden="true"></canvas>
+ <div class="f-grid2">
+  <div class="f-rv">
+   <p class="eyebrow"><span>04 / 08</span> ② 產出書表 · DETERMINISTIC RULES</p>
+   <h2 id="f-rules-h">每個修正率，<br><em>都指得回一格。</em></h2>
+   <p class="lead">等級照評價基準明細表的判定條件，修正率由矩陣查格。語言模型不碰數字。</p>
+   <p class="support">試試右邊：拖動比準地與比較標的的數值，等級與修正率直接由基準表算出。基準表是資料不是程式，換區、換用地別只換一份 JSON。</p>
+   <ul class="f-principles">
+    <li><b>確定性</b>同樣的輸入，永遠得到同樣的等級與修正率</li>
+    <li><b>對回法源</b>每條算式對回查估辦法條號、作業手冊頁碼</li>
+    <li><b>推定只標需確認</b>圖資推定值與範本疑點不判錯，估價師填值優先</li>
+    <li><b>資料在本機</b>路網、設施、分區、實價登錄、指數全部預先下載</li>
+   </ul>
+  </div>
+  <div class="f-engine f-panel f-rv" id="f-engine" data-delay="1">
+   <div class="f-eng-items" role="radiogroup" aria-label="個別因素細項">
+    <button type="button" role="radio" aria-checked="true" data-id="I14">14 面前道路寬度</button>
+    <button type="button" role="radio" aria-checked="false" data-id="I15" tabindex="-1">15 接近學校</button>
+    <button type="button" role="radio" aria-checked="false" data-id="I16" tabindex="-1">16 接近市場</button>
+    <button type="button" role="radio" aria-checked="false" data-id="I7" tabindex="-1">7 面積</button>
+   </div>
+   <div class="f-eng-inputs">
+    <label class="f-eng-in s"><span>比準地</span><input type="range" data-who="s" aria-label="比準地數值"><output class="num"></output><b class="lv"></b></label>
+    <label class="f-eng-in c"><span>比較標的</span><input type="range" data-who="c" aria-label="比較標的數值"><output class="num"></output><b class="lv"></b></label>
+   </div>
+   <canvas class="f-eng-bands" aria-hidden="true"></canvas>
+   <div class="f-eng-body">
+    <table class="f-matrix"><caption>修正矩陣（列：比準地等級，欄：比較標的等級）</caption><thead></thead><tbody></tbody></table>
+    <div class="f-eng-out" aria-live="polite"><p class="k">修正率</p><p class="f-eng-rate num">+5.00%</p><p class="f-eng-formula num"></p><p class="f-eng-src"></p></div>
+   </div>
+  </div>
+ </div>
+ <div class="f-accept">
+  <div class="f-rv"><b class="num">212,958</b><span>元/m²。範本比較價格全部重現：表 5-2 每個等級、表 4 每個差異率、13.00%</span></div>
+  <div class="f-rv" data-delay="1"><b class="num">15,817 → 15,900</b><span>作業手冊 p.100–102 官方算例，含查估辦法 §21 尾數進位</span></div>
+  <div class="f-rv" data-delay="2"><b class="num">185</b><span>個自動測試：範本驗收、手冊算例、樹林區案例、匯入、輸出、API</span></div>
+  <div class="f-rv" data-delay="3"><b class="num">6 → 9 頁</b><span>書表依區段數一區一頁；Excel、畫面預覽、PDF 出自同一份格線</span></div>
+ </div>
+</section>
+
+<section id="f-review" class="f-sec f-pin f-review" data-tint="#ef8a6f" style="--pin:260" aria-labelledby="f-review-h">
+ <div class="f-sticky">
+  <canvas class="f-layer f-review-far" aria-hidden="true"></canvas>
+  <div class="f-copy">
+   <p class="eyebrow"><span>05 / 08</span> ③ 審查 · CELL BY CELL</p>
+   <div class="f-steps">
+    <div class="f-step on" data-step="0">
+     <h2 id="f-review-h">逐格比對，<br><em>不符與需確認分開。</em></h2>
+     <p class="lead">只有填載值與規則核算值不一致，才列「不符」。</p>
+     <p class="support">推定值與範本本身的疑點只列「需確認」，不判錯。每一列都寫出依據，並能跳回基準表的那一格。</p>
+     <p class="f-rv-counts"><span class="f-badge err">不符 <b class="num" data-n="err">0</b></span><span class="f-badge warn">需確認 <b class="num" data-n="warn">0</b></span><span class="f-src-ref">範例二（含填載錯誤之送審書表）</span></p>
+    </div>
+    <div class="f-step" data-step="1">
+     <h2>承辦裁決，<br><em>寫進意見書。</em></h2>
+     <p class="lead">接受填載，或維持不符、請估價單位補正。</p>
+     <p class="support">裁決、理由與裁決人都寫進審查意見書的逐條意見；建案、重新產生、裁決、匯出全部留下操作紀錄。改一格裁決試試，意見書會跟著改。</p>
+    </div>
+   </div>
+  </div>
+  <div class="f-visual f-review-vis">
+   <div class="f-rtable f-panel" role="table" aria-label="範例二：逐項比對結果">
+    <div class="f-scan" aria-hidden="true"></div>
+    <div class="f-rrow f-rhead" role="row"><span role="columnheader">結果</span><span role="columnheader">書表／位置</span><span role="columnheader">填載 → 核算</span><span role="columnheader">說明與依據</span><span role="columnheader">承辦裁決</span></div>
+    <div class="f-rrow" role="row" data-r="0" data-kind="warn"><span role="cell"><i class="f-badge warn">需確認</i></span><span role="cell"><b>比較法調查估價表</b>13 道路種類</span><span role="cell" class="num">8.00 → 5.00</span><span role="cell">基準明細表最大修正率超過內政部上限，需確認（不判錯）<small>手冊 p.52–53 (八)1、附件 25（p.154）</small></span><span role="cell" class="f-dec"><em>待確認</em></span></div>
+    <div class="f-rrow" role="row" data-r="1" data-kind="err"><span role="cell"><i class="f-badge err">不符</i></span><span role="cell"><b>比較法調查估價表</b>比較標的1／交易日期</span><span role="cell" class="num">113.05.28</span><span role="cell">交易日期早於估價基準日前一年，逾放寬上限<small>查估辦法 §17 第 3 項</small></span><span role="cell" class="f-dec"></span></div>
+    <div class="f-rrow" role="row" data-r="2" data-kind="err"><span role="cell"><i class="f-badge err">不符</i></span><span role="cell"><b>區域因素分析明細表</b>百分比小計 (2)</span><span role="cell" class="num">1.00 → 0.00</span><span role="cell">小計加總錯誤<small>手冊 p.49 (六)3(3)</small></span><span role="cell" class="f-dec"></span></div>
+    <div class="f-rrow" role="row" data-r="3" data-kind="err"><span role="cell"><i class="f-badge err">不符</i></span><span role="cell"><b>區域因素分析明細表</b>區域因素總修正數</span><span role="cell" class="num">1.00 → 0.00</span><span role="cell">總修正數加總錯誤<small>手冊 p.49 (六)3(3)(4)</small></span><span role="cell" class="f-dec"></span></div>
+    <div class="f-rrow" role="row" data-r="4" data-kind="err"><span role="cell"><i class="f-badge err">不符</i></span><span role="cell"><b>比較法調查估價表</b>比較標的1／區域因素調整</span><span role="cell" class="num">1.00 → 0.00</span><span role="cell">與區域因素分析明細表總修正數不符（跨表抄填）<small>區域因素分析明細表 總修正數</small></span><span role="cell" class="f-dec"></span></div>
+    <div class="f-rrow" role="row" data-r="5" data-kind="err"><span role="cell"><i class="f-badge err">不符</i></span><span role="cell"><b>比較法調查估價表</b>比較標的1／14 面前道路寬度</span><span role="cell" class="num">2.50 → 5.00</span><span role="cell">差異率與個別因素基準表矩陣不符<small>項目 14 矩陣［稍優］［稍劣］ <a class="f-trace" href="#f-engine">看基準表格位 →</a></small></span><span role="cell" class="f-dec"></span></div>
+   </div>
+   <div class="f-opinion" aria-live="polite">
+    <p class="f-op-title">土地徵收補償市價查估案件審查意見書</p>
+    <p class="f-op-meta">案號 1140901-99-001・比準地 金美段489地號・估價基準日 1140901</p>
+    <p class="f-op-h">一、審查結論</p><p class="f-op-concl"></p>
+    <p class="f-op-h">三、逐項意見</p><ol class="f-op-items"></ol>
+   </div>
+  </div>
+ </div>
+</section>
+<section id="f-case" class="f-sec f-flow f-case" data-tint="#e3ac78" aria-labelledby="f-case-h">
+ <div class="f-case-head f-rv">
+  <p class="eyebrow"><span>06 / 08</span> SHULIN, END TO END</p>
+  <h2 id="f-case-h">兩個檔，<br><em>一分鐘填完六張表。</em></h2>
+  <p class="lead">新北市樹林區普通住宅用地｜比準地 樹德段 1415 地號｜四個地價區段、三筆比較標的｜原表4 個別因素全部空白。</p>
+ </div>
+ <div class="f-pipe f-rv">
+  <canvas class="f-pipe-canvas" aria-hidden="true"></canvas>
+  <ol class="f-pipe-steps">
+   <li><b>上傳</b><span>書表 PDF、評價基準明細表 PDF</span></li>
+   <li><b>解析</b><span>四張勘查表、表5-1、表4；基準表 29＋20 細項</span></li>
+   <li><b>宗地界線</b><span>開放地籍查詢：比準地與三筆比較標的</span></li>
+   <li><b>區段範圍</b><span>四至文字＋路網圍出四個區段</span></li>
+   <li><b>勘查表</b><span>四個區段各推算 28 欄</span></li>
+   <li><b>設施距離</b><span>步行路網量測學校、市場、公園…</span></li>
+   <li><b>個別因素</b><span>表4 第 7～25 項：面積、寬深、臨路…</span></li>
+   <li><b>核算</b><span>表5-1、表4、比較價格</span></li>
+  </ol>
+  <div class="f-pipe-foot"><button type="button" class="f-btn f-pipe-play">▶ 重播流程</button><p class="f-pipe-time">本機從上傳到填完約 20 秒；正式站約 1 分鐘。</p></div>
+ </div>
+ <div class="f-case-grid">
+  <div class="f-price f-panel f-rv">
+   <h3>比較法：三筆比較標的 → 比準地地價</h3>
+   <table class="f-price-t">
+    <thead><tr><th></th><th>樹德段284</th><th>太平段367、917</th><th>文林段317</th></tr></thead>
+    <tbody>
+     <tr><th>土地正常單價</th><td>130,167</td><td>135,275</td><td>170,909</td></tr>
+     <tr><th>期日調整</th><td>+5.96%</td><td>+4.09%</td><td>+5.49%</td></tr>
+     <tr><th>區域因素總修正數</th><td>+18.00%</td><td>+14.75%</td><td>+6.75%</td></tr>
+     <tr><th>個別因素合計</th><td>−15.75%</td><td>−23.25%</td><td>−26.25%</td></tr>
+     <tr><th>試算價格</th><td>137,118</td><td>124,010</td><td>141,940</td></tr>
+     <tr><th>權重</th><td>30%</td><td>50%</td><td>20%</td></tr>
+    </tbody>
+   </table>
+   <canvas class="f-price-canvas" aria-hidden="true"></canvas>
+   <div class="f-price-out"><div><span>比準地比較價格</span><b class="num">131,529</b><small>元/m²・Σ 試算價格 × 權重，四捨五入至個位</small></div><div><span>比準地地價</span><b class="num">132,000</b><small>元/m²・查估辦法 §21：逾 10 萬元進位至千位</small></div></div>
+   <p class="f-note">讀懂備註：表5-1 備註「使用分區、建蔽率、容積率併同表4 考量」→ 三項在表5-1 自動免修正；表4 全案備註已敘明查估辦法 §17 第 3 項擴大蒐集期間 → 交易日期只列備註、不判不符。</p>
+  </div>
+  <div class="f-far f-panel f-rv" data-delay="1">
+   <h3>系統抓到的問題：容積率 200% 還是 260%？</h3>
+   <p>樹林都市計畫土管要點：第一種住宅區容積率 260%；但面臨計畫道路未達 8 m、或依現有巷道建築者，住一、住二上限 200%。系統以都市計畫圖的道路用地量宗地臨路寬度。</p>
+   <div class="f-far-comps" role="radiogroup" aria-label="比較標的">
+    <button type="button" role="radio" aria-checked="true" data-w="7.3" data-lane="0">比較標的1 樹德段284<small>臨計畫道路樹人街，量得 7.3 m</small></button>
+    <button type="button" role="radio" aria-checked="false" data-w="7.3" data-lane="1">比較標的2 太平段367、917<small>不臨計畫道路，面臨現有巷道</small></button>
+    <button type="button" role="radio" aria-checked="false" data-w="7.0" data-lane="0">比較標的3 文林段317<small>臨計畫道路潭興街，量得 7.0 m</small></button>
+   </div>
+   <canvas class="f-far-canvas" aria-hidden="true"></canvas>
+   <div class="f-far-ctl"><label>面臨計畫道路寬度 <input type="range" min="3" max="14" step="0.1" value="7.3" class="f-far-w" aria-label="面臨計畫道路寬度（公尺）"><output class="num">7.3 m</output></label><label><input type="checkbox" class="f-far-l"> 依現有巷道建築</label></div>
+   <p class="f-far-out"><span>法定容積率上限</span><b class="num">200%</b><em class="hit">未達 8 m：但書適用</em></p>
+   <p class="f-note">原勘查表 P002-00 填 200%，與宗地吻合；P003、P004 填 260%，與宗地臨路條件不一致 → 列「需確認」並附但書原文，交承辦裁定，不判錯。容積率在基準表為人工判定項，不影響比較價格。</p>
+  </div>
+ </div>
+</section>
+
+<section id="f-output" class="f-sec f-pin f-output" data-tint="#9fd3ad" style="--pin:260" aria-labelledby="f-output-h">
+ <div class="f-sticky">
+  <canvas class="f-layer f-out-far" aria-hidden="true"></canvas>
+  <div class="f-copy">
+   <p class="eyebrow"><span>07 / 08</span> ④ 輸出 · READY TO FILE</p>
+   <div class="f-steps">
+    <div class="f-step on" data-step="0">
+     <h2 id="f-output-h">一鍵打包，<br><em>格式照範本。</em></h2>
+     <p class="lead">書表、意見書、三張圖說、清冊與實例，一個 zip 帶走。</p>
+     <p class="support">查估書表 Excel 與 PDF 照範本頁序；地政局正式範本（表3、表5-1、表4）直接寫進格位，格式不動；宗地個別因素清冊與買賣實例填好可以再匯入。</p>
+    </div>
+    <div class="f-step" data-step="1">
+     <h2>每一步，<br><em>都留下紀錄。</em></h2>
+     <p class="lead">草稿 → 審查中 → 已完成；輸入一改，產出就標「已過期」。</p>
+     <p class="support">按右邊的按鈕，走一遍案件的一生。封存取代刪除：資料與紀錄都保留，可以復原。</p>
+    </div>
+    <div class="f-step" data-step="2">
+     <h2>部署在 AWS，<br><em>資料留在本機。</em></h2>
+     <p class="lead">EC2（us-west-2）＋Caddy HTTPS；語言模型走 Amazon Bedrock，只處理文字。</p>
+     <p class="support">對外只開 443／80，SSH 限單一 IP；不開公開 S3，機密走環境變數。推上主線後，主機每 60 秒拉取、依變更重建，健康檢查失敗自動回滾。</p>
+    </div>
+   </div>
+  </div>
+  <div class="f-visual f-out-vis">
+   <div class="f-out-pane on" data-pane="0"><div class="f-files">
+    <div class="f-file"><i>XLSX</i><b>查估書表</b><small>勘查表每區段一張＋兩表＋三圖</small></div>
+    <div class="f-file"><i class="pdf">PDF</i><b>查估書表</b><small>照範本頁序，直式與橫式混排</small></div>
+    <div class="f-file"><i>XLSX</i><b>地政局正式範本</b><small>表3、表5-1、表4 寫進格位</small></div>
+    <div class="f-file"><i class="docx">DOCX</i><b>審查意見書</b><small>逐條意見、法源與承辦裁決</small></div>
+    <div class="f-file"><i class="pdf">PDF</i><b>審查意見書</b><small>附三張圖說，落款為操作身分</small></div>
+    <div class="f-file"><i class="png">PNG</i><b>地價區段略圖</b><small>A3 橫式，比例尺與簽章欄</small></div>
+    <div class="f-file"><i class="png">PNG</i><b>地價使用分區圖</b><small>分區色塊與區段範圍</small></div>
+    <div class="f-file"><i class="png">PNG</i><b>地價區段圖</b><small>設施位置與量測路線</small></div>
+    <div class="f-file"><i>XLSX</i><b>宗地個別因素清冊</b><small>填好可再匯入</small></div>
+    <div class="f-file"><i>XLSX</i><b>買賣實例</b><small>填好可再匯入</small></div>
+    <div class="f-zip"><span class="n num">0</span><b>下載全部</b><small>bundle.zip</small></div>
+   </div></div>
+   <div class="f-out-pane" data-pane="1"><div class="f-life f-panel">
+    <div class="f-life-states"><span data-s="draft">草稿</span><span data-s="review">審查中</span><span data-s="done">已完成</span></div>
+    <p class="f-life-out">產出：<b>最新</b>　比較價格 <span class="num">212,958</span> 元/m²</p>
+    <div class="f-life-btns"><button type="button" data-a="edit">修改輸入</button><button type="button" data-a="regen">重新產生書表</button><button type="button" data-a="decide">儲存承辦裁決</button><button type="button" data-a="finish">標為已完成</button><button type="button" data-a="archive">封存</button></div>
+    <ol class="f-life-log" aria-live="polite"></ol>
+   </div></div>
+   <div class="f-out-pane" data-pane="2"><div class="f-arch">
+    <canvas class="f-arch-canvas" aria-hidden="true"></canvas>
+    <div class="f-arch-node" data-n="user">評審／承辦瀏覽器<small>HTTPS（Caddy 自動憑證）</small></div>
+    <div class="f-arch-node" data-n="bedrock">Amazon Bedrock<small>只做意見書潤飾與掃描件辨識；守門：標籤要齊、不得出現新數字</small></div>
+    <div class="f-arch-node" data-n="ec2">EC2 標準型・us-west-2<small>Caddy 443 → Next.js 3000／FastAPI 8000；規則引擎、空間、市場、報表</small></div>
+    <div class="f-arch-node" data-n="data">本機資料層（EBS 約 2 GB）<small>規則 JSON、案件與操作紀錄、SQLite 圖資、實價登錄與指數、底圖瓦片快取</small></div>
+    <p class="f-arch-facts">Security Group 對外只開 443／80・SSH 限單一 IP・不開公開 S3・185 個自動測試・健康檢查失敗自動回滾</p>
+   </div></div>
+  </div>
+ </div>
+</section>
+<section id="f-future" class="f-sec f-pin f-future" data-tint="#e3ac78" style="--pin:620" aria-labelledby="f-future-h">
+ <div class="f-sticky f-fut-sticky">
+  <canvas class="f-layer f-fut-far" aria-hidden="true"></canvas>
+  <canvas class="f-layer f-fut-mid" aria-hidden="true"></canvas>
+  <div class="f-fut-head">
+   <p class="eyebrow"><span>08 / 08</span> 綜上所述 · WHAT COMES NEXT</p>
+   <h2 id="f-future-h">綜上所述，<em>這套引擎還能走得更遠。</em></h2>
+  </div>
+  <div class="f-fut-track">
+   <article class="f-fut-intro">
+    <p class="f-fut-kicker">綜上所述</p>
+    <ul class="f-fut-recap">
+     <li><b>算得對</b>數字由確定性規則引擎計算，每一格都指得回基準表與法源。</li>
+     <li><b>審得清</b>不符與需確認分開；推定值不判錯，承辦的裁決寫進意見書、留下紀錄。</li>
+     <li><b>用得上</b>送什麼都能逐格核算；沒送，也能依地號先產出一版。</li>
+    </ul>
+    <p class="f-fut-go">往下捲，沿路看六個接下來的應用場景 →</p>
+   </article>
+   <article class="f-fut-card" data-k="api" aria-labelledby="f-fut-a">
+    <div class="f-fut-text">
+     <p class="f-fut-no"><i>A</i> OPEN API</p>
+     <h3 id="f-fut-a">開放 API：<br>讓規則引擎成為共用的基礎建設</h3>
+     <ul><li>對外提供版本化的 REST API（/v1）與公開的 OpenAPI 規格：送審核算、規則查詢、書表產出。</li><li>估價師事務所送件前自行核算；地政事務所與需用土地人的系統直接串接，不必重打資料。</li><li>回應附依據（條號、頁碼、基準表格位），別人的系統拿到結果也能追溯。</li></ul>
+     <p class="f-fut-now"><b>現況</b>後端已是 FastAPI，/docs 自動產生文件。<b>下一步</b>API 金鑰、用量上限、存取紀錄、版本管理。</p>
+    </div>
+    <div class="f-fut-child"><canvas aria-hidden="true"></canvas></div>
+   </article>
+   <article class="f-fut-card" data-k="sec" aria-labelledby="f-fut-b">
+    <div class="f-fut-text">
+     <p class="f-fut-no"><i>B</i> SECURITY</p>
+     <h3 id="f-fut-b">資訊安全：<br>身分、權限、加密、稽核四道防線</h3>
+     <ul><li>身分：接機關單一登入（自然人憑證、公務帳號），取代目前自填的操作身分。</li><li>權限：承辦、主管、估價單位分角色，案件依轄區與層級授權。</li><li>加密與稽核：傳輸 TLS、儲存加密、機密集中保管；操作紀錄加上雜湊鏈，任何竄改都驗得出來。</li></ul>
+     <p class="f-fut-now"><b>現況</b>HTTPS、對外只開 443／80、SSH 限單一 IP、操作紀錄。<b>下一步</b>單一登入、角色權限、雜湊鏈、定期弱點掃描與滲透測試。</p>
+    </div>
+    <div class="f-fut-child"><canvas aria-hidden="true"></canvas></div>
+   </article>
+   <article class="f-fut-card" data-k="nlsc" aria-labelledby="f-fut-c">
+    <div class="f-fut-text">
+     <p class="f-fut-no"><i>C</i> NLSC LINK</p>
+     <h3 id="f-fut-c">串接國土測繪中心：<br>從開放圖資到即時地籍</h3>
+     <ul><li>地籍圖資 API：即時宗地界線與面積，取代非即時的開放地籍查詢（以地政局名義申請）。</li><li>門牌定位對上地籍：實價登錄的門牌自動落到宗地，判斷是否同一區段。</li><li>20 m 數值地形模型、國土利用現況調查、正射影像：地勢、現況使用、建物有無自動判讀。</li></ul>
+     <p class="f-fut-now"><b>可發展的新功能</b>登記面積與圖面面積自動比對、界址異動提醒、三維建物的日照與視野分析。</p>
+    </div>
+    <div class="f-fut-child"><canvas aria-hidden="true"></canvas></div>
+   </article>
+   <article class="f-fut-card" data-k="self" aria-labelledby="f-fut-d">
+    <div class="f-fut-text">
+     <p class="f-fut-no"><i>D</i> SELF-CHECK · 建議</p>
+     <h3 id="f-fut-d">送件前自主檢核：<br>補正往返變少</h3>
+     <ul><li>把同一套規則開給估價單位，送件前先核算一次，看到不符項與依據。</li><li>審查端收到的是已經自檢過的書表，補正往返從多次降到一次。</li><li>自檢結果附在送審資料裡，承辦一眼看出哪些已經處理。</li></ul>
+     <p class="f-fut-now"><b>銜接</b>與 A 開放 API 共用同一套規則；估價單位不必另學一套工具。</p>
+    </div>
+    <div class="f-fut-child"><canvas aria-hidden="true"></canvas></div>
+   </article>
+   <article class="f-fut-card" data-k="dash" aria-labelledby="f-fut-e">
+    <div class="f-fut-text">
+     <p class="f-fut-no"><i>E</i> INSIGHT · 建議</p>
+     <h3 id="f-fut-e">跨案一致性儀表板：<br>看見哪些規則最常出錯</h3>
+     <ul><li>彙整所有案件的不符與需確認，依審查重點 i–vii、細項、區域統計。</li><li>找出最常出錯的地方（例如加總、跨表抄填），回饋到教育訓練與基準表修訂。</li><li>同一區段不同年期的修正率並排，檢查判定前後是否一致。</li></ul>
+     <p class="f-fut-now"><b>銜接</b>每筆 finding 已經帶審查重點、書表、格位與依據，資料現在就有。</p>
+    </div>
+    <div class="f-fut-child"><canvas aria-hidden="true"></canvas></div>
+   </article>
+   <article class="f-fut-card" data-k="rules" aria-labelledby="f-fut-f">
+    <div class="f-fut-text">
+     <p class="f-fut-no"><i>F</i> MORE CASES · 建議</p>
+     <h3 id="f-fut-f">換一份基準表：<br>支援更多地價業務</h3>
+     <ul><li>引擎只讀規則 JSON：各縣市、各用地別的評價基準明細表匯入即用，不改程式。</li><li>同一條「事實 → 等級 → 修正率 → 價格鏈 → 審查」，延伸到區段徵收、市地重劃、公告土地現值評議。</li><li>基準表版本化：每一版都留存，舊案可以用當年的規則重算。</li></ul>
+     <p class="f-fut-now"><b>現況</b>已內建金山商業用地、樹林住宅用地兩份基準表，另可匯入 PDF／CSV／JSON。</p>
+    </div>
+    <div class="f-fut-child"><canvas aria-hidden="true"></canvas></div>
+   </article>
+  </div>
+  <canvas class="f-layer f-fut-near" aria-hidden="true"></canvas>
+  <ol class="f-fut-dots" aria-hidden="true"><li>綜上所述</li><li>A 開放 API</li><li>B 資訊安全</li><li>C 國土測繪</li><li>D 自主檢核</li><li>E 一致性</li><li>F 更多業務</li></ol>
+ </div>
+</section>
+
+<section id="f-end" class="f-sec f-flow f-end" data-tint="#e3ac78" aria-labelledby="f-end-h">
+ <canvas class="f-layer f-end-canvas" aria-hidden="true"></canvas>
+ <div class="f-end-inner f-rv">
+  <p class="eyebrow"><span>FIN</span> FROM ONE PARCEL TO THE WHOLE CITY</p>
+  <h2 id="f-end-h" class="f-end-title"><span class="l1">一陣風，讀懂一座城；</span><span class="l2"><em>一套規則，算清每一格。</em></span></h2>
+  <p class="lead f-end-lead">估價單位送來什麼，就逐格核算；沒送，也能先產一版。<br>每一個數字，都能點回法源。</p>
+  <div class="ending-actions"><a class="enter-cta" href="/dashboard">進入案件總覽 <span aria-hidden="true">→</span></a><a class="replay" href="#city">重新走進城市 <span>↑</span></a></div>
+  <p class="enter-note">土地徵收補償市價查估 · 估價案件審查輔助系統</p>
+  <details class="f-limits"><summary>限制與後續</summary><ul>
+   <li><b>收益法</b>查估辦法 §14 未實作（實價登錄沒有收益資料），列人工填寫。</li>
+   <li><b>樓層別效用比率</b>第四號公報沒有表，區分所有建物由估價師填。</li>
+   <li><b>地籍圖</b>現用開放地籍查詢（非即時，界線與面積標推定），也可匯入圖檔；正式版需國土測繪中心地籍 API（以地政局名義申請）。</li>
+   <li><b>期日調整</b>樹林區案例依樹林區平均區段地價表調整；111 年樹林區資料未取得，系統採原表填載值，無法驗算。</li>
+   <li><b>土管要點</b>48 個計畫區自動抽取，8 個抓不到表時退回施行細則附表一，多表不一致標需人工核對。</li>
+   <li><b>推定門檻</b>勘查表推定規則為系統自訂，待地政局確認後調整。</li>
+   <li><b>底圖</b>國土測繪中心瓦片在境外主機的連線需確認；金山一帶已快取，可離線。</li>
+  </ul></details>
+ </div>
+</section>
+<!-- 出題、主辦、協辦與技術支持單位：整頁最後（原本浮在第五章夜景上） -->
+<div class="f-credits" aria-label="出題、主辦與協辦單位">
+ <div class="cr-row">
+  <div class="cr-group cr-own"><span class="cr-label">出題單位</span><span class="cr-mark" data-logo="land"></span><span class="cr-name"><b>新北市政府地政局</b></span></div>
+  <div class="cr-sep"></div>
+  <div class="cr-group"><span class="cr-label">主辦單位</span><span class="cr-mark" data-logo="ntpc"></span><span class="cr-unit">新北市政府</span><span class="cr-mark" data-logo="youth"></span><span class="cr-unit">新北市政府青年局</span></div>
+  <div class="cr-group"><span class="cr-label">協辦單位</span><span class="cr-mark" data-logo="digitimes"></span><span class="cr-unit">DIGITIMES</span><span class="cr-mark" data-logo="netron"></span><span class="cr-unit">網創資訊</span></div>
+  <div class="cr-group"><span class="cr-label">國際 AI 技術支持</span><span class="cr-mark" data-logo="aws"></span><span class="cr-unit">AWS</span></div>
+ </div>
+ <p class="f-credits-note">城市起風・土地徵收補償市價查估 · 估價案件審查輔助系統</p>
+</div>
+</div>
 <div class="valuation" id="valuation" aria-hidden="true"><p>周邊比較案例 <span>示意指數</span></p><div><span>A 河岸住宅</span><i style="--bar:72%"></i><b>96</b></div><div><span>B 公園街廓</span><i style="--bar:86%"></i><b>103</b></div><div><span>C 站前生活</span><i style="--bar:65%"></i><b>92</b></div><small>現勘 · 區位 · 使用條件</small></div>
-<div class="credits" id="credits" aria-hidden="true"><div class="cr-row"><div class="cr-group cr-own"><span class="cr-mark" data-logo="land"></span><span class="cr-name"><b>新北市政府地政局</b></span></div><div class="cr-sep"></div><div class="cr-group"><span class="cr-label">主辦單位</span><span class="cr-mark" data-logo="ntpc"></span><span class="cr-unit">新北市政府</span><span class="cr-mark" data-logo="youth"></span><span class="cr-unit">新北市政府青年局</span></div><div class="cr-group"><span class="cr-label">協辦單位</span><span class="cr-mark" data-logo="digitimes"></span><span class="cr-unit">DIGITIMES</span><span class="cr-mark" data-logo="netron"></span><span class="cr-unit">網創資訊</span></div><div class="cr-group"><span class="cr-label">國際 AI 技術支持</span><span class="cr-mark" data-logo="aws"></span><span class="cr-unit">AWS</span></div></div></div><footer class="hud"><span class="hud-caption">一陣風，讀懂一座城。</span><div class="progress-track"><i id="progress"></i></div><span id="counter">01 — 05</span></footer>
+<footer class="hud"><span class="hud-caption">一陣風，讀懂一座城。</span><div class="progress-track"><i id="progress"></i></div><span id="counter">01 — 05</span></footer>
 <div class="fallback" id="fallback" hidden><p>目前裝置無法顯示 3D 場景。<br>你仍可向下捲動，閱讀完整故事。</p></div>
-<noscript><style>.loading,#stage,.hud{display:none}.scene-section{min-height:70vh}.chapter{position:relative!important;opacity:1!important;visibility:visible!important;padding:120px 24px!important;inset:auto!important}body{overflow:auto}</style></noscript>
-<script type="module" src="/city-wind/app.js"></script></body></html>
+<noscript><style>#features{opacity:1!important;visibility:visible!important}.loading,#stage,.hud{display:none}.scene-section{min-height:70vh}.chapter{position:relative!important;opacity:1!important;visibility:visible!important;padding:120px 24px!important;inset:auto!important}body{overflow:auto}</style></noscript>
+<script type="module" src="/city-wind/app.js"></script><script type="module" src="/city-wind/features/main.js"></script></body></html>

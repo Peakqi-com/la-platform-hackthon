@@ -1,0 +1,97 @@
+/* ── 08 綜上所述：未來應用（母動畫＋六個子動畫）、結尾 ── */
+
+/* 母動畫：釘住的一整屏，垂直捲動變成水平前進。
+   遠層天際線、中層地面與估價師、前景的風三層畫布以不同速度移動；站點卡片沿路經過。 */
+.f-fut-sticky { display: block; padding: 0; }
+.f-fut-far, .f-fut-mid { z-index: 0; }
+.f-fut-near { z-index: 5; }
+.f-fut-head { position: absolute; z-index: 4; left: 7vw; top: calc(var(--hdr) + 3svh); max-width: 70vw; }
+.f-fut-head .eyebrow { margin-bottom: 10px; }
+.f-fut-head h2 { font-size: clamp(26px, 2.5vw, 42px); margin: 0; line-height: 1.35; }
+.f-fut-track { position: absolute; z-index: 3; left: 0; top: calc(var(--hdr) + 15svh); bottom: 19svh; display: flex; gap: 5vw; padding-left: 7vw; will-change: transform; }
+.f-fut-intro, .f-fut-card { flex: none; width: min(72vw, 1040px); height: 100%; }
+.f-fut-intro { width: min(46vw, 640px); display: flex; flex-direction: column; justify-content: center; }
+.f-fut-kicker { margin: 0 0 14px; font-size: 13px; letter-spacing: .3em; color: var(--accent); }
+.f-fut-recap { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+.f-fut-recap li { padding: 16px 0; border-bottom: 1px solid var(--line); font-size: 17px; line-height: 1.8; color: var(--ink-2); }
+.f-fut-recap b { display: inline-block; min-width: 4.5em; color: var(--fg); font-size: 19px; }
+.f-fut-go { margin: 22px 0 0; font-size: 14px; color: var(--accent); letter-spacing: .06em; }
+.f-fut-card { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.08fr); gap: 26px; padding: 26px 28px; background: rgba(9,19,19,.8); border: 1px solid var(--line); backdrop-filter: blur(6px); }
+.f-fut-card.on { border-color: rgba(227,172,120,.45); }
+.f-fut-text { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.f-fut-no { margin: 0 0 10px; font: 12px/1 ui-monospace, monospace; letter-spacing: .16em; color: var(--muted); display: flex; align-items: center; gap: 10px; }
+.f-fut-no i { font-style: normal; width: 28px; height: 28px; display: grid; place-items: center; border: 1px solid var(--accent); color: var(--accent); font-size: 14px; transform: rotate(45deg); }
+.f-fut-no i::first-letter { display: inline-block; }
+.f-fut-card h3 { font-size: clamp(20px, 1.7vw, 27px); line-height: 1.45; margin: 0 0 14px; }
+.f-fut-card ul { margin: 0; padding: 0 0 0 18px; }
+.f-fut-card li { font-size: 14.5px; line-height: 1.8; color: var(--ink-2); margin-bottom: 6px; }
+.f-fut-card li::marker { color: var(--accent); }
+.f-fut-now { margin: auto 0 0; padding-top: 12px; border-top: 1px solid var(--line); font-size: 13px; line-height: 1.8; color: var(--muted); }
+.f-fut-now b { color: var(--accent); font-weight: 600; margin-right: 8px; }
+.f-fut-now b:not(:first-child) { margin-left: 12px; }
+.f-fut-child { position: relative; min-height: 0; border: 1px solid var(--line); background: radial-gradient(130% 100% at 30% 20%, #10282b 0%, #0a1617 70%); overflow: hidden; }
+.f-fut-child canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.f-fut-dots { position: absolute; z-index: 4; left: 7vw; right: 7vw; bottom: 3.2svh; margin: 0; padding: 0; list-style: none; display: flex; justify-content: space-between; gap: 6px; }
+.f-fut-dots li { flex: 1; font-size: 12px; color: var(--muted); padding-top: 10px; border-top: 2px solid var(--line); transition: color .3s, border-color .3s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.f-fut-dots li.on { color: var(--accent); border-color: var(--accent); }
+.f-fut-dots li.past { border-color: rgba(227,172,120,.4); }
+
+/* 結尾 */
+.f-end { min-height: 100svh; display: grid; place-items: center; padding: 26svh 7vw 16svh; overflow: hidden; }
+/* 頁尾：出題、主辦、協辦與技術支持單位（原本浮在第五章夜景上，改放整頁最後）。
+   沿用 enter.css 的 .cr-* 樣式與 logo 槽；logo 檔放進 logos/ 就會顯示，沒有檔案只留文字。 */
+.f-credits { position: relative; z-index: 1; padding: 7svh 7vw calc(6svh + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--bg); }
+.f-credits .cr-row { margin: 0 auto; max-width: 1100px; gap: 22px 40px; }
+.f-credits .cr-group { flex-wrap: wrap; row-gap: 8px; }
+.f-credits .cr-label { font-size: 12px; }
+.f-credits .cr-unit { font-size: 14px; }
+.f-credits .cr-name b { font-size: 16px; }
+.f-credits-note { margin: 26px 0 0; text-align: center; font-size: 12px; color: #7f918a; letter-spacing: .08em; }
+@media (max-width: 600px) {
+  .f-credits .cr-row { flex-direction: column; align-items: flex-start; gap: 16px; }
+  .f-credits .cr-sep { display: none; }
+  .f-credits .cr-group { white-space: normal; }
+}
+/* 未來應用那一段有自己的站點列，左側章節導覽讓開，免得壓在移動的卡片上 */
+html.f-rail-off .f-rail { opacity: 0; visibility: hidden; transition: opacity .4s ease, visibility 0s .4s; }
+.f-end-canvas { z-index: 0; }
+.f-end-inner { position: relative; z-index: 1; max-width: 860px; text-align: center; }
+.f-end .eyebrow { justify-content: center; }
+.f-end h2 { font-size: clamp(30px, 3vw, 52px); }
+.f-end .ending-actions { justify-content: center; margin-top: 26px; }
+.f-end .enter-note { margin: 16px auto 0; }
+/* 結尾標語：大字、粗體；進場時兩行像風吹過一樣由左往右掃出，第二行最後拉出金色底線 */
+.f-end .f-end-title { font-size: clamp(40px, 4.8vw, 84px); line-height: 1.24; font-weight: 900; letter-spacing: .01em; margin: 0 0 26px; }
+.f-end-title span { display: block; white-space: nowrap; }
+.f-end-title .l2 { position: relative; display: inline-block; }
+.f-end-title .l2::after { content: ''; position: absolute; left: 0; right: 0; bottom: -.1em; height: 3px; background: linear-gradient(90deg, transparent, var(--accent) 18%, var(--accent) 82%, transparent); transform: scaleX(0); transform-origin: left center; transition: transform 1.2s cubic-bezier(.2,.7,.2,1) 1.15s; }
+.js-f .f-end-title .l1, .js-f .f-end-title .l2 { clip-path: inset(-.2em 100% -.3em 0); transition: clip-path 1.1s cubic-bezier(.65,0,.35,1) .2s; }
+.js-f .f-end-title .l2 { transition-delay: .65s; }
+.js-f .f-end-inner.is-in .f-end-title .l1, .js-f .f-end-inner.is-in .f-end-title .l2 { clip-path: inset(-.2em 0 -.3em 0); }
+.js-f .f-end-inner.is-in .f-end-title .l2::after, html:not(.js-f) .f-end-title .l2::after { transform: scaleX(1); }
+.f-end .f-end-lead { font-size: clamp(16px, 1.35vw, 20px); line-height: 1.9; color: var(--ink-2); margin: 0; }
+@media (max-width: 600px) {
+  .f-end .f-end-title { font-size: clamp(22px, 7.3vw, 36px); }   /* 手機版兩句各排一行，不讓「格。」單獨掉到下一行 */
+  .f-end .f-end-lead br { display: none; }
+}
+.f-limits { margin: 44px auto 0; max-width: 720px; text-align: left; border-top: 1px solid var(--line); padding-top: 14px; }
+.f-limits summary { cursor: pointer; font-size: 14px; color: var(--muted); letter-spacing: .1em; }
+.f-limits summary:hover { color: var(--accent); }
+.f-limits ul { list-style: none; margin: 12px 0 0; padding: 0; }
+.f-limits li { font-size: 13.5px; line-height: 1.8; color: var(--ink-2); padding: 6px 0; border-bottom: 1px solid rgba(230,236,225,.07); }
+.f-limits b { display: inline-block; min-width: 7em; color: var(--fg); font-weight: 600; }
+
+@media (max-width: 900px) {
+  .f-fut-head { left: 5vw; max-width: 90vw; }
+  .f-fut-head h2 { font-size: 21px; }
+  .f-fut-track { top: calc(var(--hdr) + 15svh); bottom: 12svh; padding-left: 5vw; gap: 6vw; }
+  .f-fut-intro, .f-fut-card { width: 88vw; }
+  .f-fut-card { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); gap: 12px; padding: 14px 16px; }
+  .f-fut-card h3 { font-size: 18px; margin-bottom: 8px; }
+  .f-fut-card li { font-size: 12.5px; line-height: 1.65; margin-bottom: 2px; }
+  .f-fut-card li:nth-child(n+3) { display: none; }
+  .f-fut-now { display: none; }
+  .f-fut-recap li { font-size: 14px; padding: 10px 0; } .f-fut-recap b { font-size: 16px; }
+  .f-fut-dots li { font-size: 0; } .f-fut-dots li.on { font-size: 11px; flex: 3; }
+  .f-limits b { display: block; }
+}

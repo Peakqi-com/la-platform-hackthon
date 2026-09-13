@@ -30,7 +30,8 @@ media.addEventListener('change',event=>applyMotion(event.matches));
 // 落在區段 34% 處，fadeIn（.18 到 1）與 fadeOut（.8 才開始）都在完全不透明的區間。
 const CHAPTER_ANCHOR=.34;
 function scrollToSection(section,instant){scrollTo({top:section.offsetTop+section.offsetHeight*CHAPTER_ANCHOR,behavior:(instant||reduced)?'instant':'smooth'});}
-for(const anchor of document.querySelectorAll('a[href^="#"]'))anchor.addEventListener('click',event=>{const section=document.getElementById(anchor.getAttribute('href').slice(1));if(section){event.preventDefault();scrollToSection(section);history.replaceState(null,'',anchor.getAttribute('href'));}});
+// 只接管五個故事章節的錨點；系統功能（#f-…）的錨點由 features/main.js 處理，落在段落頂端。
+for(const anchor of document.querySelectorAll('a[href^="#"]'))anchor.addEventListener('click',event=>{const section=document.getElementById(anchor.getAttribute('href').slice(1));if(section?.classList.contains('scene-section')){event.preventDefault();scrollToSection(section);history.replaceState(null,'',anchor.getAttribute('href'));}});
 
 try{
  const quality=new QualityManager(),renderer=new THREE.WebGLRenderer({canvas:document.querySelector('#world'),antialias:true,alpha:false,powerPreference:'high-performance'});quality.applyRenderer(renderer);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.1;
@@ -130,9 +131,10 @@ try{
  }
 
  renderer.domElement.addEventListener('webglcontextlost',event=>{event.preventDefault();paused=true;document.querySelector('#fallback').hidden=false;});renderer.domElement.addEventListener('webglcontextrestored',()=>{paused=false;lastFrame=performance.now();document.querySelector('#fallback').hidden=true;resize();});
- document.addEventListener('visibilitychange',()=>{paused=document.hidden;lastFrame=performance.now();});function frame(now){requestAnimationFrame(frame);if(paused)return;render(now);}warmup().finally(()=>requestAnimationFrame(frame));
+ // 捲到系統功能、城市被完全蓋住時（features/main.js 標 city-covered）暫停渲染，把效能讓給那一段。
+ document.addEventListener('visibilitychange',()=>{paused=document.hidden;lastFrame=performance.now();});function frame(now){requestAnimationFrame(frame);if(paused||document.documentElement.classList.contains('city-covered')){lastFrame=now;return;}render(now);}warmup().finally(()=>requestAnimationFrame(frame));
 }catch(error){
  loader.classList.add('done');document.querySelector('#fallback').hidden=false;console.error('3D scene unavailable',error);const scroll=new ScrollController(sections,{reduced:()=>true});function fallbackFrame(){showChapter(scroll.target,scroll.pageProgress,innerWidth<=600);requestAnimationFrame(fallbackFrame);}requestAnimationFrame(fallbackFrame);
 }
 
-if(location.hash)requestAnimationFrame(()=>{const target=document.getElementById(location.hash.slice(1));if(target)scrollToSection(target,true);});
+if(location.hash)requestAnimationFrame(()=>{const target=document.getElementById(location.hash.slice(1));if(target?.classList.contains('scene-section'))scrollToSection(target,true);});
