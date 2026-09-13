@@ -285,6 +285,12 @@ def adapt(file: UploadFile = File(...), kind: str = Form("auto"), land_use: str 
         elif k == "rules_table":
             from app.adapters.rules_table import read_rules_table
             res = read_rules_table(content, filename=file.filename, land_use=land_use, id_prefix=id_prefix)
+        elif k == "official_xlsx":
+            # 地政局正式範本（表3／表4／表5 xlsx）是輸出用；pymupdf 會把它展開成幾十頁無文字層的「掃描件」逐頁送影像辨識（會場實測一份 69 頁、半小時以上），直接略過
+            from app.adapters.common import AdapterResult
+            res = AdapterResult(kind="official_xlsx", data={})
+            res.warn("地政局正式範本（表3／表4／表5 xlsx）由系統依核算結果填寫，不作為輸入解析，已略過；請上傳送審書表 PDF、宗地清冊或買賣實例，填好的範本到「輸出」頁下載")
+            res = res.finalize()
         else:
             res = _read_pdf_forms_cached(content, file.filename, use_vision)
     except HTTPException:

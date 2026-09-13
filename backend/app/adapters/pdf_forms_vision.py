@@ -88,7 +88,16 @@ def run_vision(vision_pages: list, ctx: dict, result: AdapterResult, *, provider
     except LLMNotConfigured as e:
         result.warn(f"這份 PDF 有 {len(vision_pages)} 頁沒有文字層（掃描件），需要語言模型做影像辨識，但系統尚未設定（{e}）。請設定 ANTHROPIC_API_KEY（或 LLM_PROVIDER=bedrock 與 AWS 憑證）後重新上傳，或改上傳文字型 PDF；這些頁的欄位請人工輸入。")
         return
-    for pno, page, kind in vision_pages:
+    # 頁數上限（MAX_VISION_PAGES，預設 10）：每頁一次模型呼叫（Bedrock 另有每秒一次節流），沒有上限時一份幾十頁的掃描件會讓一個請求跑半小時以上。
+    # 已知是表單的頁（t1／t5／t4）優先，其餘依頁序；超過的頁列警告請人工輸入。
+    import os
+    cap = int(os.environ.get("MAX_VISION_PAGES", "10") or 10)
+    ordered = sorted(vision_pages, key=lambda x: (x[2] == "other", x[0]))
+    if len(ordered) > cap:
+        skipped = [str(p) for p, _pg, _k in ordered[cap:]]
+        result.warn(f"這份檔案有 {len(ordered)} 頁需要影像辨識，超過上限 {cap} 頁；只辨識前 {cap} 頁（表單頁優先），第 {'、'.join(skipped[:15])}{'…' if len(skipped) > 15 else ''} 頁未辨識，欄位請人工輸入或拆檔再上傳")
+        ordered = ordered[:cap]
+    for pno, page, kind in ordered:
         png = render_png(page)
         prompt = {"t1": PROMPT_T1 % _t1_paths(), "t5": PROMPT_T5, "t4": PROMPT_T4}.get(kind)
         if prompt is None:
