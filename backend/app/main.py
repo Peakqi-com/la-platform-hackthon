@@ -18,6 +18,7 @@ import re
 import time
 import urllib.parse
 import uuid
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -2318,6 +2319,25 @@ def report(payload: ReportPayload, request: Request):
         except LLMNotConfigured as e:
             rep.polish = {"status": "unavailable", "note": str(e)}
     return {"report": rep.to_dict(), "markdown": to_markdown(rep), "findings": findings}
+
+
+# ------------------------------------------------------------------ 文件（docs/*.md 原文；前端 /sources 解析後套版，單一來源不另抄）
+
+_DOCS = {"data_sources": "05_data_sources.md"}
+
+
+@app.get("/api/docs/{name}")
+def doc_markdown(name: str):
+    """回傳 docs/ 下指定文件的 markdown 原文與檔案時間；只開放白名單。"""
+    fn = _DOCS.get(name)
+    if not fn:
+        raise HTTPException(404, "沒有這份文件")
+    path = Path(__file__).resolve().parents[2] / "docs" / fn
+    if not path.exists():
+        raise HTTPException(404, f"找不到 docs/{fn}")
+    st = path.stat()
+    mtime = datetime.fromtimestamp(st.st_mtime, tz=timezone(timedelta(hours=8))).strftime("%Y-%m-%d")
+    return {"name": name, "file": f"docs/{fn}", "markdown": path.read_text(encoding="utf-8"), "modified": mtime}
 
 
 # ------------------------------------------------------------------ 前端顯示用的名稱對照（設施類型中文、量測方式、基準表名稱）
