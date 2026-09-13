@@ -19,7 +19,7 @@ GitHub 私有 repo `Peakqi-com/LA-platform`（Land Administration platform），
 2. `docs/02_domain_rules.md` — 作業手冊裡真正需要的規則（審查重點、距離量測、計算式、尾數）
 3. `docs/03_data_schema.md` — 內部 schema，所有模組只認這個
 4. `docs/04_architecture.md` — 服務切分、API、部署
-5. `docs/05_data_sources.md` — 政府開放資料清單與備援
+5. `docs/05_data_sources.md` — 資料來源總表（法規、範本、政府開放資料、OSM、圖磚、地籍、路徑、語言模型、字型；標離線／線上／需申請／推定／備援）
 6. `docs/06_roadmap.md` — 到決賽前的順序
 7. `docs/07_calculation_basis.md` — **每條算式的法源對照**（辦法條號／手冊頁碼／程式位置／手冊算例驗證）
 8. `docs/08_data_prep_and_todo.md` — 資料準備操作指南、替代方案評估、待人處理清單
