@@ -47,10 +47,10 @@ try{
  // 開場就把整個場景的著色器編譯完（含第三、四章才出現的文件與估價師）。
  // 不先編譯的話，第一次捲到那一段會當場編譯，造成明顯的卡頓甚至掉影格。
  function warmup(){
-  const paperWas=paper.root.visible,appraiserWas=appraiser.visible,deskWas=desk.visible;
-  paper.root.visible=true;appraiser.visible=true;desk.visible=true;
+  const paperWas=paper.root.visible,appraiserWas=appraiser.visible,deskWas=desk.visible,fragWas=paper.frag.visible;
+  paper.root.visible=true;appraiser.visible=true;desk.visible=true;paper.frag.visible=true;
   try{renderer.compile(scene,camera);}catch(e){console.warn('warmup skipped',e);}
-  paper.root.visible=paperWas;appraiser.visible=appraiserWas;desk.visible=deskWas;
+  paper.root.visible=paperWas;appraiser.visible=appraiserWas;desk.visible=deskWas;paper.frag.visible=fragWas;
  }
  const lighting=new LightingSystem(scene,renderer,materials,city,quality),crowd=new CrowdSystem(city,materials,quality),birds=new BirdSystem(scene,quality),aircraft=new AircraftSystem(scene,materials),environment=new EnvironmentSystem(scene,city,materials),post=new PostProcessingSystem(renderer,quality);
  const source=new THREE.WebGLRenderTarget(1,1,{depthBuffer:true});source.texture.colorSpace=THREE.SRGBColorSpace;const magnifier=buildMagnifier(source.texture);magnifier.lensMat.fragmentShader=magnifier.lensMat.fragmentShader.replace('gl_FragColor=vec4(c,1.);','gl_FragColor=vec4(c,1.);\n#include <colorspace_fragment>\n');
@@ -67,7 +67,7 @@ try{
   city.root.scale.setScalar(shrink);city.root.position.set(18.5*(1-shrink),lerp(0,.1,documentPhase),2.5*(1-shrink));city.buildings.scale.y=lerp(1,.09,flatten);city.greenery.scale.y=lerp(1,.06,flatten);city.buildingDetails.scale.y=lerp(.72,1,state.buildingLOD);city.buildingDetails.position.y=lerp(-.3,0,state.buildingLOD);city.buildingDetails.visible=quality.level!=='LOW'||state.buildingLOD>.34;scene.updateMatrixWorld();
   const time=timeOfDay.update(sceneProgress),lightingState=lighting.update(elapsed,time,state,camera),{day,night}=lightingState;
   cadastral.update(state,smooth(.72,1.55,sceneProgress));parcelOverlay.update(state,elapsed);
-  paper.root.visible=documentPhase>.002&&returnPhase<.995;paper.root.position.set(18.5,lerp(.7,8.5,documentPhase)-valuePhase*1.5,2.5);paper.root.rotation.x=lerp(-Math.PI/2,-.48,documentPhase)-valuePhase*.35;paper.root.rotation.z=-.035*documentPhase;paper.root.scale.setScalar(lerp(.7,.87,documentPhase)*(1-returnPhase));paper.draw(smooth(2.08,2.76,sceneProgress));
+  paper.root.visible=documentPhase>.002&&returnPhase<.999;paper.root.position.set(18.5,lerp(.7,8.5,documentPhase)-valuePhase*1.5,2.5);paper.root.rotation.x=lerp(-Math.PI/2,-.48,documentPhase)-valuePhase*.35;paper.root.rotation.z=-.035*documentPhase;paper.root.scale.setScalar(lerp(.7,.87,documentPhase)*(reduced?(1-returnPhase):1));if(!reduced)paper.disintegrate(returnPhase,elapsed);paper.draw(smooth(2.08,2.76,sceneProgress));
   const write=smooth(2.16,2.69,sceneProgress);paper.pencil.position.set(3+Math.sin(write*15)*2.8,7-write*11,.5);paper.pencil.rotation.z=-.6+Math.sin(write*20)*.025;appraiser.visible=valuePhase>.01&&returnPhase<.99;appraiser.scale.setScalar(1.35*valuePhase*(1-returnPhase));appraiser.userData.update?.(elapsed,appraiser.visible&&!reduced);desk.visible=documentPhase>.4&&returnPhase<.8;desk.scale.setScalar(documentPhase*(1-returnPhase));
   wind.root.visible=documentPhase<.9||returnPhase>.1;wind.root.children.forEach(object=>{if(object.material?.transparent)object.material.opacity=(object.geometry.type==='TubeGeometry'?.2:1)*(1-documentPhase+returnPhase)*state.worldOpacity;});wind.update(elapsed,reduced);
   const animationTime=reduced?sceneProgress*.7:elapsed;city.animate(animationTime,night);crowd.update(animationTime,dt,camera,state,reduced);birds.update(animationTime,time,state,environment.windDirection,reduced);aircraft.update(animationTime,time,state,reduced);environment.update(animationTime,state,reduced);city.waterMaterial.uniforms.uSunX.value=.5+Math.sin(day*Math.PI*1.35-.5)*.3;

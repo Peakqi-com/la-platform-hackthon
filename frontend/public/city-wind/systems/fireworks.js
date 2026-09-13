@@ -33,7 +33,7 @@ export class FireworkSystem{
 
   const mat=new THREE.ShaderMaterial({
    transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,toneMapped:false,
-   uniforms:{uScale:{value:1000}},
+   uniforms:{uScale:{value:1350}},
    vertexShader:`attribute vec3 aColor;attribute float aSize;attribute float aAlpha;
     uniform float uScale;varying vec3 vColor;varying float vAlpha;
     void main(){vColor=aColor;vAlpha=aAlpha;vec4 mv=modelViewMatrix*vec4(position,1.);
@@ -81,7 +81,7 @@ export class FireworkSystem{
    const i=this.free();if(i<0)break;
    // 球面均勻取向，速度帶點隨機才不會像標準球
    const u=this.rnd()*2-1,th=this.rnd()*Math.PI*2,s=Math.sqrt(1-u*u);
-   const sp=12+this.rnd()*9;
+   const sp=15+this.rnd()*11;
    const c=k%2?a:b;                                   // 兩種顏色一起放
    this.spawn(i,x,y,z,s*Math.cos(th)*sp,u*sp,s*Math.sin(th)*sp,c.r,c.g,c.b,
               2.3+this.rnd()*1.7,.95+this.rnd()*.45,-5.2,.955,false);

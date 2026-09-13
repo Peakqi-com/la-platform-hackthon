@@ -59,17 +59,52 @@ export function buildCity(materialLibrary) {
   nightGlow.push({mat:m,base:0,gain});
   return m;
  };
+ // 斜張橋夜間 LED 燈條：沿斜張索、橋塔稜線與橋面兩側，紅、洋紅、藍、青循環變色，
+ // 並有一段亮帶沿燈條往下流動。加法混色且亮度乘上 night，白天等於完全不顯示。
+ // 亮帶是一個週期的低頻正弦，縮到很遠也不會變成高頻閃爍。
+ const ledMat=new THREE.ShaderMaterial({
+  uniforms:{uTime:{value:0},uNight:{value:0}},
+  transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,toneMapped:false,
+  vertexShader:`attribute float aPhase;varying float vT;varying float vPh;
+   void main(){vT=uv.y;vPh=aPhase;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
+  fragmentShader:`uniform float uTime;uniform float uNight;varying float vT;varying float vPh;
+   // palette cycles red -> magenta -> blue -> cyan -> red
+   vec3 pal(float x){x=fract(x);
+    vec3 r=vec3(1.,.12,.22),m=vec3(.95,.18,.9),b=vec3(.18,.38,1.),c=vec3(.15,.9,1.);
+    if(x<.25)return mix(r,m,x*4.);if(x<.5)return mix(m,b,(x-.25)*4.);if(x<.75)return mix(b,c,(x-.5)*4.);return mix(c,r,(x-.75)*4.);}
+   void main(){
+    vec3 col=pal(vT*.7+vPh-uTime*.16);
+    float chase=.5+.5*smoothstep(.15,.9,.5+.5*sin(vT*6.2831-uTime*2.2+vPh*6.2831));
+    gl_FragColor=vec4(col*chase*1.7*uNight,1.);
+   }`
+ });
+ const ledStrip=(a,b,r,phase)=>{
+  const A=new THREE.Vector3(...a),B=new THREE.Vector3(...b),d=B.clone().sub(A),len=d.length();
+  const g=new THREE.CylinderGeometry(r,r,len,6,1,true);
+  g.setAttribute('aPhase',new THREE.BufferAttribute(new Float32Array(g.attributes.position.count).fill(phase),1));
+  const m=new THREE.Mesh(g,ledMat);
+  m.position.copy(A).add(B).multiplyScalar(.5);
+  m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());
+  m.castShadow=false;m.receiveShadow=false;m.renderOrder=5;terrain.add(m);return m;
+ };
  for(const [z,cable]of [[-19,true],[24,false]]){
   box(terrain,-31,1,z,35,.75,5,'concrete');box(terrain,-31,1.42,z,35,.1,4.4,'road');
   for(const dz of [-2.4,2.4]){box(terrain,-31,2,z+dz,35,.12,.12,'light');for(let x=-48;x<-13;x+=1.8)box(terrain,x,1.7,z+dz,.12,.8,.12,'trim');}
   for(let x=-45;x<-15;x+=3)box(terrain,x,1.5,z,1.6,.04,.12,'roadMark');
   for(const x of [-39,-23]){box(terrain,x,-.2,z,.9,3.5,3,'concrete');if(cable){for(const dz of [-2.7,2.7]){box(terrain,x,6.2,z+dz,.65,12,.6,'light');for(const dx of [-8,-5,-2,2,5,8])beam(terrain,[x,11.4,z+dz],[x+dx,1.6,z+dz],.045,'gold');}box(terrain,x,10.5,z,1,.65,6,'light');}}
-  // 橋面兩側的欄杆燈
-  for(let x=-46.5;x<-14;x+=2.4)for(const dz of [-2.4,2.4])glowLamp(x,2.16,z+dz,.09,0xffcf95,.92);
-  // 斜張橋：塔頂航空燈與沿索的光點
-  if(cable)for(const x of [-39,-23]){
-   glowLamp(x,11.9,z,.16,0xff8a6a,.95);
-   for(const dz of [-2.7,2.7])for(const dx of [-8,-5,-2,2,5,8])glowLamp(x+dx*.62,6.6-Math.abs(dx)*.42,z+dz,.062,0xbfe6ff,.8);
+  // 步道橋保留暖色欄杆燈；斜張橋改成 LED 燈條
+  if(!cable)for(let x=-46.5;x<-14;x+=2.4)for(const dz of [-2.4,2.4])glowLamp(x,2.16,z+dz,.09,0xffcf95,.92);
+  if(cable){
+   // 橋面兩側
+   for(const dz of [-2.4,2.4])ledStrip([-48.5,2.1,z+dz],[-13.5,2.1,z+dz],.075,dz>0?0:.5);
+   for(const x of [-39,-23]){
+    glowLamp(x,11.9,z,.16,0xff8a6a,.95);   // 塔頂航空燈
+    // 斜張索：每一條從塔頂往橋面，相位依位置錯開，顏色像在沿著索流動
+    for(const dz of [-2.7,2.7])for(const dx of [-8,-5,-2,2,5,8])ledStrip([x,11.4,z+dz],[x+dx,1.6,z+dz],.07,(x+dx)*.018+dz*.04);
+    // 橋塔稜線與頂部橫梁
+    for(const dz of [-2.7,2.7])for(const ex of [-.34,.34])ledStrip([x+ex,.6,z+dz+(dz>0?.31:-.31)],[x+ex,12.1,z+dz+(dz>0?.31:-.31)],.06,x*.01+ex);
+    ledStrip([x,10.86,z-3],[x,10.86,z+3],.06,x*.013);
+   }
   }
  }
  function tree(x,z,size=1){box(greenery,x,1.05*size,z,.23*size,1.8*size,.23*size,'trunk');const crown=mesh(greenery,new THREE.SphereGeometry(1,10,7),random()>.5?'leaf':'leaf2',x,2.8*size,z);crown.scale.set(1.05*size,1.25*size,.95*size);}
@@ -249,6 +284,7 @@ export function buildCity(materialLibrary) {
  }
   for(const light of carLights)light.mat.opacity=light.base+night*light.gain;
   for(const light of nightGlow)light.mat.opacity=light.base+night*light.gain;
+  ledMat.uniforms.uTime.value=time;ledMat.uniforms.uNight.value=night;
  }
  return {root,buildings,buildingShells,buildingDetails,terrain,greenery,peopleGroup,parcels,cars,workers,professions,materials,materialLibrary:library,streetLamps,waterMaterial,animate};
 }

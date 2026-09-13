@@ -7,9 +7,45 @@ export function buildDocument(materialLibrary){
  // Printed paper stays matte and shadow-free so the city shadow map can never
  // project building/window bands across the document during the transition.
  const paperMat=new THREE.MeshStandardMaterial({map:tex,roughness:.86,side:THREE.DoubleSide});
- const stackMat=new THREE.MeshStandardMaterial({color:0xd4d3c4,roughness:.8});
+ const stackMat=new THREE.MeshStandardMaterial({color:0xd4d3c4,roughness:.8,transparent:true});
  for(let i=3;i>=1;i--){const sheet=new THREE.Mesh(new THREE.BoxGeometry(19.8,27,.05),stackMat);sheet.position.set(i*.09,-i*.07,-i*.06);sheet.rotation.z=-i*.009;root.add(sheet);}
  const page=new THREE.Mesh(new THREE.PlaneGeometry(19.8,27),paperMat);page.receiveShadow=false;page.castShadow=false;root.add(page);
+ // 退場：整張紙碎成不規則的碎片，順著風的方向翻滾飄走。
+ // 碎片是共用同一張貼圖的網格，格點有抖動所以是不規則多邊形，但仍能完整拼回整張紙；
+ // 靜止時與原本的紙完全重合，所以切換瞬間看不出來。每一片依位置有不同的放開時間，
+ // 從迎風的左上角開始、往下風的右下角一路散開。
+ const GX=9,GY=12,W=19.8,H=27;
+ let fs=9127;const frnd=()=>{fs=(fs*1664525+1013904223)>>>0;return fs/4294967296;};
+ const gp=[];
+ for(let j=0;j<=GY;j++)for(let i=0;i<=GX;i++){
+  const edge=i===0||j===0||i===GX||j===GY;
+  const jx=edge?0:(frnd()-.5)*.55,jy=edge?0:(frnd()-.5)*.55;
+  gp.push([(i/GX-.5)*W+jx*W/GX,(j/GY-.5)*H+jy*H/GY,i/GX+jx/GX,j/GY+jy/GY]);
+ }
+ const NF=GX*GY,fragPos=new Float32Array(NF*12),fragNor=new Float32Array(NF*12),fragUv=new Float32Array(NF*8),fragCol=new Float32Array(NF*16),fragIdx=[],frags=[];
+ for(let j=0;j<GY;j++)for(let i=0;i<GX;i++){
+  const f=frags.length,ids=[j*(GX+1)+i,j*(GX+1)+i+1,(j+1)*(GX+1)+i+1,(j+1)*(GX+1)+i];
+  const corners=ids.map(k=>gp[k]);
+  const cx=(corners[0][0]+corners[1][0]+corners[2][0]+corners[3][0])/4,cy=(corners[0][1]+corners[1][1]+corners[2][1]+corners[3][1])/4;
+  corners.forEach((c,k)=>{const v=f*4+k;fragUv[v*2]=c[2];fragUv[v*2+1]=c[3];fragPos[v*3]=c[0];fragPos[v*3+1]=c[1];fragPos[v*3+2]=0;fragNor[v*3+2]=1;fragCol.set([1,1,1,1],v*4);});
+  fragIdx.push(f*4,f*4+1,f*4+2,f*4,f*4+2,f*4+3);
+  const sweep=(i/GX)*.62+(1-j/GY)*.28;
+  const ax=frnd()-.5,ay=frnd()-.5,az=frnd()-.5,al=Math.hypot(ax,ay,az)||1;
+  frags.push({cx,cy,off:corners.map(c=>[c[0]-cx,c[1]-cy]),release:sweep*.55+frnd()*.08,
+   axis:new THREE.Vector3(ax/al,ay/al,az/al),spin:3+frnd()*6,drift:.75+frnd()*.6,lift:.4+frnd()*.9,phase:frnd()*6.28});
+ }
+ const fragGeo=new THREE.BufferGeometry();
+ fragGeo.setAttribute('position',new THREE.BufferAttribute(fragPos,3));
+ fragGeo.setAttribute('normal',new THREE.BufferAttribute(fragNor,3));
+ fragGeo.setAttribute('uv',new THREE.BufferAttribute(fragUv,2));
+ fragGeo.setAttribute('color',new THREE.BufferAttribute(fragCol,4));
+ fragGeo.setIndex(fragIdx);
+ const fragMat=new THREE.MeshStandardMaterial({map:tex,roughness:.86,side:THREE.DoubleSide,vertexColors:true,transparent:true,depthWrite:false});
+ const frag=new THREE.Mesh(fragGeo,fragMat);frag.visible=false;frag.frustumCulled=false;frag.castShadow=false;frag.receiveShadow=false;root.add(frag);
+ // 與場景裡的風同方向（往 +x、+z），再帶一點上揚
+ const WIND_WORLD=new THREE.Vector3(.86,.34,.38).normalize();
+ const _q=new THREE.Quaternion(),_qi=new THREE.Quaternion(),_v=new THREE.Vector3(),_w=new THREE.Vector3(),_n=new THREE.Vector3();
+ const sd=(a,b,v)=>{const t=Math.min(1,Math.max(0,(v-a)/(b-a)));return t*t*(3-2*t);};
  // The parcel border uses the same proportions and identity as the scene parcel.
  let lastStep=-1;
  function draw(progress){const step=Math.floor(progress*32);if(step===lastStep)return;lastStep=step;
@@ -33,7 +69,31 @@ export function buildDocument(materialLibrary){
  const barrel=new THREE.Mesh(new THREE.CylinderGeometry(.16,.16,6.2,12),new THREE.MeshStandardMaterial({color:0xb7854f,metalness:.5,roughness:.3}));pencil.add(barrel);
  const tip=new THREE.Mesh(new THREE.ConeGeometry(.17,.8,12),new THREE.MeshStandardMaterial({color:0x1e3431,metalness:.45,roughness:.25}));tip.position.y=-3.5;tip.rotation.z=Math.PI;pencil.add(tip);
  const end=new THREE.Mesh(new THREE.CylinderGeometry(.17,.17,.5,12),new THREE.MeshStandardMaterial({color:0xd1d2c6,metalness:.7,roughness:.3}));end.position.y=3;pencil.add(end);pencil.rotation.z=-.6;pencil.position.set(5,5,.5);root.add(pencil);
- return {root,draw,pencil};
+ function disintegrate(r,t){
+  if(r<=.0005){page.visible=true;frag.visible=false;stackMat.opacity=1;pencil.visible=true;pencil.scale.setScalar(1);return;}
+  page.visible=false;frag.visible=r<.999;
+  stackMat.opacity=1-sd(0,.3,r);
+  pencil.scale.setScalar(Math.max(.001,1-sd(0,.25,r)));pencil.visible=r<.25;
+  // 世界座標的風向換算到紙的座標系
+  root.getWorldQuaternion(_qi);_qi.invert();_w.copy(WIND_WORLD).applyQuaternion(_qi);
+  for(let f=0;f<frags.length;f++){
+   const F=frags[f],q=Math.min(1,Math.max(0,(r-F.release)/.42));
+   const e=q*q;                               // 先慢後快：被風帶起來的感覺
+   const d=e*26*F.drift,wob=Math.sin(t*2.1+F.phase)*e*1.6;
+   const px=F.cx+_w.x*d+wob*.4,py=F.cy+_w.y*d+e*F.lift*6,pz=_w.z*d+Math.cos(t*1.7+F.phase)*e*1.2;
+   _q.setFromAxisAngle(F.axis,q*F.spin);_n.set(0,0,1).applyQuaternion(_q);
+   const a=1-sd(.55,1,q),sc=1-q*.35;
+   for(let k=0;k<4;k++){
+    _v.set(F.off[k][0]*sc,F.off[k][1]*sc,0).applyQuaternion(_q);
+    const v=f*4+k;
+    fragPos[v*3]=px+_v.x;fragPos[v*3+1]=py+_v.y;fragPos[v*3+2]=pz+_v.z;
+    fragNor[v*3]=_n.x;fragNor[v*3+1]=_n.y;fragNor[v*3+2]=_n.z;
+    fragCol[v*4+3]=a;
+   }
+  }
+  fragGeo.attributes.position.needsUpdate=true;fragGeo.attributes.normal.needsUpdate=true;fragGeo.attributes.color.needsUpdate=true;
+ }
+ return {root,draw,pencil,frag,disintegrate};
 }
 
 export function buildAppraiser(materialLibrary){
@@ -74,23 +134,26 @@ export function buildAppraiser(materialLibrary){
  const faceLight=new THREE.PointLight(0xffd79a,0,9,2);
 
  const sstep=(a,b,v)=>{const t=Math.min(1,Math.max(0,(v-a)/(b-a)));return t*t*(3-2*t);};
- const CYCLE=8.2;
+ const CYCLE=7.0;
+ let appearAt=null;
  root.userData.faceLight=faceLight;root.userData.faceAnchor=faceAnchor;
  root.userData.update=(t,visible)=>{
   faceAnchor.getWorldPosition(faceLight.position);
-  if(!visible){faceLight.intensity=0;return;}
-  const c=((t%CYCLE)+CYCLE)%CYCLE;
-  // 燈泡：0.6 秒快速亮起，停留到 3.4 秒後淡出
-  const on=sstep(.55,1.05,c)*(1-sstep(3.6,4.5,c));
+  if(!visible){faceLight.intensity=0;appearAt=null;return;}
+  // 從他長出來的那一刻起算：一出現就靈光一閃，而不是等全頁時鐘轉到那一段
+  if(appearAt===null)appearAt=t;
+  const c=(t-appearAt)%CYCLE;
+  // 燈泡：出現後 0.25 秒開始亮，停留到 3.4 秒後淡出
+  const on=sstep(.25,.6,c)*(1-sstep(3.4,4.2,c));
   // 亮起瞬間多一個短暫的過亮，做出「一閃」
-  const spark=Math.max(0,1-Math.abs(c-1.05)/.42);
+  const spark=Math.max(0,1-Math.abs(c-.6)/.38);
   const glow=Math.min(1,on+spark*.55);
   bulbMat.opacity=glow*.96;haloMat.opacity=glow*.42;
   bulbPivot.scale.setScalar(.82+glow*.26+spark*.1);
   bulbPivot.position.y=7.55+Math.sin(t*1.7)*.06*on;
   faceLight.intensity=glow*7.5;
   // 比大拇指：1.5 秒舉起，停到 3.6 秒放下
-  const up=sstep(1.5,2.15,c)*(1-sstep(3.5,4.2,c));
+  const up=sstep(.85,1.4,c)*(1-sstep(3.3,3.9,c));
   rightArm.rotation.x=-up*1.42;rightArm.rotation.z=up*.3;
   thumb.visible=up>.12;thumb.rotation.z=.35-up*.3;
   // 舉起後的輕微搖晃

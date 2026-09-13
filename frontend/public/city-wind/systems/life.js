@@ -26,7 +26,7 @@ function addImpostor(worker){
 
 export class CrowdSystem{
  constructor(city,materials,quality){
-  this.city=city;this.workers=city.workers;this.quality=quality;this.frame=0;this.behaviors=['walking','standing','checkingPhone','talking','talking','coupleWalking','coupleWalking','waiting','sitting','cycling','dogWalking','crossingRoad'];
+  this.city=city;this.workers=city.workers;this.quality=quality;this.frame=0;this.behaviors=['walking','dogWalking','checkingPhone','walking','dogWalking','coupleWalking','coupleWalking','walking','dogWalking','cycling','dogWalking','crossingRoad'];
   this.crossings=[new THREE.LineCurve3(new THREE.Vector3(5.05,.29,16.25),new THREE.Vector3(10.95,.29,16.25)),new THREE.LineCurve3(new THREE.Vector3(32.25,.29,-10.95),new THREE.Vector3(32.25,.29,-5.05))];
   this.workers.forEach((worker,i)=>{
    worker.behavior=this.behaviors[i%this.behaviors.length];worker.mps=.8+random();worker.baseSpeed=worker.mps/Math.max(1,worker.route.getLength());worker.speed=(i%4===0?-1:1)*worker.baseSpeed;worker.updateModulo=i<12?1:i<35?quality.settings.midUpdate:4;worker.lod=i<12?'near':i<35?'medium':'far';worker.fixed=random();worker.worldPosition=new THREE.Vector3();worker.shadowState=false;
