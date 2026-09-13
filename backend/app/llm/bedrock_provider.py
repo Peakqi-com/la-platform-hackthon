@@ -46,7 +46,10 @@ class BedrockProvider(LLMProvider):
                 raise LLMNotConfigured("未安裝 boto3：pip install -e '.[llm]'") from e
             self._exc = (BotoCoreError, ClientError)
             self._nocred = NoCredentialsError
-            self._client = boto3.client("bedrock-runtime", region_name=self.region)
+            from botocore.config import Config
+            # 逾時與重試上限：沒設的話一次卡住可等好幾分鐘（連線 10 秒、讀取 120 秒、最多重試 2 次）
+            self._client = boto3.client("bedrock-runtime", region_name=self.region,
+                                        config=Config(connect_timeout=10, read_timeout=120, retries={"max_attempts": 2}))
         return self._client
 
     def status(self) -> dict:
