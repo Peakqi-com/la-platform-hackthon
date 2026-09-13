@@ -9,7 +9,7 @@ import { actorHeaders, Any, getActor, zhError } from "@/lib/api";
 
 /* ④ 輸出：同一份內容一列，格式不同只在「下載」欄分開按鈕；最上面一鍵打包。所有下載都經 fetch 帶操作身分，寫入操作紀錄。 */
 type Fmt = { key: string; fmt: string; url: (id: string) => string; file: (no: string) => string };
-type Item = { key: string; name: string; desc: string; formats: Fmt[]; needOutputs?: boolean };
+type Item = { key: string; name: string; desc: string; formats: Fmt[]; needOutputs?: boolean; needIncome?: boolean; };
 
 const reportQuery = () => { const a = getActor(); return `?reviewer=${encodeURIComponent(a.name)}&reviewer_role=${encodeURIComponent(a.role)}`; };
 const ITEMS: Item[] = [
@@ -22,6 +22,8 @@ const ITEMS: Item[] = [
   { key: "section", name: "地價區段圖", desc: "區段範圍、宗地、設施位置與量測路線", needOutputs: true, formats: [{ key: "section", fmt: "PNG", url: (id) => `/api/cases/${id}/map.png?mode=section`, file: (no) => `${no}_地價區段圖.png` }] },
   { key: "official", name: "地政局正式範本書表", desc: "直接填入地政局 Excel 範本：地價區段勘查表（每區段一張工作表）、影響地價區域因素分析明細表（住宅用地版面）、比較法調查估價表；格線與版面與範本相同", needOutputs: true,
     formats: [{ key: "ot3", fmt: "勘查表", url: (id) => `/api/cases/${id}/official/t3.xlsx`, file: (no) => `${no}_表3_地價區段勘查表.xlsx` }, { key: "ot5", fmt: "區域因素表", url: (id) => `/api/cases/${id}/official/t5.xlsx`, file: (no) => `${no}_表5-1_影響地價區域因素分析明細表.xlsx` }, { key: "ot4", fmt: "比較法估價表", url: (id) => `/api/cases/${id}/official/t4.xlsx`, file: (no) => `${no}_表4_比較法調查估價表.xlsx` }, { key: "ozip", fmt: "三份 zip", url: (id) => `/api/cases/${id}/official.zip`, file: (no) => `${no}_正式範本書表.zip` }] },
+  { key: "income", name: "收益法書表", desc: "收益法調查估價表（含附表─成本法調查估價表，比準地為素地時免附）與比準地地價估計表，填入地政局 Excel 範本；需先於「宗地條件與買賣實例」啟用收益法（查估辦法 §14）", needOutputs: true, needIncome: true,
+    formats: [{ key: "ot2", fmt: "表2", url: (id) => `/api/cases/${id}/official/t2.xlsx`, file: (no) => `${no}_表2_收益法調查估價表.xlsx` }, { key: "ot14", fmt: "表14", url: (id) => `/api/cases/${id}/official/t14.xlsx`, file: (no) => `${no}_表14_比準地地價估計表.xlsx` }] },
   { key: "parcels", name: "宗地個別因素清冊", desc: "本案比準地與比較標的的個別因素（清冊版面），可填後再匯入", formats: [{ key: "parcels", fmt: "Excel", url: (id) => `/api/cases/${id}/parcels.xlsx`, file: (no) => `${no}_宗地個別因素清冊.xlsx` }] },
   { key: "comps", name: "買賣實例", desc: "比較標的交易資料，可填後再匯入", formats: [{ key: "comps", fmt: "Excel", url: (id) => `/api/cases/${id}/comparables.xlsx`, file: (no) => `${no}_買賣實例.xlsx` }] },
 ];
@@ -51,7 +53,7 @@ export default function Export() {
       </Card>
       <Card title="個別檔案">
         <div className="overflow-x-auto"><table className="grid"><thead><tr><th>檔案</th><th>內容</th><th className="whitespace-nowrap w-1">下載</th></tr></thead>
-          <tbody>{ITEMS.map((it) => (
+          <tbody>{ITEMS.filter((it) => !(it as { needIncome?: boolean }).needIncome || rec.data.income?.enabled).map((it) => (
             <tr key={it.key}>
               <td className="whitespace-nowrap font-medium">{it.name}</td>
               <td className="text-sm">{it.desc}{it.formats.map((f) => msg[f.key] && <div key={f.key} className="text-xs text-slate-600 mt-1">{msg[f.key]}</div>)}</td>

@@ -28,7 +28,10 @@ TEMPLATES = {
     "t3": (TEMPLATE_DIR / "表3地價區段勘查表.xlsx", "表3區段勘查表", "表3_地價區段勘查表"),
     "t5": (TEMPLATE_DIR / "表5影響地價區域因素分析明細表.xlsx", "表5-1區域因素明細表(住)", "表5-1_影響地價區域因素分析明細表"),
     "t4": (TEMPLATE_DIR / "表4比較法調查估價表.xlsx", "表4比較法調查估價表", "表4_比較法調查估價表"),
+    "t2": (TEMPLATE_DIR / "表4比較法調查估價表.xlsx", "94表2收益法 ", "表2_收益法調查估價表"),
+    "t14": (TEMPLATE_DIR / "表4比較法調查估價表.xlsx", "114表14比準地地價估計表", "表14_比準地地價估計表"),
 }
+T2_COST_SHEET = "95表2收益附-成本法"
 PCT = '0.00"%"'
 MONEY = "#,##0"
 WRAP = Alignment(wrap_text=True, vertical="center")
@@ -525,8 +528,174 @@ def fill_table3(data: dict, regional: RuleSet, meta: dict, section_ids: list[str
 # ------------------------------------------------------------------ 打包
 
 
+# ------------------------------------------------------------------ 表2 收益法調查估價表（含附表─成本法）與表14 比準地地價估計表
+
+
+def _roc_text(v: Any) -> str:
+    t = str(v or "").strip()
+    return f"{int(t[:-4])}年{t[-4:-2]}月{t[-2:]}日" if t.isdigit() and len(t) >= 6 else t
+
+
+def _frac(v: Any) -> float | None:
+    n = _num(v)
+    return None if n is None else round(n / 100, 6)
+
+
+def fill_table2(data: dict, inc: dict, meta: dict) -> Workbook:
+    """範本「94表2收益法」＋「95表2收益附-成本法」：值一律由 engine/income.compute_income 算好寫入（覆蓋範本公式），比率格寫小數（範本格式為百分比）。
+    素地（inc.mode == "land"）建物相關欄位免填（手冊 p.38 (3)），附表成本法移除。格位對照見 docs/12。"""
+    path = TEMPLATES["t2"][0]
+    wb = load_workbook(path)
+    for other in list(wb.worksheets):
+        if other.title not in (TEMPLATES["t2"][1], T2_COST_SHEET):
+            wb.remove(other)
+    ws = wb[TEMPLATES["t2"][1]]
+    for sh in wb.worksheets:                                   # 範本這兩張是隱藏工作表：輸出時設為顯示，表2 為使用中工作表
+        sh.sheet_state = "visible"
+    wb.active = wb.worksheets.index(ws)
+    case = data.get("case") or {}
+    sp = data.get("subject_parcel") or {}
+    subj = (data.get("income") or {}).get("subject") or {}
+    building = inc.get("mode") == "building"
+    dash = "-"
+    _set(ws, "J1", case.get("valuation_date"))
+    _set(ws, "P1", sp.get("section_id"))
+    _set(ws, "U1", sp.get("serial_no") or "")
+    _set(ws, "C2", _txt(sp.get("address") or sp.get("parcel_id")))
+    _set(ws, "J2", subj.get("address") or (dash if not building else ""))
+    _set(ws, "T2", subj.get("building_no") or (dash if not building else ""))
+    _set(ws, "C3", inc.get("income_area_m2"))
+    _set(ws, "E3", inc.get("land_share_m2"))
+    _set(ws, "G3", subj.get("total_floors") if building else dash)
+    _set(ws, "J3", subj.get("level") if building else dash)
+    _set(ws, "P3", round(inc["rebuild_total"]) if building and inc.get("rebuild_total") else dash, MONEY)
+    _set(ws, "T3", round(inc["cost_total"]) if building and inc.get("cost_total") else dash, MONEY)
+    _set(ws, "F4", inc.get("est_monthly_rent"), MONEY)
+    _set(ws, "R4", _roc_text(case.get("valuation_date")))
+    for c, k in (("F5", "annual_rent"), ("R5", "annual_rent"), ("F6", "deposit"), ("F7", "deposit_income"), ("R7", "other_income"), ("F8", "gross_income"), ("K9", "egi")):
+        _set(ws, c, inc.get(k), MONEY)
+    _set(ws, "R6", _frac(inc.get("deposit_rate_pct")))
+    _set(ws, "R8", inc.get("idle_months"))
+    exp = inc.get("expenses") or {}
+    _set(ws, "F10", exp.get("land_value_tax"), MONEY)
+    _set(ws, "F12", round(exp.get("management") or 0, 2), MONEY)
+    _set(ws, "R12", exp.get("other"), MONEY)
+    if building:
+        _set(ws, "F11", exp.get("house_tax"), MONEY)
+        _set(ws, "F13", round(exp.get("insurance") or 0, 2), MONEY)
+        _set(ws, "R10", exp.get("maintenance"), MONEY)
+        _set(ws, "R11", exp.get("replacement"), MONEY)
+        _set(ws, "R13", inc.get("depreciation_rate"))
+        _set(ws, "F16", _frac(inc.get("building_cap_rate_pct")))
+        _set(ws, "F17", inc.get("building_noi"), MONEY)
+        _set(ws, "O15", (inc.get("sources") or {}).get("cap_rate_building_pct", {}).get("source", ""), wrap=True)
+    else:
+        for c in ("F11", "F13", "R10", "R11", "R13", "F16", "F17", "O15"):
+            _set(ws, c, dash)
+    _set(ws, "K14", inc.get("total_expense"), MONEY)
+    _set(ws, "F15", inc.get("noi"), MONEY)
+    _set(ws, "F18", inc.get("other_deduction"), MONEY)
+    _set(ws, "R18", inc.get("land_noi"), MONEY)
+    _set(ws, "F19", _frac(inc.get("land_cap_rate_pct")))
+    _set(ws, "O19", (inc.get("sources") or {}).get("cap_rate_land_pct", {}).get("source", ""), wrap=True)
+    _set(ws, "F20", inc.get("land_income_total"), MONEY)
+    _set(ws, "F21", inc.get("land_income_unit"), MONEY)
+    _set(ws, "F22", inc.get("income_price") if building else dash, MONEY)
+    rows = inc.get("examples") or []
+    for i in range(3):
+        r = 24 + i
+        ex = rows[i] if i < len(rows) else None
+        vals = [("B", ex and ex.get("example_no")), ("C", ex and ex.get("section_id")), ("D", ex and ex.get("area_m2")), ("E", ex and ex.get("total_rent")),
+                ("F", ex and ex.get("unit_rent")), ("G", ex and ex.get("rent_type")), ("H", ex and _frac(ex.get("situation_pct"))), ("I", ex and ex.get("rent_date")),
+                ("J", ex and _frac(ex.get("date_pct"))), ("K", ex and _frac(ex.get("regional_pct"))), ("M", ex and _frac(ex.get("individual_pct"))),
+                ("O", ex and _frac(ex.get("abs_sum_pct"))), ("Q", ex and ex.get("n_adjusted")), ("R", ex and ex.get("trial_rent")), ("T", ex and _frac(ex.get("weight_pct")))]
+        for col, v in vals:
+            _set(ws, f"{col}{r}", v if ex else None)
+    _set(ws, "U24", inc.get("est_monthly_rent"), MONEY)
+    expl = [f"編號{ex.get('example_no')}：{'；'.join(ex.get('flags') or [])}" + (f"，情況調整 {ex.get('situation_pct'):+.2f}%" if ex.get("situation_pct") else "")
+            for ex in rows if ex.get("flags") or ex.get("situation_pct")]
+    _set(ws, "C27", "；".join(expl) or "無特殊情況", wrap=True)
+    checks = [f"{k}：{v.get('value')}（{v.get('source')}）" for k, v in (inc.get("sources") or {}).items() if v.get("check")]
+    _set(ws, "A30", "備註欄：" + "；".join(filter(None, ["系統推定參數需估價師確認：" + "；".join(checks) if checks else "", "；".join(inc.get("issues") or [])])), wrap=True)
+    _set(ws, "A32", f"填寫日期：{meta.get('fill_date') or '      年      月      日'}         承辦員：")
+    _set(ws, "N33", f"不動產估價師：{meta.get('appraiser') or ''}")
+    wa = wb[T2_COST_SHEET]
+    if not building or not inc.get("cost"):
+        wb.remove(wa)
+        wb.active = 0
+        return wb
+    c = inc["cost"]
+    b = subj.get("building") or {}
+    _set(wa, "N1", sp.get("serial_no") or "")
+    _set(wa, "D3", subj.get("address") or "")
+    _set(wa, "D4", _txt(sp.get("parcel_id")))
+    _set(wa, "D5", subj.get("building_no") or "")
+    _set(wa, "H5", c.get("structure"))
+    _set(wa, "D6", c.get("floors_above"))
+    _set(wa, "D7", c.get("floors_below"))
+    _set(wa, "H6", c.get("reg_area_m2") or inc.get("income_area_m2"))
+    _set(wa, "H7", c.get("calc_area_m2"))
+    _set(wa, "D8", subj.get("level"))
+    _set(wa, "H8", c.get("years"))
+    for cell, key in (("M3", "unit_cost_m2"), ("L4", "adj_rate"), ("M5", "unit_cost_adj"), ("L6", "design_rate"), ("M6", "design"), ("M7", "cum1"),
+                      ("L8", "adv_rate"), ("M8", "advertising"), ("L9", "mgmt_rate"), ("M9", "management"), ("L10", "tax_rate"), ("M10", "tax"), ("M11", "cum2"),
+                      ("D10", "own_rate"), ("E10", "own_ratio"), ("G10", "w_own"), ("D11", "loan_rate"), ("E11", "loan_ratio"), ("G11", "w_loan"), ("E12", "presale_ratio"),
+                      ("G12", "w_presale"), ("I10", "avg_rate"), ("G13", "installment"), ("G14", "years"), ("G15", "interest_rate"), ("L12", "interest_rate"), ("M12", "interest"),
+                      ("M13", "cum3"), ("L14", "profit_rate"), ("M14", "profit"), ("M16", "rebuild_unit"), ("D18", "age"), ("H18", "life"), ("H19", "residual"),
+                      ("M20", "cost_total_calc")):
+        _set(wa, cell, c.get(key))
+    _set(wa, "D12", 0)
+    _set(wa, "N4", _roc_text(case.get("valuation_date")))
+    _set(wa, "J11", round((c.get("adv_rate") or 0) + (c.get("mgmt_rate") or 0) + (c.get("tax_rate") or 0), 6))
+    _set(wa, "J13", round(1 + (c.get("interest_rate") or 0), 6))
+    _set(wa, "J15", round(1 + (c.get("profit_rate") or 0), 6))
+    _set(wa, "F18", c.get("remaining"))
+    _set(wa, "H20", round(c.get("accum_dep_unit") or 0, 2))
+    _set(wa, "M18", round(c.get("cost_unit") or 0, 2))
+    comp = str(b.get("completed") or "")
+    _set(wa, "A18", int(comp[:-4]) if comp.isdigit() and len(comp) >= 6 else "")
+    _set(wa, "C18", int(comp[-4:-2]) if comp.isdigit() and len(comp) >= 6 else "")
+    _set(wa, "H22", round((c.get("unit_cost_adj") or 0) * 3.305785))
+    _set(wa, "A24", f"填寫日期：{meta.get('fill_date') or ''}         承辦員：")
+    return wb
+
+
+def fill_table14(data: dict, t4: Table4, decision: dict, meta: dict) -> Workbook:
+    """範本「114表14比準地地價估計表」：比較價格×權重＋收益價格×權重 → 比準地地價（值由 engine/income.land_price_decision 算好寫入）。"""
+    from app.spatial.cadastre import split_parcel_id
+    wb, ws = _open("t14")
+    ws.sheet_state = "visible"
+    wb.active = 0
+    case = data.get("case") or {}
+    sp = data.get("subject_parcel") or {}
+    sec, lot = split_parcel_id(sp.get("parcel_id") or "")
+    _set(ws, "B2", case.get("case_no"))
+    _set(ws, "I2", case.get("valuation_date"))
+    for r in range(5, 10):
+        for col in "ABCDEFGHIJK":
+            _set(ws, f"{col}{r}", None)
+    _set(ws, "A5", sp.get("section_id"))
+    _set(ws, "B5", sp.get("serial_no") or "")
+    _set(ws, "C5", (case.get("district") or "").replace("新北市", ""))
+    _set(ws, "D5", sec)
+    _set(ws, "E5", lot)
+    _set(ws, "F5", decision.get("comparison_price"), MONEY)
+    _set(ws, "G5", decision.get("comparison_weight"))
+    _set(ws, "H5", decision.get("income_price") if decision.get("income_price") is not None else "-", MONEY)
+    _set(ws, "I5", decision.get("income_weight"))
+    _set(ws, "J5", decision.get("land_price"), MONEY)
+    _set(ws, "K5", decision.get("reason") or "；".join(decision.get("issues") or []), wrap=True)
+    _set(ws, "A10", f"填寫日期：{meta.get('fill_date') or '   年   月   日'}    承辦員：")
+    _set(ws, "J11", f"不動產估價師：{meta.get('appraiser') or ''}")
+    return wb
+
+
 def official_workbooks(data: dict, result: dict, regional: RuleSet, individual: RuleSet, meta: dict) -> dict[str, Workbook]:
-    return {"t3": fill_table3(data, regional, meta), "t5": fill_table5(data, result["table5"], regional, meta), "t4": fill_table4(data, result["table4"], individual, meta)}
+    out = {"t3": fill_table3(data, regional, meta), "t5": fill_table5(data, result["table5"], regional, meta), "t4": fill_table4(data, result["table4"], individual, meta)}
+    if result.get("income"):                                     # 收益法啟用：加表2（含附表成本法）與表14 比準地地價估計表
+        out["t2"] = fill_table2(data, result["income"], meta)
+        out["t14"] = fill_table14(data, result["table4"], result.get("land_price_decision") or {}, meta)
+    return out
 
 
 def official_zip(data: dict, result: dict, regional: RuleSet, individual: RuleSet, meta: dict) -> bytes:
@@ -546,4 +715,4 @@ def workbook_bytes(wb: Workbook) -> bytes:
     return b.getvalue()
 
 
-__all__ = ["fill_table3", "fill_table4", "fill_table5", "official_workbooks", "official_zip", "workbook_bytes"]
+__all__ = ["fill_table2", "fill_table3", "fill_table4", "fill_table5", "fill_table14", "official_workbooks", "official_zip", "workbook_bytes"]

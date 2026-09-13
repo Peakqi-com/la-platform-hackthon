@@ -18,6 +18,7 @@ import re
 import time
 import urllib.parse
 import uuid
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -86,6 +87,7 @@ class CasePayload(BaseModel):
     sections: dict[str, Any]
     subject_parcel: dict[str, Any]
     comparables: list[dict[str, Any]]
+    income: dict[str, Any] | None = None      # 收益法（選用）：{enabled, mode, examples[], subject{}, params{}, weights{comparison, income}, reason}
 
 
 class VerifyPayload(CasePayload):
@@ -213,7 +215,8 @@ def _store_ruleset(d: dict[str, Any], rid: str | None = None) -> str:
 def run(payload: CasePayload):
     reg, ind = _rulesets(payload.case)
     result = run_case(reg, ind, payload.model_dump())
-    return {"table5": {k: v.to_dict() for k, v in result["table5"].items()}, "table4": result["table4"].to_dict()}
+    return {"table5": {k: v.to_dict() for k, v in result["table5"].items()}, "table4": result["table4"].to_dict(),
+            "income": result.get("income"), "land_price_decision": result.get("land_price_decision")}
 
 
 @app.post("/api/verify")
@@ -515,6 +518,8 @@ def _attach_geometry(data: dict[str, Any]) -> list[str]:
 def cases_save(payload: SaveCasePayload, request: Request):
     from app import cases as C
     data = payload.model_dump(exclude={"name", "id", "submitted_table5", "submitted_table4", "extraction", "status", "decisions"})
+    if data.get("income") is None:                                          # 沒送收益法設定就不存空值（未啟用收益法的案件資料不變）
+        data.pop("income", None)
     prev = copy.deepcopy(C.get_case(payload.id)) if payload.id else None   # 存檔會就地改 _mem，先複製才比得出差異
     geom_notes: list[str] = []
     if prev is None and (payload.submitted_table5 or payload.submitted_table4) and (data.get("subject_parcel") or {}).get("geometry") is None:
@@ -1011,17 +1016,29 @@ def cases_official_zip(cid: str, request: Request, appraiser: str = "", fill_dat
 
 @app.get("/api/cases/{cid}/official/{key}.xlsx")
 def cases_official_xlsx(cid: str, key: str, request: Request, appraiser: str = "", fill_date: str = ""):
-    """地政局正式範本單張：key = t3（勘查表）| t5（區域因素分析明細表）| t4（比較法調查估價表）。"""
+    """地政局正式範本單張：key = t3（勘查表）| t5（區域因素分析明細表）| t4（比較法調查估價表）| t2（收益法調查估價表含附表成本法）| t14（比準地地價估計表）。"""
     from app import cases as C
-    from app.output.official_xlsx import TEMPLATES, fill_table3, fill_table4, fill_table5, workbook_bytes
+    from app.output.official_xlsx import (
+        TEMPLATES,
+        fill_table2,
+        fill_table3,
+        fill_table4,
+        fill_table5,
+        fill_table14,
+        workbook_bytes,
+    )
     if key not in TEMPLATES:
-        raise HTTPException(404, "key 須為 t3、t5 或 t4")
+        raise HTTPException(404, "key 須為 t3、t5、t4、t2 或 t14")
     rec = C.get_case(cid)
     if not rec:
         raise HTTPException(404, "沒有這個案件")
     try:
         data, result, reg, ind, meta = _official_inputs(rec, appraiser, fill_date)
-        wb = fill_table3(data, reg, meta) if key == "t3" else fill_table5(data, result["table5"], reg, meta) if key == "t5" else fill_table4(data, result["table4"], ind, meta)
+        if key in ("t2", "t14") and not result.get("income"):
+            raise HTTPException(422, "本案未啟用收益法：表2、表14 請先在「宗地條件與買賣實例」啟用收益法並選收益實例")
+        wb = {"t3": lambda: fill_table3(data, reg, meta), "t5": lambda: fill_table5(data, result["table5"], reg, meta),
+              "t4": lambda: fill_table4(data, result["table4"], ind, meta), "t2": lambda: fill_table2(data, result["income"], meta),
+              "t14": lambda: fill_table14(data, result["table4"], result.get("land_price_decision") or {}, meta)}[key]()
     except InputError as e:
         raise HTTPException(422, str(e)) from e
     fname = f"{data['case'].get('case_no', 'case')}_{TEMPLATES[key][2]}.xlsx"
@@ -1954,6 +1971,82 @@ class FromLotPayload(BaseModel):
     with_comparables: bool = True               # 換地號或尚無比較標的時，自動到實價登錄找比較標的
 
 
+class IncomeSearchPayload(BaseModel):
+    mode: str | None = None          # land（素地）| building（房地）；不給依比準地是否有建物資料判定
+    max_n: int = 3
+    relax: bool = True
+    neighbors: bool = True
+
+
+class IncomeApplyPayload(BaseModel):
+    ids: list[str]
+    mode: str | None = None
+
+
+def _income_view(rec: dict) -> dict[str, Any]:
+    """收益法面板用：參數預設（含出處）、資料狀態、核算結果（表2）與比準地地價決定（表14）。"""
+    from app.engine.income import load_params
+    from app.market import rates as RT
+    from app.market.rent import income_mode, rent_status
+    data = rec["data"]
+    err = None
+    try:
+        reg, ind = _rulesets(data["case"])
+        result = run_case(reg, ind, data)
+    except InputError as e:
+        result, err = {}, str(e)
+    t4 = result.get("table4")
+    return {"enabled": bool((data.get("income") or {}).get("enabled")), "mode": income_mode(data), "income": data.get("income") or {},
+            "result": result.get("income"), "decision": result.get("land_price_decision"),
+            "comparison_price": t4.subject_comparison_price if t4 else None, "land_price": t4.subject_land_price if t4 else None,
+            "status": {"rent": rent_status(), **RT.status()}, "defaults": load_params(), "error": err}
+
+
+@app.get("/api/cases/{cid}/income")
+def cases_income(cid: str):
+    """收益法（查估辦法 §14）目前設定與核算結果。"""
+    from app import cases as C
+    rec = C.get_case(cid)
+    if not rec:
+        raise HTTPException(404, "沒有這個案件")
+    return _income_view(rec)
+
+
+@app.post("/api/cases/{cid}/income/search")
+def cases_income_search(cid: str, payload: IncomeSearchPayload):
+    """實價登錄租賃 → 收益實例候選（§17 蒐集期間、同鄉鎮→鄰近、素地只取土地租賃、房地只取同用途房屋；特殊情況標出）。"""
+    from app import cases as C
+    from app.market.rent import search_rent_examples
+    rec = C.get_case(cid)
+    if not rec:
+        raise HTTPException(404, "沒有這個案件")
+    return search_rent_examples(rec["data"], mode=payload.mode, max_n=payload.max_n, relax=payload.relax, neighbors=payload.neighbors)
+
+
+@app.post("/api/cases/{cid}/income/apply")
+def cases_income_apply(cid: str, payload: IncomeApplyPayload, request: Request):
+    """採用勾選的收益實例：啟用收益法、寫入 data.income.examples（價格日期調整依房租指數自動帶，其餘調整預設 0 由估價師填）。"""
+    from app import cases as C
+    from app.market.rent import search_rent_examples, to_income_example
+    rec = C.get_case(cid)
+    if not rec:
+        raise HTTPException(404, "沒有這個案件")
+    if not 1 <= len(payload.ids) <= 3:
+        raise HTTPException(422, "收益實例請選 1～3 件（手冊 p.37 (五)1(1) 以 3 件為原則）")
+    data = copy.deepcopy(rec["data"])
+    s = search_rent_examples(data, mode=payload.mode, max_n=60)
+    pool = {c["id"]: c for c in [*s["candidates"], *(s.get("reference") or []), *s["chosen"]]}
+    missing = [i for i in payload.ids if i not in pool]
+    if missing:
+        raise HTTPException(422, f"找不到收益實例：{'、'.join(missing)}（請重新搜尋）")
+    inc = dict(data.get("income") or {})
+    inc.update(enabled=True, mode=s["mode"], examples=[to_income_example(pool[i], n + 1, data["case"].get("valuation_date") or "") for n, i in enumerate(payload.ids)])
+    data["income"] = inc
+    rec = C.save_case(data, cid=cid, submitted_table5=rec.get("submitted_table5"), submitted_table4=rec.get("submitted_table4"))
+    AUD.log(cid, AUD.actor_from_headers(request.headers), "income", f"採用收益實例 {len(payload.ids)} 件（{'素地' if s['mode'] == 'land' else '房地'}）：" + "、".join(f"{pool[i]['district']} {pool[i]['date']}" for i in payload.ids))
+    return {"rec": rec, "view": _income_view(rec)}
+
+
 @app.post("/api/cases/{cid}/from_lot")
 def cases_from_lot(cid: str, payload: FromLotPayload, request: Request):
     """依比準地地號產生：地籍界線 → 宗地屬性 → 區段範圍草稿 → 勘查表推算 → 設施距離，存回案件並回報每一步。"""
@@ -2226,6 +2319,25 @@ def report(payload: ReportPayload, request: Request):
         except LLMNotConfigured as e:
             rep.polish = {"status": "unavailable", "note": str(e)}
     return {"report": rep.to_dict(), "markdown": to_markdown(rep), "findings": findings}
+
+
+# ------------------------------------------------------------------ 文件（docs/*.md 原文；前端 /sources 解析後套版，單一來源不另抄）
+
+_DOCS = {"data_sources": "05_data_sources.md"}
+
+
+@app.get("/api/docs/{name}")
+def doc_markdown(name: str):
+    """回傳 docs/ 下指定文件的 markdown 原文與檔案時間；只開放白名單。"""
+    fn = _DOCS.get(name)
+    if not fn:
+        raise HTTPException(404, "沒有這份文件")
+    path = Path(__file__).resolve().parents[2] / "docs" / fn
+    if not path.exists():
+        raise HTTPException(404, f"找不到 docs/{fn}")
+    st = path.stat()
+    mtime = datetime.fromtimestamp(st.st_mtime, tz=timezone(timedelta(hours=8))).strftime("%Y-%m-%d")
+    return {"name": name, "file": f"docs/{fn}", "markdown": path.read_text(encoding="utf-8"), "modified": mtime}
 
 
 # ------------------------------------------------------------------ 前端顯示用的名稱對照（設施類型中文、量測方式、基準表名稱）

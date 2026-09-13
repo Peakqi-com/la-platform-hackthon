@@ -345,4 +345,15 @@ def run_case(regional_rs: RuleSet, individual_rs: RuleSet, data: dict) -> dict:
         t5[comp["comp_no"]] = t
         totals[comp["comp_no"]] = t.total_pct
     t4 = build_table4(individual_rs, data["case"], subject, data["comparables"], totals)
-    return {"table5": t5, "table4": t4}
+    out: dict = {"table5": t5, "table4": t4}
+    inc = data.get("income") or {}
+    if inc.get("enabled"):                                   # 收益法（選用）：查估辦法 §14；比準地地價依表14 綜合比較價格與收益價格
+        from app.engine.income import compute_income, land_price_decision
+        res = compute_income(data)
+        ip = res.get("income_price") if res and res.get("complete") else None
+        dec = land_price_decision(t4.subject_comparison_price, ip, inc.get("weights"), inc.get("reason"))
+        if dec.get("land_price") is not None and (dec.get("income_weight") or 0) > 0:
+            t4.subject_land_price = dec["land_price"]
+            t4.price_basis["subject_land_price"] = dec["basis"]
+        out["income"], out["land_price_decision"] = res, dec
+    return out

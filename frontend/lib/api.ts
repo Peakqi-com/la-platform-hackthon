@@ -1,7 +1,7 @@
 /* 所有後端呼叫集中在這裡；路徑一律 /api/*，由 next.config 的 rewrites 代理到 BACKEND_URL。 */
 export type Any = any;
 
-export interface CaseData { case: Any; sections: Record<string, Any>; subject_parcel: Any; comparables: Any[] }
+export interface CaseData { case: Any; sections: Record<string, Any>; subject_parcel: Any; comparables: Any[]; income?: Any }
 export type Decision = { decision: "accept" | "reject" | "pending"; note?: string; by?: string; at?: string; stale?: boolean };
 export interface Outputs { generated_at: string; input_hash: string; summary?: Any; findings_keys?: string[] }
 export interface Extraction { confidence?: Record<string, number>; missing_fields?: string[]; warnings?: string[]; pages?: Any[]; filename?: string }
@@ -78,6 +78,9 @@ export const api = {
   comparablesSearch: (id: string, opts: { max_n?: number; relax?: boolean; neighbors?: boolean } = {}) => post<Any>(`/api/cases/${encodeURIComponent(id)}/comparables/search`, opts),
   comparablesApply: (id: string, ids: string[], building_costs: Record<string, number> = {}, reasons: Record<string, string> = {}) => post<Any>(`/api/cases/${encodeURIComponent(id)}/comparables/apply`, { ids, building_costs, reasons }),
   comparablesLocate: (id: string, comp_no: number, lon: number, lat: number) => post<Any>(`/api/cases/${encodeURIComponent(id)}/comparables/locate`, { comp_no, lon, lat }),
+  income: (id: string) => j<Any>(`/api/cases/${encodeURIComponent(id)}/income`),
+  incomeSearch: (id: string, opts: { mode?: string; max_n?: number; relax?: boolean; neighbors?: boolean } = {}) => post<Any>(`/api/cases/${encodeURIComponent(id)}/income/search`, opts),
+  incomeApply: (id: string, ids: string[], mode?: string) => post<{ rec: CaseRecord; view: Any }>(`/api/cases/${encodeURIComponent(id)}/income/apply`, { ids, mode }),
   notes: (id: string) => j<Any>(`/api/cases/${encodeURIComponent(id)}/notes`),
   polishText: (id: string, targets: string[] = ["range_desc", "notes"]) => post<Any>(`/api/cases/${encodeURIComponent(id)}/polish_text`, { targets }),
   cadastreLots: () => j<{ source: string | null; n?: number; districts?: string[]; lots: { section: string; lot: string; parcel_id: string; district?: string | null }[] }>("/api/cadastre/lots"),

@@ -106,3 +106,11 @@ table.grid tr.selected td { background: #ffe4cc; }
 .help-toggle { font-size: .8rem; color: #64748b; text-decoration: underline dotted; cursor: pointer; background: none; border: 0; padding: 0; }
 .help-toggle:hover { color: #c2410c; }
 .help-body { font-size: .85rem; color: #475569; margin-top: .25rem; padding-left: .6rem; border-left: 3px solid #fed7aa; line-height: 1.6; }
+/* /sources 資料來源總表：襯線標題、路徑等寬字淡橘底、表格細線 */
+.src-serif { font-family: "Noto Serif TC", "Source Han Serif TC", "Songti TC", "PMingLiU", "Noto Serif CJK TC", Georgia, serif; letter-spacing: .01em; }
+.src-code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .85em; background: #fff1e3; color: #7c2d12; padding: .05em .35em; border-radius: .25rem; word-break: break-all; }
+.src-table { border-collapse: collapse; }
+.src-table thead tr { border-bottom: 2px solid #2a1d14; }
+.src-table tbody tr { border-bottom: 1px solid #e2ddd5; }
+.src-table tbody tr:last-child { border-bottom: 1px solid #c9c2b8; }
+@media print { .sources .src-table { font-size: 9pt; } .sources h2 { break-after: avoid; } .sources tr { break-inside: avoid; } }

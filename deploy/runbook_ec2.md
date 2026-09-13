@@ -100,3 +100,6 @@ cd backend && .venv/bin/python scripts/prefetch_tiles.py --bbox <minlon,minlat,m
 - 前端打 API 404：build 時 BACKEND_URL 不對，改好重新 `npm run build`。
 - 記憶體：後端啟動約 1.5 GB（實價登錄＋設施庫），t3.small 會 OOM。
 - 重啟：`pkill -f "uvicorn app.main"`、`pkill -f "next start"` 後重跑第 3、4 步的啟動指令。
+
+### 收益法資料（2026-09-13）
+`data/` 不進 git，收益法的租賃資料要另外上傳：`rsync -e 'ssh -i ~/.ssh/ntpc-key.pem' data/lvr/f_rent.json ubuntu@<IP>:/opt/app/data/lvr/`，傳完 `curl -X POST https://<IP>.sslip.io/api/reload` 或重啟 `ntpc-backend`。定存利率與房租指數在 `rules/`（隨 git 部署）。

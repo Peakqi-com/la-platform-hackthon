@@ -9,6 +9,7 @@ import { Field, set } from "@/components/SurveyFields";
 import { FormToolbar, keyNav, useDirty, useFormTools } from "@/components/FormTools";
 import { Tip } from "@/components/Basis";
 import { IOBadge } from "@/components/IO";
+import IncomePanel from "@/components/IncomePanel";
 import { actorHeaders, zhError } from "@/lib/api";
 import { api, Any, confidenceFor, fmtMoney, fmtPct, LOW_CONF } from "@/lib/api";
 
@@ -214,6 +215,12 @@ export default function Parcels({ embedded = false }: { embedded?: boolean } = {
             <tr><td><Tip k="comp.window">交易資料</Tip></td><td></td>{comps.map((c, i) => <td key={i} className="text-xs">土地正常單價 <input className="ctl-sm w-24" type="number" value={c.normal_unit_price ?? ""} onChange={(e) => { const d = JSON.parse(JSON.stringify(draft)); d.comparables[i].normal_unit_price = Number(e.target.value); setDraft(d); }} /> 交易日期 <input className="ctl-sm w-24" value={c.transaction_date || ""} onChange={(e) => { const d = JSON.parse(JSON.stringify(draft)); d.comparables[i].transaction_date = e.target.value; setDraft(d); }} /> 期日調整率(%) <input className="border rounded px-1 w-16" type="number" step="0.01" value={c.date_adjustment?.pct ?? ""} onChange={(e) => { const d = JSON.parse(JSON.stringify(draft)); d.comparables[i].date_adjustment = { ...(c.date_adjustment || {}), pct: Number(e.target.value) }; setDraft(d); }} /></td>)}</tr>
           </tbody></table></div> : "載入基準表…"}
         </Card>
+      </div>
+      <div>
+        <IncomePanel caseId={rec.id} draft={draft} busy={busy}
+          setIncome={(inc: Any) => setDraft({ ...draft, income: inc })}
+          onApplied={(r: Any) => { lastBase.current = { ...(lastBase.current || {}), income: r.data.income }; setDraft((d: Any) => ({ ...d, income: r.data.income })); loadCase(r.id); }}
+          preview={(d: Any) => api.run(cleanComparables(d))} />
       </div>
       <div>
         <Card title="比準地設施距離與量測方式" hint="距離由「案件與地價區段」分頁的比準地位置自動量測，要重量請到該分頁按「重新量測設施距離」。作業手冊 p.24：需通達之設施採路線距離，嫌惡設施採直線距離，同一案件各細項量測標準一致；同一細項有多處設施時填影響最大者，全案共用同一參照設施。">

@@ -451,6 +451,63 @@ def verify_admin_consistency(data: dict) -> list[Finding]:
     return out
 
 
+def verify_income(data: dict, result: dict) -> list[Finding]:
+    """收益法（選用）審查：手冊 p.12 審查重點 viii（收益實例租金與實價登錄相符、推估過程、總費用、土地及建物收益資本化率符合技術規則 §43）、
+    ix（比準地地價估計表之權重與決定理由、尾數）；查估辦法 §7、§8（特殊情況調整）、§17（租金形成日期與蒐集期間）。"""
+    res = result.get("income")
+    if not res:
+        return []
+    out: list[Finding] = []
+    exs = (data.get("income") or {}).get("examples") or []
+    tbl = "表2"
+    if not exs:
+        out.append(Finding("warn", "viii", tbl, "收益實例", "0", "3", "收益法已啟用但未選收益實例（手冊 p.37 (五)1(1)：以蒐集 3 件為原則）", "查估辦法 §14；手冊 p.37", kind="gap"))
+    elif len(exs) != 3:
+        out.append(Finding("info", "viii", tbl, "收益實例", str(len(exs)), "3", f"收益實例 {len(exs)} 件；手冊以蒐集 3 件為原則，不足者宜於備註敘明", "手冊 p.37 (五)1(1)"))
+    vdate = (data.get("case") or {}).get("valuation_date") or ""
+    win = collection_window(vdate) if vdate else None
+    vd = _roc(vdate) if vdate else None
+    widen = bool(_WIDEN_RE.search(_notes_text(data)))
+    rent_idx: dict | None = None
+    for ex in exs:
+        pre = f"收益實例{ex.get('example_no')}"
+        td = _roc(ex.get("rent_date"))
+        if td and vd:
+            if _ord(td) > _ord(vd) or _ord(td) < _year_before(vd):
+                out.append(Finding("error", "viii", tbl, f"{pre} / 租金形成日期", str(ex.get("rent_date")), "估價基準日前一年內",
+                                   "租金形成日期逾查估辦法 §17 第3項放寬上限（估價基準日前一年內）或晚於估價基準日", "查估辦法 §17 第2、3項"))
+            elif win and not (_ord(win[0]) <= _ord(td) <= _ord(win[1])) and not widen:
+                out.append(Finding("warn", "viii", tbl, f"{pre} / 租金形成日期", str(ex.get("rent_date")), None,
+                                   "租金形成日期在原則蒐集期間外、估價基準日前一年內：依查估辦法 §17 第3項放寬者，應於備註敘明無適當實例之理由", "查估辦法 §17 第2、3項"))
+        if ex.get("flags") and not float(ex.get("situation_pct") or 0):
+            out.append(Finding("warn", "viii", tbl, f"{pre} / 情況調整", "0", None,
+                               f"收益實例備註顯示特殊情況（{'；'.join(ex['flags'])[:60]}），未作情況調整；請依查估辦法 §7、§8 調整並於修正說明欄敘明", "查估辦法 §7、§8；手冊 p.38 (8)ii"))
+        if ex.get("lvr_id"):
+            if rent_idx is None:
+                try:
+                    from app.market.rent import load_rent
+                    rent_idx = {r["id"]: r for r in load_rent().get("records", [])}
+                except Exception:  # noqa: BLE001 - 租賃資料缺檔不擋審查
+                    rent_idx = {}
+            rr = rent_idx.get(ex["lvr_id"])
+            tot, ref = _num(ex.get("total_rent")), (rr or {}).get("rent_ex_park") or (rr or {}).get("total_rent")
+            if rr and tot is not None and ref and abs(tot - float(ref)) > 1:
+                out.append(Finding("warn", "viii", tbl, f"{pre} / 總租金", _fmt(tot), _fmt(float(ref)),
+                                   "收益實例租金與實價登錄不符；實際成交案例之收益面積與租金應與實價登錄相符，有調整者應於修正說明欄敘明", "手冊 p.12 審查重點 viii"))
+    lc, bc, dep = res.get("land_cap_rate_pct"), res.get("building_cap_rate_pct"), res.get("deposit_rate_pct")
+    if lc is not None and dep is not None and lc < dep:
+        out.append(Finding("warn", "viii", tbl, "土地收益資本化率", _fmt(float(lc)), f"≥ {dep}",
+                           "土地收益資本化率低於一年期定存利率；技術規則 §43 第1款風險溢酬法以定存等為基準加計風險，請確認決定理由", "技術規則 §43；手冊 p.12 審查重點 viii"))
+    if lc is not None and bc is not None and bc <= lc:
+        out.append(Finding("warn", "viii", tbl, "建物收益資本化率", _fmt(float(bc)), f"> {lc}",
+                           "建物收益資本化率未高於土地收益資本化率（建物風險高於土地，宜高於）", "手冊 p.41 (七)2；技術規則 §43"))
+    for s in res.get("issues") or []:
+        out.append(Finding("info", "viii", tbl, "收益法", None, None, s, "查估辦法 §14；手冊 p.37～41", kind="gap"))
+    for s in (result.get("land_price_decision") or {}).get("issues") or []:
+        out.append(Finding("warn" if "理由" in s else "info", "ix", "表14", "比準地地價估計表", None, None, s, "手冊 p.8 五(二)3、4；p.12 審查重點 ix"))
+    return out
+
+
 def collect_findings(regional: RuleSet, individual: RuleSet, data: dict, result: dict,
                      submitted_table5: dict | None, submitted_table4: dict | None) -> list[dict]:
     """一案的全部審查結果（各端點共用）：比較標的與蒐集期間 → 基準表上限 → 表5／表4 逐格比對 → 推定值降級 → 無送審書表時 error 一律標資料缺口。"""
@@ -463,6 +520,7 @@ def collect_findings(regional: RuleSet, individual: RuleSet, data: dict, result:
     if submitted_table4:
         findings += verify_table4(result["table4"], submitted_table4)
     findings += verify_admin_consistency(data)
+    findings += verify_income(data, result)
     soften_inferred(findings, inferred_keys(data, regional, individual))
     if not (submitted_table4 or t5s):
         for f in findings:
