@@ -7,7 +7,7 @@
 #   DATA_TGZ=~/ntpc-data.tgz ./deploy/provision.sh   # 指定資料包；沒給就打包本機 data/（沒有 data/ 就略過）
 #
 # 可調環境變數：NAME（資源名前綴，預設 ntpc）、INSTANCE_TYPE（t3.medium）、REGION（aws configure 的 region）、
-#               BEDROCK_REGION（預設 us-west-2）、BEDROCK_MODEL_ID（預設 us.anthropic.claude-sonnet-4-6）、ANTHROPIC_API_KEY（有給就改走 anthropic）、
+#               BEDROCK_REGION（預設 us-west-2）、BEDROCK_MODEL_ID（預設 us.anthropic.claude-opus-4-6-v1）、ANTHROPIC_API_KEY（有給就改走 anthropic）、
 #               SSH_CIDR（預設本機公網 IP/32）、KEY_FILE（~/.ssh/<NAME>-key.pem）
 set -euo pipefail
 
@@ -15,7 +15,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 NAME="${NAME:-ntpc}"
 REGION="${REGION:-$(aws configure get region || echo us-west-2)}"
 INSTANCE_TYPE="${INSTANCE_TYPE:-t3.medium}"
-BEDROCK_MODEL_ID="${BEDROCK_MODEL_ID:-us.anthropic.claude-sonnet-4-6}"
+BEDROCK_MODEL_ID="${BEDROCK_MODEL_ID:-us.anthropic.claude-opus-4-6-v1}"
 BEDROCK_REGION="${BEDROCK_REGION:-us-west-2}"   # 模型呼叫的區域；機器在台北（ap-east-2）時跨區呼叫美西
 KEY_NAME="${NAME}-key"
 KEY_FILE="${KEY_FILE:-$HOME/.ssh/${KEY_NAME}.pem}"
