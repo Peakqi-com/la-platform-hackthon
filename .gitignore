@@ -15,3 +15,6 @@ docs/demo/deck_img/kv_169.jpg
 *.doc
 *.DOC
 .gstack/
+# 系統執行時上傳產生的基準表，不進版控也不隨部署帶上去
+rules/uploaded_*.json
+_歷史/

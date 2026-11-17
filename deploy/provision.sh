@@ -111,7 +111,7 @@ for i in $(seq 1 40); do "${SSH[@]}" true 2>/dev/null && break; sleep 6; [[ $i =
 # ---------- 7. 上傳程式與資料 ----------
 log "打包並上傳程式"
 SRC_TGZ="$(mktemp -t ntpc-src).tgz"
-COPYFILE_DISABLE=1 tar czf "$SRC_TGZ" -C "$ROOT" --exclude='._*' --exclude=.DS_Store --exclude=node_modules --exclude=.next --exclude=.venv --exclude=.git --exclude=data --exclude='*.pyc' --exclude=__pycache__ .
+COPYFILE_DISABLE=1 tar czf "$SRC_TGZ" -C "$ROOT" --exclude='._*' --exclude=.DS_Store --exclude=node_modules --exclude=.next --exclude=.venv --exclude=.git --exclude=data --exclude='rules/uploaded_*' --exclude='*.pyc' --exclude=__pycache__ .
 scp -i "$KEY_FILE" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -q "$SRC_TGZ" "ubuntu@$PUBLIC_IP:/tmp/ntpc-src.tgz"; rm -f "$SRC_TGZ"
 if [[ -n "${DATA_TGZ:-}" && -f "$DATA_TGZ" ]]; then
   log "上傳資料包 ${DATA_TGZ}（$(du -h "$DATA_TGZ" | cut -f1)）"
