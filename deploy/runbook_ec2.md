@@ -103,3 +103,13 @@ cd backend && .venv/bin/python scripts/prefetch_tiles.py --bbox <minlon,minlat,m
 
 ### 收益法資料（2026-09-13）
 `data/` 不進 git，收益法的租賃資料要另外上傳：`rsync -e 'ssh -i ~/.ssh/ntpc-key.pem' data/lvr/f_rent.json ubuntu@<IP>:/opt/app/data/lvr/`，傳完 `curl -X POST https://<IP>.sslip.io/api/reload` 或重啟 `ntpc-backend`。定存利率與房租指數在 `rules/`（隨 git 部署）。
+
+### 登入密碼與重置所有案件（2026-11-17）
+- 整站用 Caddy basic auth 擋，只有 `/api/health` 不用密碼（部署健康檢查用）。帳密存在伺服器 `/etc/caddy/auth.caddy`，**不進 git**：
+  ```
+  basic_auth @protected {
+      <帳號> <caddy hash-password 產生的雜湊>
+  }
+  ```
+  改密碼：`caddy hash-password --plaintext '<新密碼>'` → 換掉檔案裡的雜湊 → `sudo systemctl reload caddy`。刪掉該檔再 reload 就是取消密碼。
+- 「重置所有案件」正式站預設關閉（`DELETE /api/cases` 回 403、側邊欄不顯示）；彩排要清空時在 `/opt/app/.env` 加 `ALLOW_RESET_ALL=1` 並重啟 `ntpc-backend`，用完拿掉。

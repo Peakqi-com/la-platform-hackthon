@@ -60,6 +60,9 @@ EOF
 sudo tee /etc/caddy/Caddyfile >/dev/null <<EOF
 $PUBLIC_HOST {
     encode gzip
+    # 登入密碼：伺服器上的 /etc/caddy/auth.caddy（不進 git，格式見 deploy/runbook_ec2.md「登入密碼」）；沒有該檔就不設密碼
+    @protected not path /api/health
+    import /etc/caddy/auth*.caddy
     handle /api/* {
         reverse_proxy 127.0.0.1:8000
     }

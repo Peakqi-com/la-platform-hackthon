@@ -402,8 +402,18 @@ def test_range_text_entry_and_representative_parcel():
     assert pick and pick["parcel_id"] in ("測段0地號", "測段10地號", "測段50地號") and "§18" in pick["note"]        # 中位數 200 m² 的三筆之一
 
 
-def test_delete_all_cases(tmp_path):
+def test_delete_all_cases_disabled_by_default(monkeypatch):
+    """正式站預設關閉重置所有案件：沒設 ALLOW_RESET_ALL 回 403，meta 也告訴前端不要顯示按鈕。"""
+    monkeypatch.delenv("ALLOW_RESET_ALL", raising=False)
+    client.get("/api/cases/demo", params={"save": "true"})
+    assert client.delete("/api/cases").status_code == 403
+    assert client.get("/api/cases").json()["cases"]
+    assert client.get("/api/meta").json()["allow_reset_all"] is False
+
+
+def test_delete_all_cases(tmp_path, monkeypatch):
     """重置所有案件：清單清空、檔案與操作紀錄移除，之後仍能重新建 demo。"""
+    monkeypatch.setenv("ALLOW_RESET_ALL", "1")
     a = client.get("/api/cases/demo", params={"save": "true"}).json()
     b = client.get("/api/cases/demo", params={"variant": "tampered", "save": "true"}).json()
     client.post(f"/api/cases/{b['id']}/archive")

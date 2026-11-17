@@ -14,6 +14,7 @@ import hashlib
 import io
 import json
 import logging
+import os
 import re
 import time
 import urllib.parse
@@ -1713,10 +1714,17 @@ def cases_get(cid: str, touch: bool = True):
     return rec
 
 
+def _allow_reset_all() -> bool:
+    return os.environ.get("ALLOW_RESET_ALL", "0").strip().lower() in ("1", "true", "yes")
+
+
 @app.delete("/api/cases")
 def cases_delete_all():
-    """重置所有案件：清掉全部案件資料、操作紀錄與匯入的地籍圖檔（不可復原）。demo 前回到乾淨狀態用。"""
+    """重置所有案件：清掉全部案件資料、操作紀錄與匯入的地籍圖檔（不可復原）。demo 前回到乾淨狀態用。
+    正式站預設關閉：環境變數 ALLOW_RESET_ALL=1 才開放（本機或彩排時設定）。"""
     from app import cases as C
+    if not _allow_reset_all():
+        raise HTTPException(403, "此環境已關閉「重置所有案件」；需要時請由管理者在伺服器設定 ALLOW_RESET_ALL=1")
     return {"ok": True, **C.delete_all_cases()}
 
 
@@ -2371,6 +2379,7 @@ def meta():
         "legal_basis": LEGAL_BASIS,
         "zoning_bcr_far": __import__("app.spatial.admin", fromlist=["load_table"]).load_table(),
         "roles": AUD.ROLES,
+        "allow_reset_all": _allow_reset_all(),
     }
 
 

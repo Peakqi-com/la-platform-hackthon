@@ -78,8 +78,15 @@ function NavInner() {
   );
 }
 
-/* 左下角：重置所有案件。兩段式確認（按一次展開，再按「確定清除」才送出），清後端全部案件、操作紀錄與匯入圖檔，不可復原。 */
+/* 左下角：重置所有案件。兩段式確認（按一次展開，再按「確定清除」才送出），清後端全部案件、操作紀錄與匯入圖檔，不可復原。
+   後端 meta.allow_reset_all 為 true（伺服器設 ALLOW_RESET_ALL=1）才顯示；正式站預設不顯示。 */
 function ResetAllBox() {
+  const { meta } = useCase();
+  if (!meta?.allow_reset_all) return null;
+  return <ResetAllInner />;
+}
+
+function ResetAllInner() {
   const { cases, resetAll } = useCase();
   const router = useRouter();
   const [arm, setArm] = useState(false);
