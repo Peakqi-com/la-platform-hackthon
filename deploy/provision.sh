@@ -7,7 +7,7 @@
 #   DATA_TGZ=~/ntpc-data.tgz ./deploy/provision.sh   # 指定資料包；沒給就打包本機 data/（沒有 data/ 就略過）
 #
 # 可調環境變數：NAME（資源名前綴，預設 ntpc）、INSTANCE_TYPE（t3.medium）、REGION（aws configure 的 region）、
-#               BEDROCK_MODEL_ID（預設 us.anthropic.claude-sonnet-4-5-20250929-v1:0）、ANTHROPIC_API_KEY（有給就改走 anthropic）、
+#               BEDROCK_REGION（預設 us-west-2）、BEDROCK_MODEL_ID（預設 us.anthropic.claude-sonnet-4-6）、ANTHROPIC_API_KEY（有給就改走 anthropic）、
 #               SSH_CIDR（預設本機公網 IP/32）、KEY_FILE（~/.ssh/<NAME>-key.pem）
 set -euo pipefail
 
@@ -15,7 +15,8 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 NAME="${NAME:-ntpc}"
 REGION="${REGION:-$(aws configure get region || echo us-west-2)}"
 INSTANCE_TYPE="${INSTANCE_TYPE:-t3.medium}"
-BEDROCK_MODEL_ID="${BEDROCK_MODEL_ID:-us.anthropic.claude-sonnet-4-5-20250929-v1:0}"
+BEDROCK_MODEL_ID="${BEDROCK_MODEL_ID:-us.anthropic.claude-sonnet-4-6}"
+BEDROCK_REGION="${BEDROCK_REGION:-us-west-2}"   # 模型呼叫的區域；機器在台北（ap-east-2）時跨區呼叫美西
 KEY_NAME="${NAME}-key"
 KEY_FILE="${KEY_FILE:-$HOME/.ssh/${KEY_NAME}.pem}"
 SG_NAME="${NAME}-web"
@@ -31,7 +32,7 @@ aws_q() { aws --output text --query "$@"; }
 # ---------- 0. 憑證與區域 ----------
 log "帳號與區域"
 aws sts get-caller-identity --output table
-case "$REGION" in us-east-1|us-west-2) ;; *) echo "競賽規範：區域須為 us-east-1 或 us-west-2（目前 ${REGION}）"; exit 1;; esac
+echo "機器區域 ${REGION}；Bedrock 區域 ${BEDROCK_REGION}"
 
 # ---------- 1. 金鑰對 ----------
 log "金鑰對 $KEY_NAME"
@@ -127,7 +128,7 @@ log "遠端安裝（venv、npm build、systemd、Caddy）"
 ENV_FILE="$(mktemp -t ntpc-env)"
 cat > "$ENV_FILE" <<EOF
 PUBLIC_HOST=$PUBLIC_HOST
-AWS_REGION=$REGION
+AWS_REGION=$BEDROCK_REGION
 BEDROCK_MODEL_ID=$BEDROCK_MODEL_ID
 LLM_PROVIDER=${LLM_PROVIDER:-$([[ -n "${ANTHROPIC_API_KEY:-}" ]] && echo anthropic || echo bedrock)}
 ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
