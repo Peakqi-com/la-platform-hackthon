@@ -65,6 +65,10 @@ function NavInner() {
       })}
       {!rec && <div className="px-3 py-2 text-[11px] opacity-60">開啟或建立案件後，這裡會出現 ①～④ 的步驟。</div>}
       <div className="mt-3 pt-3 border-t border-orange-200">
+        <Link href="/guide" className={`block px-3 py-2 rounded-lg mb-1 ${path === "/guide" ? "bg-[#ea580c] text-white" : "hover:bg-orange-100"}`}>
+          <div className="font-medium">操作教學</div>
+          <div className={`text-[11px] ${path === "/guide" ? "opacity-90" : "opacity-70"}`}>三種情境・用詞・常見問題</div>
+        </Link>
         <Link href="/sources" className={`block px-3 py-2 rounded-lg mb-1 ${path === "/sources" ? "bg-[#ea580c] text-white" : "hover:bg-orange-100"}`}>
           <div className="font-medium">資料來源</div>
           <div className={`text-[11px] ${path === "/sources" ? "opacity-90" : "opacity-70"}`}>圖資・法規・服務清單</div>
