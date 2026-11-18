@@ -105,11 +105,9 @@ cd backend && .venv/bin/python scripts/prefetch_tiles.py --bbox <minlon,minlat,m
 `data/` 不進 git，收益法的租賃資料要另外上傳：`rsync -e 'ssh -i ~/.ssh/ntpc-key.pem' data/lvr/f_rent.json ubuntu@<IP>:/opt/app/data/lvr/`，傳完 `curl -X POST https://<IP>.sslip.io/api/reload` 或重啟 `ntpc-backend`。定存利率與房租指數在 `rules/`（隨 git 部署）。
 
 ### 登入密碼與重置所有案件（2026-11-17）
-- 整站用 Caddy basic auth 擋，只有 `/api/health` 不用密碼（部署健康檢查用）。帳密存在伺服器 `/etc/caddy/auth.caddy`，**不進 git**：
-  ```
-  basic_auth @protected {
-      <帳號> <caddy hash-password 產生的雜湊>
-  }
-  ```
-  改密碼：`caddy hash-password --plaintext '<新密碼>'` → 換掉檔案裡的雜湊 → `sudo systemctl reload caddy`。刪掉該檔再 reload 就是取消密碼。
+- 整站登入（2026-11-18 起改用網站登入頁，取代 Caddy basic auth）：機關電腦的 Chrome／Edge 常以群組原則 `AuthSchemes` 只允許 ntlm、negotiate，Basic 認證不會彈出帳密視窗，只顯示「HTTP ERROR 401」。
+  現在 Caddy 以 `forward_auth` 問後端 `/api/auth/check`（`backend/app/auth.py`）：沒登入的頁面導到 `/login`，API 回 401 JSON；放行 `/api/health`、`/api/auth/*`、`/login`、`/_next/*`。
+  帳號存在伺服器 `/opt/app/.site_auth`（pbkdf2 雜湊，**不進 git**），改檔即生效；沒有帳號＝不設密碼。登入 cookie 預設 7 天（`SITE_AUTH_DAYS`），改密碼後舊登入全部失效。
+  - 設定或改密碼（同時把 Caddyfile 換成新版，舊的 `/etc/caddy/auth.caddy` 改名停用）：`/opt/app/deploy/site_auth.sh <帳號>`；要先等自動部署把後端更新到有 `/api/auth/*` 的版本
+  - 刪帳號：`cd /opt/app/backend && .venv/bin/python -m app.auth remove <帳號>`；列出：`… -m app.auth list`
 - 「重置所有案件」正式站預設關閉（`DELETE /api/cases` 回 403、側邊欄不顯示）；彩排要清空時在 `/opt/app/.env` 加 `ALLOW_RESET_ALL=1` 並重啟 `ntpc-backend`，用完拿掉。

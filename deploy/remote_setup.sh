@@ -60,9 +60,12 @@ EOF
 sudo tee /etc/caddy/Caddyfile >/dev/null <<EOF
 $PUBLIC_HOST {
     encode gzip
-    # 登入密碼：伺服器上的 /etc/caddy/auth.caddy（不進 git，格式見 deploy/runbook_ec2.md「登入密碼」）；沒有該檔就不設密碼
-    @protected not path /api/health
-    import /etc/caddy/auth*.caddy
+    # 整站登入：每個請求先問後端 /api/auth/check（app/auth.py）；帳號存在 /opt/app/.site_auth（不進 git），沒有帳號＝不設密碼。
+    # 不用 basic auth：機關電腦的瀏覽器常被群組原則關掉 Basic 認證，不會彈出帳密視窗。設定帳號見 deploy/site_auth.sh。
+    @needlogin not path /api/health /api/auth/* /login /_next/* /favicon.ico
+    forward_auth @needlogin 127.0.0.1:8000 {
+        uri /api/auth/check
+    }
     handle /api/* {
         reverse_proxy 127.0.0.1:8000
     }

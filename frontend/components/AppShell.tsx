@@ -3,13 +3,14 @@ import { usePathname } from "next/navigation";
 import Sidebar from "./Sidebar";
 import CaseBar from "./CaseBar";
 import StepBar from "./StepBar";
+import AuthGuard from "./AuthGuard";
 
 /* 應用程式外框：側邊欄＋步驟列＋案件列＋頁尾。根路徑 / 是首頁介紹頁，不套外框，全頁交給 app/page.tsx。 */
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
-  if (path === "/") return <>{children}</>;
+  if (path === "/" || path === "/login") return <><AuthGuard />{children}</>;
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen"><AuthGuard />
       <Sidebar />
       <main className="flex-1 min-w-0 px-6 py-5 max-w-[1400px]">{path !== "/sources" && path !== "/guide" && <><StepBar /><CaseBar /></>}{children}
         <footer className="no-print mt-10 pt-3 border-t border-slate-200 text-[11px] text-slate-500">

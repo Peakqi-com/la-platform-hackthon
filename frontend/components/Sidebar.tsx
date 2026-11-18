@@ -7,6 +7,7 @@ import { Any, findingKey, STATUS_LABEL } from "@/lib/api";
 import { useCase } from "./CaseContext";
 import { Help } from "./ui";
 import ActorBox from "./Actor";
+import { LogoutBox } from "./AuthGuard";
 
 /* 側邊欄五項：案件總覽 → ① 輸入資料 → ② 產出書表 → ③ 審查 → ④ 輸出。勾號＝該段已完成。 */
 export const NAV: { href: string; match: string[]; label: string; sub?: string }[] = [
@@ -127,6 +128,7 @@ export default function Sidebar() {
       <ActorBox />
       <div className="px-4 py-2 border-t border-orange-200"><Help label="核算依據">依《土地徵收補償市價查估辦法》與作業手冊核算；每個等級與修正率都能對回評價基準明細表格位。</Help></div>
       <ResetAllBox />
+      <LogoutBox />
     </aside>
   );
 }

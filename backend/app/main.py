@@ -115,6 +115,68 @@ def _rulesets(case: dict[str, Any]):
     return out[0], out[1]
 
 
+# ------------------------------------------------------------------ 整站登入（app/auth.py；Caddy forward_auth 問 /api/auth/check）
+
+class LoginPayload(BaseModel):
+    username: str
+    password: str
+    next: str | None = None
+
+
+def _client_ip(request: Request) -> str:
+    xff = request.headers.get("x-forwarded-for", "")
+    return (xff.split(",")[-1].strip() if xff else "") or (request.client.host if request.client else "")
+
+
+def _is_https(request: Request) -> bool:
+    return (request.headers.get("x-forwarded-proto") or request.url.scheme) == "https"
+
+
+@app.get("/api/auth/check")
+def auth_check(request: Request):
+    """Caddy forward_auth 用：通過回 200；頁面請求導到登入頁；API 請求回 401 JSON（不帶 WWW-Authenticate，瀏覽器不彈窗）。"""
+    from app import auth as A
+    if not A.enabled() or A.verify_token(request.cookies.get(A.COOKIE)):
+        return Response(status_code=200)
+    uri = request.headers.get("x-forwarded-uri") or "/"
+    method = (request.headers.get("x-forwarded-method") or "GET").upper()
+    if uri.startswith("/api/") or method not in ("GET", "HEAD"):
+        return JSONResponse(status_code=401, content={"detail": "請先登入", "login": True})
+    return Response(status_code=302, headers={"Location": "/login?next=" + urllib.parse.quote(A.safe_next(uri), safe="")})
+
+
+@app.get("/api/auth/me")
+def auth_me(request: Request):
+    from app import auth as A
+    return {"enabled": A.enabled(), "user": A.verify_token(request.cookies.get(A.COOKIE))}
+
+
+@app.post("/api/auth/login")
+def auth_login(payload: LoginPayload, request: Request):
+    from app import auth as A
+    ip = _client_ip(request)
+    if not A.enabled():
+        return {"ok": True, "next": A.safe_next(payload.next)}
+    if A.too_many_fails(ip):
+        raise HTTPException(429, "登入失敗次數過多，請 10 分鐘後再試")
+    token = A.login(payload.username.strip(), payload.password)
+    if not token:
+        A.record_fail(ip)
+        raise HTTPException(401, "帳號或密碼錯誤")
+    A.clear_fails(ip)
+    resp = JSONResponse({"ok": True, "next": A.safe_next(payload.next)})
+    resp.set_cookie(A.COOKIE, token, max_age=int(A.session_days() * 86400), httponly=True, samesite="lax", secure=_is_https(request), path="/")
+    return resp
+
+
+@app.post("/api/auth/logout")
+def auth_logout(request: Request):
+    from app import auth as A
+    resp = JSONResponse({"ok": True})
+    resp.delete_cookie(A.COOKIE, path="/", httponly=True, samesite="lax", secure=_is_https(request))
+    return resp
+
+
 @app.get("/api/health")
 def health():
     """服務健康：每一項各自包起來，任何一項壞掉只在該項回 error，整體仍 200（自動部署以此判斷服務是否起來）。"""
